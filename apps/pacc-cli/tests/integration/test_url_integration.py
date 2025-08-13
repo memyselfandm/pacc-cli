@@ -161,6 +161,7 @@ class TestURLInstallationIntegration:
             # Test URL routing
             class URLArgs:
                 source = "https://github.com/user/repo.zip"
+                verbose = False
             
             cli.install_command(URLArgs())
             mock_url_install.assert_called_once()
@@ -173,6 +174,7 @@ class TestURLInstallationIntegration:
             # Test local path routing
             class LocalArgs:
                 source = "/local/path/file.zip"
+                verbose = False
             
             cli.install_command(LocalArgs())
             mock_local_install.assert_called_once()

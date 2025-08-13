@@ -385,9 +385,12 @@ class PACCCli:
     def install_command(self, args) -> int:
         """Handle the install command."""
         try:
-            # Check if source is a URL
+            # Check source type and handle accordingly
+            # Check for direct download URLs first (before Git URLs)
             if self._is_url(args.source):
                 return self._install_from_url(args)
+            elif self._is_git_url(args.source):
+                return self._install_from_git(args)
             else:
                 return self._install_from_local_path(args)
                 
@@ -403,6 +406,15 @@ class PACCCli:
         try:
             parsed = urlparse(source)
             return parsed.scheme in ('http', 'https')
+        except Exception:
+            return False
+    
+    def _is_git_url(self, source: str) -> bool:
+        """Check if source is a Git repository URL."""
+        try:
+            from .sources.git import GitUrlParser
+            parser = GitUrlParser()
+            return parser.validate(source)
         except Exception:
             return False
 
@@ -468,6 +480,137 @@ class PACCCli:
             # Process the downloaded content as a local installation
             args.source = str(source_path)
             return self._install_from_local_path(args)
+
+    def _install_from_git(self, args) -> int:
+        """Install from Git repository source."""
+        # Determine installation scope
+        if args.user:
+            install_scope = "user"
+            base_dir = Path.home() / ".claude"
+        else:
+            install_scope = "project"
+            base_dir = Path.cwd() / ".claude"
+        
+        self._print_info(f"Installing from Git repository: {args.source}")
+        self._print_info(f"Installation scope: {install_scope}")
+        
+        if args.dry_run:
+            self._print_info("DRY RUN MODE - No changes will be made")
+        
+        try:
+            from .sources.git import GitSourceHandler
+            handler = GitSourceHandler()
+            
+            # Process the Git repository and get extensions
+            extensions = handler.process_source(
+                args.source, 
+                extension_type=args.type
+            )
+            
+            if not extensions:
+                self._print_error("No valid extensions found in Git repository")
+                return 1
+            
+            # Convert to Extension objects (they should already be Extension objects)
+            # Filter by type if specified
+            if args.type:
+                extensions = [ext for ext in extensions if ext.extension_type == args.type]
+                if not extensions:
+                    self._print_error(f"No {args.type} extensions found in repository")
+                    return 1
+            
+            # Handle selection (similar to local installation)
+            selected_extensions = []
+            if len(extensions) == 1:
+                selected_extensions = extensions
+            elif args.all:
+                selected_extensions = extensions
+            elif args.interactive or (not args.all and len(extensions) > 1):
+                # Use simplified interactive selection
+                print(f"Found {len(extensions)} extensions in Git repository:")
+                for i, ext in enumerate(extensions, 1):
+                    desc = ext.description or "No description"
+                    print(f"  {i}. {ext.name} ({ext.extension_type}) - {desc}")
+                
+                if args.interactive:
+                    while True:
+                        try:
+                            choices = input("Select extensions (e.g., 1,3 or 'all' or 'none'): ").strip()
+                            if choices.lower() == 'none':
+                                selected_extensions = []
+                                break
+                            elif choices.lower() == 'all':
+                                selected_extensions = extensions
+                                break
+                            else:
+                                indices = [int(x.strip()) - 1 for x in choices.split(',')]
+                                selected_extensions = [extensions[i] for i in indices if 0 <= i < len(extensions)]
+                                break
+                        except (ValueError, IndexError):
+                            print("Invalid selection. Please try again.")
+                            continue
+                else:
+                    selected_extensions = extensions
+                    
+                if not selected_extensions:
+                    self._print_info("No extensions selected for installation")
+                    return 0
+            else:
+                # Default: install all if multiple found
+                selected_extensions = extensions
+                self._print_info(f"Found {len(extensions)} extensions, installing all")
+            
+            # Validate selected extensions
+            validation_errors = []
+            for ext in selected_extensions:
+                result = validate_extension_file(ext.file_path, ext.extension_type)
+                
+                if not result.is_valid:
+                    validation_errors.append((ext, result))
+                    continue
+                
+                if args.verbose:
+                    formatted = ValidationResultFormatter.format_result(result, verbose=True)
+                    self._print_info(f"Validation result:\n{formatted}")
+            
+            if validation_errors:
+                self._print_error("Validation failed for some extensions:")
+                for ext, result in validation_errors:
+                    formatted = ValidationResultFormatter.format_result(result)
+                    self._print_error(formatted)
+                
+                if not args.force:
+                    self._print_error("Use --force to install despite validation errors")
+                    return 1
+            
+            # Perform installation
+            success_count = 0
+            for ext in selected_extensions:
+                try:
+                    if args.dry_run:
+                        self._print_info(f"Would install: {ext.name} ({ext.extension_type})")
+                    else:
+                        self._install_extension(ext, base_dir, args.force)
+                        self._print_success(f"Installed: {ext.name} ({ext.extension_type})")
+                    success_count += 1
+                except Exception as e:
+                    self._print_error(f"Failed to install {ext.name}: {e}")
+                    if not args.force:
+                        return 1
+            
+            if args.dry_run:
+                self._print_info(f"Would install {success_count} extension(s) from Git repository")
+            else:
+                self._print_success(f"Successfully installed {success_count} extension(s) from Git repository")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Git installation failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
 
     def _install_from_local_path(self, args) -> int:
         """Install from local file/directory path."""

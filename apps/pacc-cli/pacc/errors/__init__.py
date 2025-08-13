@@ -6,6 +6,8 @@ from .exceptions import (
     FileSystemError,
     ConfigurationError,
     SourceError,
+    NetworkError,
+    SecurityError,
 )
 from .reporting import ErrorReporter, ErrorContext
 
@@ -15,6 +17,8 @@ __all__ = [
     "FileSystemError",
     "ConfigurationError",
     "SourceError",
+    "NetworkError",
+    "SecurityError",
     "ErrorReporter",
     "ErrorContext",
 ]
