@@ -1,0 +1,7 @@
+# URL downloader dependencies for PACC
+# HTTP client for async downloads
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+
+# Optional: progress bars and visual feedback
+rich>=13.0.0  # For enhanced progress displays

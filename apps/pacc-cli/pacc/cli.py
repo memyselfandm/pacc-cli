@@ -2,10 +2,12 @@
 """PACC CLI - Package manager for Claude Code."""
 
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from . import __version__
 from .validators import (
@@ -19,6 +21,15 @@ from .validators import (
 from .ui import MultiSelectList
 from .errors import PACCError, ValidationError, SourceError
 from .core.config_manager import ClaudeConfigManager
+
+# URL downloader imports (conditional for optional dependency)
+try:
+    from .core.url_downloader import URLDownloader, ProgressDisplay
+    HAS_URL_DOWNLOADER = True
+except ImportError:
+    HAS_URL_DOWNLOADER = False
+    URLDownloader = None
+    ProgressDisplay = None
 
 
 @dataclass
@@ -91,12 +102,12 @@ class PACCCli:
         install_parser = subparsers.add_parser(
             "install",
             help="Install Claude Code extensions",
-            description="Install hooks, MCP servers, agents, or commands from local sources"
+            description="Install hooks, MCP servers, agents, or commands from local sources or URLs"
         )
         
         install_parser.add_argument(
             "source",
-            help="Path to extension file or directory to install"
+            help="Path to extension file/directory or URL to install from"
         )
         
         install_parser.add_argument(
@@ -141,6 +152,33 @@ class PACCCli:
             "--all",
             action="store_true",
             help="Install all valid extensions found in source"
+        )
+        
+        # URL-specific options
+        install_parser.add_argument(
+            "--no-extract",
+            action="store_true",
+            help="Don't extract archives when installing from URLs"
+        )
+        
+        install_parser.add_argument(
+            "--max-size",
+            type=int,
+            default=100,
+            help="Maximum download size in MB (default: 100)"
+        )
+        
+        install_parser.add_argument(
+            "--timeout",
+            type=int,
+            default=300,
+            help="Download timeout in seconds (default: 300)"
+        )
+        
+        install_parser.add_argument(
+            "--no-cache",
+            action="store_true",
+            help="Disable download caching"
         )
         
         install_parser.set_defaults(func=self.install_command)
@@ -347,155 +385,234 @@ class PACCCli:
     def install_command(self, args) -> int:
         """Handle the install command."""
         try:
-            source_path = Path(args.source).resolve()
-            
-            # Validate source path
-            if not source_path.exists():
-                self._print_error(f"Source path does not exist: {source_path}")
-                return 1
-            
-            # Determine installation scope
-            if args.user:
-                install_scope = "user"
-                base_dir = Path.home() / ".claude"
+            # Check if source is a URL
+            if self._is_url(args.source):
+                return self._install_from_url(args)
             else:
-                install_scope = "project"
-                base_dir = Path.cwd() / ".claude"
-            
-            self._print_info(f"Installing from: {source_path}")
-            self._print_info(f"Installation scope: {install_scope}")
-            
-            if args.dry_run:
-                self._print_info("DRY RUN MODE - No changes will be made")
-            
-            # Detect extensions
-            if source_path.is_file():
-                ext_type = ExtensionDetector.detect_extension_type(source_path)
-                if not ext_type:
-                    self._print_error(f"No valid extensions detected in: {source_path}")
-                    return 1
-                extension = Extension(
-                    name=source_path.stem,
-                    file_path=source_path,
-                    extension_type=ext_type,
-                    description=None
-                )
-                extensions = [extension]
-            else:
-                detected_files = ExtensionDetector.scan_directory(source_path)
-                extensions = []
-                for ext_type, file_paths in detected_files.items():
-                    for file_path in file_paths:
-                        extension = Extension(
-                            name=file_path.stem,
-                            file_path=file_path,
-                            extension_type=ext_type,
-                            description=None
-                        )
-                        extensions.append(extension)
+                return self._install_from_local_path(args)
                 
-                if not extensions:
-                    self._print_error(f"No valid extensions found in: {source_path}")
-                    return 1
-            
-            # Filter by type if specified
-            if args.type:
-                extensions = [ext for ext in extensions if ext.extension_type == args.type]
-                if not extensions:
-                    self._print_error(f"No {args.type} extensions found in source")
-                    return 1
-            
-            # Handle selection
-            selected_extensions = []
-            if len(extensions) == 1:
-                selected_extensions = extensions
-            elif args.all:
-                selected_extensions = extensions
-            elif args.interactive or (not args.all and len(extensions) > 1):
-                # Use simplified interactive selection for now
-                print(f"Found {len(extensions)} extensions:")
-                for i, ext in enumerate(extensions, 1):
-                    print(f"  {i}. {ext.name} ({ext.extension_type})")
-                
-                if args.interactive:
-                    while True:
-                        try:
-                            choices = input("Select extensions (e.g., 1,3 or 'all' or 'none'): ").strip()
-                            if choices.lower() == 'none':
-                                selected_extensions = []
-                                break
-                            elif choices.lower() == 'all':
-                                selected_extensions = extensions
-                                break
-                            else:
-                                indices = [int(x.strip()) - 1 for x in choices.split(',')]
-                                selected_extensions = [extensions[i] for i in indices if 0 <= i < len(extensions)]
-                                break
-                        except (ValueError, IndexError):
-                            print("Invalid selection. Please try again.")
-                            continue
-                else:
-                    selected_extensions = extensions
-                    
-                if not selected_extensions:
-                    self._print_info("No extensions selected for installation")
-                    return 0
-            else:
-                # Default: install all if multiple found
-                selected_extensions = extensions
-                self._print_info(f"Found {len(extensions)} extensions, installing all")
-            
-            # Validate selected extensions
-            validation_errors = []
-            for ext in selected_extensions:
-                result = validate_extension_file(ext.file_path, ext.extension_type)
-                
-                if not result.is_valid:
-                    validation_errors.append((ext, result))
-                    continue
-                
-                if args.verbose:
-                    formatted = ValidationResultFormatter.format_result(result, verbose=True)
-                    self._print_info(f"Validation result:\n{formatted}")
-            
-            if validation_errors:
-                self._print_error("Validation failed for some extensions:")
-                for ext, result in validation_errors:
-                    formatted = ValidationResultFormatter.format_result(result)
-                    self._print_error(formatted)
-                
-                if not args.force:
-                    self._print_error("Use --force to install despite validation errors")
-                    return 1
-            
-            # Perform installation
-            success_count = 0
-            for ext in selected_extensions:
-                try:
-                    if args.dry_run:
-                        self._print_info(f"Would install: {ext.name} ({ext.extension_type})")
-                    else:
-                        self._install_extension(ext, base_dir, args.force)
-                        self._print_success(f"Installed: {ext.name} ({ext.extension_type})")
-                    success_count += 1
-                except Exception as e:
-                    self._print_error(f"Failed to install {ext.name}: {e}")
-                    if not args.force:
-                        return 1
-            
-            if args.dry_run:
-                self._print_info(f"Would install {success_count} extension(s)")
-            else:
-                self._print_success(f"Successfully installed {success_count} extension(s)")
-            
-            return 0
-            
         except Exception as e:
             self._print_error(f"Installation failed: {e}")
             if args.verbose:
                 import traceback
                 traceback.print_exc()
             return 1
+
+    def _is_url(self, source: str) -> bool:
+        """Check if source is a URL."""
+        try:
+            parsed = urlparse(source)
+            return parsed.scheme in ('http', 'https')
+        except Exception:
+            return False
+
+    def _install_from_url(self, args) -> int:
+        """Install from URL source."""
+        if not HAS_URL_DOWNLOADER:
+            self._print_error("URL downloads require additional dependencies.")
+            self._print_error("Install with: pip install aiohttp")
+            return 1
+        
+        # Determine installation scope
+        if args.user:
+            install_scope = "user"
+            base_dir = Path.home() / ".claude"
+        else:
+            install_scope = "project"
+            base_dir = Path.cwd() / ".claude"
+        
+        self._print_info(f"Installing from URL: {args.source}")
+        self._print_info(f"Installation scope: {install_scope}")
+        
+        if args.dry_run:
+            self._print_info("DRY RUN MODE - No changes will be made")
+            return 0
+        
+        # Setup URL downloader
+        cache_dir = base_dir / "cache" if not args.no_cache else None
+        downloader = URLDownloader(
+            max_file_size_mb=args.max_size,
+            timeout_seconds=args.timeout,
+            cache_dir=cache_dir
+        )
+        
+        # Setup progress display
+        progress_display = ProgressDisplay()
+        
+        # Create temporary download directory
+        import tempfile
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Download and extract if needed
+            result = asyncio.run(downloader.install_from_url(
+                args.source,
+                temp_path,
+                extract_archives=not args.no_extract,
+                progress_callback=progress_display.display_progress
+            ))
+            
+            if not result.success:
+                self._print_error(f"Download failed: {result.error_message}")
+                return 1
+            
+            self._print_success(f"Downloaded successfully")
+            
+            # Use the extracted path if available, otherwise the downloaded file
+            source_path = result.final_path
+            
+            if not source_path or not source_path.exists():
+                self._print_error("Downloaded content not found")
+                return 1
+            
+            # Process the downloaded content as a local installation
+            args.source = str(source_path)
+            return self._install_from_local_path(args)
+
+    def _install_from_local_path(self, args) -> int:
+        """Install from local file/directory path."""
+        source_path = Path(args.source).resolve()
+        
+        # Validate source path
+        if not source_path.exists():
+            self._print_error(f"Source path does not exist: {source_path}")
+            return 1
+        
+        # Determine installation scope
+        if args.user:
+            install_scope = "user"
+            base_dir = Path.home() / ".claude"
+        else:
+            install_scope = "project"
+            base_dir = Path.cwd() / ".claude"
+        
+        self._print_info(f"Installing from: {source_path}")
+        self._print_info(f"Installation scope: {install_scope}")
+        
+        if args.dry_run:
+            self._print_info("DRY RUN MODE - No changes will be made")
+        
+        # Detect extensions
+        if source_path.is_file():
+            ext_type = ExtensionDetector.detect_extension_type(source_path)
+            if not ext_type:
+                self._print_error(f"No valid extensions detected in: {source_path}")
+                return 1
+            extension = Extension(
+                name=source_path.stem,
+                file_path=source_path,
+                extension_type=ext_type,
+                description=None
+            )
+            extensions = [extension]
+        else:
+            detected_files = ExtensionDetector.scan_directory(source_path)
+            extensions = []
+            for ext_type, file_paths in detected_files.items():
+                for file_path in file_paths:
+                    extension = Extension(
+                        name=file_path.stem,
+                        file_path=file_path,
+                        extension_type=ext_type,
+                        description=None
+                    )
+                    extensions.append(extension)
+            
+            if not extensions:
+                self._print_error(f"No valid extensions found in: {source_path}")
+                return 1
+        
+        # Filter by type if specified
+        if args.type:
+            extensions = [ext for ext in extensions if ext.extension_type == args.type]
+            if not extensions:
+                self._print_error(f"No {args.type} extensions found in source")
+                return 1
+        
+        # Handle selection
+        selected_extensions = []
+        if len(extensions) == 1:
+            selected_extensions = extensions
+        elif args.all:
+            selected_extensions = extensions
+        elif args.interactive or (not args.all and len(extensions) > 1):
+            # Use simplified interactive selection for now
+            print(f"Found {len(extensions)} extensions:")
+            for i, ext in enumerate(extensions, 1):
+                print(f"  {i}. {ext.name} ({ext.extension_type})")
+            
+            if args.interactive:
+                while True:
+                    try:
+                        choices = input("Select extensions (e.g., 1,3 or 'all' or 'none'): ").strip()
+                        if choices.lower() == 'none':
+                            selected_extensions = []
+                            break
+                        elif choices.lower() == 'all':
+                            selected_extensions = extensions
+                            break
+                        else:
+                            indices = [int(x.strip()) - 1 for x in choices.split(',')]
+                            selected_extensions = [extensions[i] for i in indices if 0 <= i < len(extensions)]
+                            break
+                    except (ValueError, IndexError):
+                        print("Invalid selection. Please try again.")
+                        continue
+            else:
+                selected_extensions = extensions
+                
+            if not selected_extensions:
+                self._print_info("No extensions selected for installation")
+                return 0
+        else:
+            # Default: install all if multiple found
+            selected_extensions = extensions
+            self._print_info(f"Found {len(extensions)} extensions, installing all")
+        
+        # Validate selected extensions
+        validation_errors = []
+        for ext in selected_extensions:
+            result = validate_extension_file(ext.file_path, ext.extension_type)
+            
+            if not result.is_valid:
+                validation_errors.append((ext, result))
+                continue
+            
+            if args.verbose:
+                formatted = ValidationResultFormatter.format_result(result, verbose=True)
+                self._print_info(f"Validation result:\n{formatted}")
+        
+        if validation_errors:
+            self._print_error("Validation failed for some extensions:")
+            for ext, result in validation_errors:
+                formatted = ValidationResultFormatter.format_result(result)
+                self._print_error(formatted)
+            
+            if not args.force:
+                self._print_error("Use --force to install despite validation errors")
+                return 1
+        
+        # Perform installation
+        success_count = 0
+        for ext in selected_extensions:
+            try:
+                if args.dry_run:
+                    self._print_info(f"Would install: {ext.name} ({ext.extension_type})")
+                else:
+                    self._install_extension(ext, base_dir, args.force)
+                    self._print_success(f"Installed: {ext.name} ({ext.extension_type})")
+                success_count += 1
+            except Exception as e:
+                self._print_error(f"Failed to install {ext.name}: {e}")
+                if not args.force:
+                    return 1
+        
+        if args.dry_run:
+            self._print_info(f"Would install {success_count} extension(s)")
+        else:
+            self._print_success(f"Successfully installed {success_count} extension(s)")
+        
+        return 0
 
     def validate_command(self, args) -> int:
         """Handle the validate command."""
