@@ -1,7 +1,0 @@
-{
-  "name": "test_hook2",
-  "description": "A second test hook for PACC integration testing",
-  "eventTypes": ["PostToolUse"],
-  "commands": ["echo 'Second test hook executed'"],
-  "version": "1.0.0"
-}
