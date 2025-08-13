@@ -112,11 +112,14 @@ class AgentsValidator(BaseValidator):
                 "description": frontmatter.get("description", ""),
                 "version": frontmatter.get("version", "1.0.0"),
                 "author": frontmatter.get("author", ""),
+                "model": frontmatter.get("model", ""),
                 "tools": frontmatter.get("tools", []),
                 "permissions": frontmatter.get("permissions", []),
                 "has_examples": bool(frontmatter.get("examples", [])),
                 "markdown_length": len(markdown_content.strip()),
-                "has_parameters": bool(frontmatter.get("parameters", {}))
+                "has_parameters": bool(frontmatter.get("parameters", {})),
+                "temperature": frontmatter.get("temperature"),
+                "max_tokens": frontmatter.get("max_tokens")
             }
         
         return result

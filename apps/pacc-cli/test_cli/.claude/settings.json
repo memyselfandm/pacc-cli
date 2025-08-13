@@ -1,0 +1,56 @@
+{
+  "hooks": [
+    {
+      "name": "test-hook",
+      "path": "hooks/test-hook.json",
+      "events": ["file:created", "file:modified"],
+      "description": "Test hook for development",
+      "matchers": ["*.py"],
+      "installed_at": "2024-01-15T10:30:00Z",
+      "source": "local",
+      "version": "1.0.0"
+    },
+    {
+      "name": "build-hook",
+      "path": "hooks/build-hook.json", 
+      "events": ["project:build"],
+      "description": "Build automation hook",
+      "matchers": ["*"],
+      "installed_at": "2024-01-14T08:00:00Z",
+      "source": "github.com/user/repo"
+    }
+  ],
+  "mcps": [
+    {
+      "name": "test-server",
+      "path": "mcps/test-server.py",
+      "command": "python mcps/test-server.py",
+      "args": ["--port", "5000"],
+      "description": "Test MCP server for development",
+      "installed_at": "2024-01-16T14:20:00Z",
+      "source": "local",
+      "version": "2.1.0"
+    }
+  ],
+  "agents": [
+    {
+      "name": "code-reviewer",
+      "path": "agents/code-reviewer.md",
+      "model": "claude-3-sonnet",
+      "description": "Automated code review agent",
+      "installed_at": "2024-01-13T09:15:00Z",
+      "source": "pacc-registry",
+      "tools": ["grep", "read", "edit"]
+    }
+  ],
+  "commands": [
+    {
+      "name": "/lint", 
+      "path": "commands/lint.md",
+      "description": "Run linting on codebase",
+      "aliases": ["/l", "/check"],
+      "installed_at": "2024-01-17T16:45:00Z",
+      "source": "local"
+    }
+  ]
+}
