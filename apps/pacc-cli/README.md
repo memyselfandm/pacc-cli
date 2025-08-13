@@ -4,17 +4,21 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 
 ## Project Status
 
-**🎯 Implementation Progress: 91% Complete**
+**🎯 Implementation Progress: 100% MVP Complete** ✅
 
-### ✅ Completed Features
+### ✅ Completed MVP Features
 - **Wave 1 - Foundation Layer**: Core utilities, file handling, UI components, validation framework
 - **Wave 2 - Extension Validators**: Complete validation for Hooks, MCP, Agents, and Commands
 - **Wave 3 - Integration Layer**: Selection workflows, packaging, error recovery, performance optimization
 - **Wave 4 - Testing & Polish**: Comprehensive test suite (>80% coverage), security hardening, documentation
+- **Phase 0 - Complete CLI**: All core package management commands implemented
 
-### ⏳ In Progress
-- CLI command structure integration
-- Settings.json merge strategies
+### 🚀 CLI Commands Ready for Production
+- **`pacc install`**: Install extensions from local sources with validation
+- **`pacc list`**: List installed extensions with filtering and search
+- **`pacc remove`**: Safely remove extensions with dependency checking
+- **`pacc info`**: Display detailed extension information and metadata
+- **`pacc validate`**: Validate extensions without installing
 
 ## Architecture
 
@@ -90,6 +94,64 @@ from pacc.core.file_utils import DirectoryScanner, FileFilter
 scanner = DirectoryScanner()
 file_filter = FileFilter().by_extensions(['.json', '.md', '.yaml'])
 files = scanner.scan('/path/to/directory', file_filter)
+```
+
+## CLI Usage
+
+PACC provides a complete package manager interface for Claude Code extensions:
+
+### Installation
+```bash
+# Install from file or directory
+pacc install /path/to/extension.json
+pacc install /path/to/extension-directory/
+
+# Install with options
+pacc install extension.json --user --force
+pacc install extensions/ --interactive --dry-run
+```
+
+### Listing Extensions
+```bash
+# List all installed extensions
+pacc list
+
+# Filter by type and scope
+pacc list hooks --user
+pacc list agents --project
+pacc list --format json
+
+# Search and filter
+pacc list --search "code" --sort date
+pacc list --filter "*-server" --format table
+```
+
+### Removing Extensions
+```bash
+# Remove extension safely
+pacc remove my-hook
+
+# Remove with options
+pacc remove extension-name --user --dry-run
+pacc remove extension-name --force --confirm
+```
+
+### Extension Information
+```bash
+# Show extension details
+pacc info extension-name
+pacc info /path/to/extension.json
+
+# Detailed information with troubleshooting
+pacc info extension-name --verbose --show-usage
+pacc info extension-name --json --show-related
+```
+
+### Validation
+```bash
+# Validate extensions
+pacc validate /path/to/extension.json
+pacc validate extensions-directory/ --strict
 ```
 
 ## Development
