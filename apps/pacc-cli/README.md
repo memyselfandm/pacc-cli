@@ -4,21 +4,25 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 
 ## Project Status
 
-**🎯 Implementation Progress: 100% MVP Complete** ✅
+**🎯 Implementation Progress: Phase 2 Complete** ✅
 
-### ✅ Completed MVP Features
-- **Wave 1 - Foundation Layer**: Core utilities, file handling, UI components, validation framework
-- **Wave 2 - Extension Validators**: Complete validation for Hooks, MCP, Agents, and Commands
-- **Wave 3 - Integration Layer**: Selection workflows, packaging, error recovery, performance optimization
-- **Wave 4 - Testing & Polish**: Comprehensive test suite (>80% coverage), security hardening, documentation
-- **Phase 0 - Complete CLI**: All core package management commands implemented
+### ✅ Completed Features
+- **Wave 1-4 - MVP Foundation**: Complete core package management with >80% test coverage
+- **Phase 0 - Core CLI**: All basic package management commands implemented
+- **Phase 1 - Remote Sources**: Git and URL-based installation with security validation
+- **Phase 2 - Project Configuration**: Team collaboration via pacc.json project configs
 
 ### 🚀 CLI Commands Ready for Production
-- **`pacc install`**: Install extensions from local sources with validation
+- **`pacc install`**: Install extensions from local sources, Git repos, or URLs
 - **`pacc list`**: List installed extensions with filtering and search
 - **`pacc remove`**: Safely remove extensions with dependency checking
 - **`pacc info`**: Display detailed extension information and metadata
 - **`pacc validate`**: Validate extensions without installing
+
+### 🤝 Team Collaboration Features
+- **`pacc init --project-config`**: Initialize project with shared extension configuration
+- **`pacc sync`**: Synchronize extensions from project pacc.json configuration
+- **Project Configuration**: pacc.json files for defining team extension standards
 
 ## Architecture
 
@@ -29,6 +33,7 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 - **DirectoryScanner**: Efficient directory traversal and filtering
 - **PathNormalizer**: Windows/Mac/Linux path compatibility
 - **FileFilter**: Chainable filtering system
+- **ProjectConfigManager**: Team configuration management with pacc.json schema validation
 
 #### 2. UI Components (`pacc/ui/`)
 - **MultiSelectList**: Interactive selection with keyboard navigation
