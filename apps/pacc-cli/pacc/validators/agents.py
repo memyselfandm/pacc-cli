@@ -60,6 +60,7 @@ class AgentsValidator(BaseValidator):
         """Validate a single agent file."""
         file_path = Path(file_path)
         result = ValidationResult(
+            is_valid=True,
             file_path=str(file_path),
             extension_type=self.get_extension_type()
         )
