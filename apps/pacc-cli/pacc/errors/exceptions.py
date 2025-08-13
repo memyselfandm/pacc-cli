@@ -215,3 +215,32 @@ class SecurityError(PACCError):
             
         super().__init__(message, error_code='SECURITY_ERROR', context=context)
         self.security_check = security_check
+
+
+class ProjectConfigError(PACCError):
+    """Error raised for project configuration issues."""
+    
+    def __init__(
+        self, 
+        message: str, 
+        project_dir: Optional[Path] = None,
+        config_section: Optional[str] = None,
+        **kwargs
+    ):
+        """Initialize project configuration error.
+        
+        Args:
+            message: Error message
+            project_dir: Project directory where error occurred
+            config_section: Section of config that caused error
+            **kwargs: Additional context
+        """
+        context = kwargs.copy()
+        if project_dir:
+            context['project_dir'] = str(project_dir)
+        if config_section:
+            context['config_section'] = config_section
+            
+        super().__init__(message, error_code='PROJECT_CONFIG_ERROR', context=context)
+        self.project_dir = project_dir
+        self.config_section = config_section

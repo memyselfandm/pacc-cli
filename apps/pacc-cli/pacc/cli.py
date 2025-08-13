@@ -21,6 +21,7 @@ from .validators import (
 from .ui import MultiSelectList
 from .errors import PACCError, ValidationError, SourceError
 from .core.config_manager import ClaudeConfigManager
+from .core.project_config import ProjectConfigManager, ProjectSyncManager
 
 # URL downloader imports (conditional for optional dependency)
 try:
@@ -94,6 +95,12 @@ class PACCCli:
         
         # Validate command
         self._add_validate_parser(subparsers)
+        
+        # Init command
+        self._add_init_parser(subparsers)
+        
+        # Sync command
+        self._add_sync_parser(subparsers)
         
         return parser
     
@@ -381,6 +388,92 @@ class PACCCli:
         )
         
         validate_parser.set_defaults(func=self.validate_command)
+    
+    def _add_init_parser(self, subparsers) -> None:
+        """Add the init command parser."""
+        init_parser = subparsers.add_parser(
+            "init",
+            help="Initialize PACC configuration",
+            description="Initialize project or user-level PACC configuration"
+        )
+        
+        # Scope options
+        scope_group = init_parser.add_mutually_exclusive_group()
+        scope_group.add_argument(
+            "--user",
+            action="store_true",
+            help="Initialize user-level configuration (~/.claude/)"
+        )
+        scope_group.add_argument(
+            "--project",
+            action="store_true",
+            help="Initialize project-level configuration (./.claude/) [default]"
+        )
+        
+        # Project configuration options
+        init_parser.add_argument(
+            "--project-config",
+            action="store_true",
+            help="Initialize project configuration file (pacc.json)"
+        )
+        
+        init_parser.add_argument(
+            "--name",
+            help="Project name (required with --project-config)"
+        )
+        
+        init_parser.add_argument(
+            "--version",
+            default="1.0.0",
+            help="Project version (default: 1.0.0)"
+        )
+        
+        init_parser.add_argument(
+            "--description",
+            help="Project description"
+        )
+        
+        init_parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Overwrite existing configuration files"
+        )
+        
+        init_parser.set_defaults(func=self.init_command)
+    
+    def _add_sync_parser(self, subparsers) -> None:
+        """Add the sync command parser."""
+        sync_parser = subparsers.add_parser(
+            "sync",
+            help="Synchronize project extensions",
+            description="Install extensions from project configuration (pacc.json)"
+        )
+        
+        sync_parser.add_argument(
+            "--environment", "-e",
+            default="default",
+            help="Environment to sync (default: default)"
+        )
+        
+        sync_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be installed without making changes"
+        )
+        
+        sync_parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Force installation, overwriting existing extensions"
+        )
+        
+        sync_parser.add_argument(
+            "--project-dir",
+            type=Path,
+            help="Project directory (default: current directory)"
+        )
+        
+        sync_parser.set_defaults(func=self.sync_command)
 
     def install_command(self, args) -> int:
         """Handle the install command."""
@@ -796,6 +889,170 @@ class PACCCli:
             
         except Exception as e:
             self._print_error(f"Validation failed: {e}")
+            return 1
+
+    def init_command(self, args) -> int:
+        """Handle the init command."""
+        try:
+            if args.project_config:
+                return self._init_project_config(args)
+            else:
+                return self._init_pacc_directories(args)
+                
+        except Exception as e:
+            self._print_error(f"Initialization failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def _init_project_config(self, args) -> int:
+        """Initialize project configuration file (pacc.json)."""
+        project_dir = Path.cwd()
+        config_path = project_dir / "pacc.json"
+        
+        # Check if project name is provided
+        if not args.name:
+            self._print_error("Project name is required when using --project-config")
+            self._print_error("Use: pacc init --project-config --name <project-name>")
+            return 1
+        
+        # Check if config already exists
+        if config_path.exists() and not args.force:
+            self._print_error(f"Project configuration already exists: {config_path}")
+            self._print_error("Use --force to overwrite existing configuration")
+            return 1
+        
+        # Create project configuration
+        config = {
+            "name": args.name,
+            "version": args.version,
+            "extensions": {}
+        }
+        
+        if args.description:
+            config["description"] = args.description
+        
+        # Initialize project config
+        config_manager = ProjectConfigManager()
+        config_manager.init_project_config(project_dir, config)
+        
+        self._print_success(f"Initialized project configuration: {config_path}")
+        self._print_info(f"Project: {args.name} v{args.version}")
+        
+        # Suggest next steps
+        self._print_info("\nNext steps:")
+        self._print_info("  1. Add extensions to pacc.json")
+        self._print_info("  2. Run 'pacc sync' to install extensions")
+        
+        return 0
+    
+    def _init_pacc_directories(self, args) -> int:
+        """Initialize PACC directories and basic configuration."""
+        # Determine scope
+        if args.user:
+            base_dir = Path.home() / ".claude"
+            scope_name = "user"
+        else:
+            base_dir = Path.cwd() / ".claude"
+            scope_name = "project"
+        
+        self._print_info(f"Initializing {scope_name}-level PACC configuration")
+        self._print_info(f"Directory: {base_dir}")
+        
+        # Create directories
+        extension_dirs = ["hooks", "mcps", "agents", "commands"]
+        for ext_dir in extension_dirs:
+            dir_path = base_dir / ext_dir
+            dir_path.mkdir(parents=True, exist_ok=True)
+            self._print_info(f"Created directory: {dir_path}")
+        
+        # Create basic settings.json if it doesn't exist
+        settings_path = base_dir / "settings.json"
+        if not settings_path.exists() or args.force:
+            config_manager = ClaudeConfigManager()
+            default_config = config_manager._get_default_config()
+            config_manager.save_config(default_config, settings_path)
+            self._print_success(f"Created configuration: {settings_path}")
+        else:
+            self._print_info(f"Configuration already exists: {settings_path}")
+        
+        self._print_success(f"Successfully initialized {scope_name}-level PACC configuration")
+        return 0
+    
+    def sync_command(self, args) -> int:
+        """Handle the sync command."""
+        try:
+            # Determine project directory
+            project_dir = args.project_dir if args.project_dir else Path.cwd()
+            
+            self._print_info(f"Synchronizing project extensions from: {project_dir}")
+            self._print_info(f"Environment: {args.environment}")
+            
+            if args.dry_run:
+                self._print_info("DRY RUN MODE - No changes will be made")
+            
+            # Check if pacc.json exists
+            config_path = project_dir / "pacc.json"
+            if not config_path.exists():
+                self._print_error(f"No pacc.json found in {project_dir}")
+                self._print_error("Initialize with: pacc init --project-config --name <project-name>")
+                return 1
+            
+            # Validate project configuration first
+            config_manager = ProjectConfigManager()
+            validation_result = config_manager.validate_project_config(project_dir)
+            
+            if not validation_result.is_valid:
+                self._print_error("Project configuration validation failed:")
+                for error in validation_result.errors:
+                    self._print_error(f"  {error.code}: {error.message}")
+                return 1
+            
+            if validation_result.warnings and args.verbose:
+                self._print_warning("Project configuration warnings:")
+                for warning in validation_result.warnings:
+                    self._print_warning(f"  {warning.code}: {warning.message}")
+            
+            # Perform synchronization
+            sync_manager = ProjectSyncManager()
+            sync_result = sync_manager.sync_project(
+                project_dir=project_dir,
+                environment=args.environment,
+                dry_run=args.dry_run
+            )
+            
+            # Report results
+            if sync_result.success:
+                if args.dry_run:
+                    self._print_success(f"Would install {sync_result.installed_count} extensions")
+                else:
+                    self._print_success(f"Successfully installed {sync_result.installed_count} extensions")
+                
+                if sync_result.updated_count > 0:
+                    self._print_info(f"Updated {sync_result.updated_count} existing extensions")
+                
+                if sync_result.warnings:
+                    self._print_warning("Warnings during sync:")
+                    for warning in sync_result.warnings:
+                        self._print_warning(f"  {warning}")
+                
+                return 0
+            else:
+                self._print_error(f"Synchronization failed: {sync_result.error_message}")
+                
+                if sync_result.failed_extensions:
+                    self._print_error("Failed extensions:")
+                    for failed_ext in sync_result.failed_extensions:
+                        self._print_error(f"  {failed_ext}")
+                
+                return 1
+                
+        except Exception as e:
+            self._print_error(f"Sync failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
             return 1
 
     def list_command(self, args) -> int:
