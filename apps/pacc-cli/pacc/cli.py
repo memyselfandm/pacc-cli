@@ -186,6 +186,30 @@ class PACCCli:
             help="Output format"
         )
         
+        # Add filtering and search options
+        list_parser.add_argument(
+            "--filter", "-f",
+            help="Filter by name pattern (supports wildcards)"
+        )
+        
+        list_parser.add_argument(
+            "--search", "-s",
+            help="Search in descriptions"
+        )
+        
+        list_parser.add_argument(
+            "--sort",
+            choices=["name", "type", "date"],
+            default="name",
+            help="Sort order for results"
+        )
+        
+        list_parser.add_argument(
+            "--show-status",
+            action="store_true",
+            help="Show validation status (with --verbose)"
+        )
+        
         list_parser.set_defaults(func=self.list_command)
     
     def _add_remove_parser(self, subparsers) -> None:
@@ -472,8 +496,199 @@ class PACCCli:
 
     def list_command(self, args) -> int:
         """Handle the list command."""
-        self._print_info("List command not yet implemented")
-        return 0
+        try:
+            from fnmatch import fnmatch
+            from datetime import datetime
+            import json
+            
+            # Determine which scopes to list
+            scopes_to_check = []
+            if args.user:
+                scopes_to_check.append(("user", True))
+            elif args.project:
+                scopes_to_check.append(("project", False))
+            else:  # Default to all scopes
+                scopes_to_check.append(("user", True))
+                scopes_to_check.append(("project", False))
+            
+            # Collect all extensions from requested scopes
+            all_extensions = []
+            config_manager = ClaudeConfigManager()
+            
+            for scope_name, is_user_level in scopes_to_check:
+                try:
+                    config_path = config_manager.get_config_path(user_level=is_user_level)
+                    config = config_manager.load_config(config_path)
+                    
+                    # Extract extensions with metadata
+                    for ext_type in ["hooks", "mcps", "agents", "commands"]:
+                        if args.type and ext_type != args.type:
+                            continue
+                            
+                        for ext in config.get(ext_type, []):
+                            # Add extension type and scope info
+                            ext_data = ext.copy()
+                            ext_data["type"] = ext_type.rstrip("s")  # Remove plural 's'
+                            ext_data["scope"] = scope_name
+                            ext_data["scope_path"] = str(config_path.parent)
+                            all_extensions.append(ext_data)
+                            
+                except Exception as e:
+                    if args.verbose:
+                        self._print_warning(f"Failed to load {scope_name} config: {e}")
+                    continue
+            
+            if not all_extensions:
+                self._print_info("No extensions installed")
+                return 0
+            
+            # Apply filters
+            filtered_extensions = all_extensions
+            
+            # Filter by name pattern
+            if args.filter:
+                filtered_extensions = [
+                    ext for ext in filtered_extensions
+                    if fnmatch(ext.get("name", ""), args.filter)
+                ]
+            
+            # Search in descriptions
+            if args.search:
+                search_lower = args.search.lower()
+                filtered_extensions = [
+                    ext for ext in filtered_extensions
+                    if search_lower in ext.get("description", "").lower()
+                ]
+            
+            if not filtered_extensions:
+                self._print_info("No extensions match the criteria")
+                return 0
+            
+            # Sort extensions
+            if args.sort == "name":
+                filtered_extensions.sort(key=lambda x: x.get("name", "").lower())
+            elif args.sort == "type":
+                filtered_extensions.sort(key=lambda x: (x.get("type", ""), x.get("name", "").lower()))
+            elif args.sort == "date":
+                # Sort by installation date (newest first)
+                def get_date(ext):
+                    date_str = ext.get("installed_at", "")
+                    if date_str:
+                        try:
+                            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                        except:
+                            pass
+                    return datetime.min
+                filtered_extensions.sort(key=get_date, reverse=True)
+            
+            # Format and display output
+            if args.format == "json":
+                output = {
+                    "extensions": filtered_extensions,
+                    "count": len(filtered_extensions)
+                }
+                print(json.dumps(output, indent=2))
+                
+            elif args.format == "list":
+                # Simple list format
+                for ext in filtered_extensions:
+                    name = ext.get("name", "unknown")
+                    ext_type = ext.get("type", "unknown")
+                    desc = ext.get("description", "")
+                    scope = ext.get("scope", "")
+                    
+                    line = f"{ext_type}/{name}"
+                    if desc:
+                        line += f" - {desc}"
+                    if len(scopes_to_check) > 1:  # Show scope when listing multiple
+                        line += f" [{scope}]"
+                    print(line)
+                    
+            else:  # table format
+                self._print_extensions_table(filtered_extensions, args.verbose, args.show_status, len(scopes_to_check) > 1)
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to list extensions: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def _print_extensions_table(self, extensions, verbose=False, show_status=False, show_scope=False):
+        """Print extensions in a formatted table."""
+        if not extensions:
+            return
+        
+        # Define columns
+        headers = ["Name", "Type", "Description"]
+        if show_scope:
+            headers.append("Scope")
+        if verbose:
+            headers.extend(["Source", "Installed"])
+            if any("version" in ext for ext in extensions):
+                headers.append("Version")
+        if verbose and show_status and any("validation_status" in ext for ext in extensions):
+            headers.append("Status")
+        
+        # Calculate column widths
+        col_widths = [len(h) for h in headers]
+        rows = []
+        
+        for ext in extensions:
+            row = [
+                ext.get("name", ""),
+                ext.get("type", ""),
+                ext.get("description", "")[:50] + "..." if len(ext.get("description", "")) > 50 else ext.get("description", "")
+            ]
+            
+            if show_scope:
+                row.append(ext.get("scope", ""))
+                
+            if verbose:
+                row.append(ext.get("source", "unknown"))
+                
+                # Format installation date
+                date_str = ext.get("installed_at", "")
+                if date_str:
+                    try:
+                        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                        row.append(dt.strftime("%Y-%m-%d %H:%M"))
+                    except:
+                        row.append(date_str)
+                else:
+                    row.append("unknown")
+                
+                if any("version" in ext for ext in extensions):
+                    row.append(ext.get("version", "-"))
+                    
+            if verbose and show_status and any("validation_status" in ext for ext in extensions):
+                status = ext.get("validation_status", "unknown")
+                # Add color/symbol based on status
+                if status == "valid":
+                    row.append("✓ valid")
+                elif status == "warning":
+                    row.append("⚠ warning")
+                elif status == "error":
+                    row.append("✗ error")
+                else:
+                    row.append(status)
+            
+            rows.append(row)
+            
+            # Update column widths
+            for i, val in enumerate(row):
+                col_widths[i] = max(col_widths[i], len(str(val)))
+        
+        # Print header
+        header_line = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
+        print(header_line)
+        print("-" * len(header_line))
+        
+        # Print rows
+        for row in rows:
+            print(" | ".join(str(val).ljust(w) for val, w in zip(row, col_widths)))
 
     def remove_command(self, args) -> int:
         """Handle the remove command.""" 
