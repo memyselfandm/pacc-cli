@@ -1,0 +1,52 @@
+{
+  "hooks": [
+    {
+      "name": "test_hook",
+      "path": "hooks/test_hook.json",
+      "events": [
+        "*"
+      ],
+      "matchers": [
+        "*"
+      ]
+    },
+    {
+      "name": "test_hook2",
+      "path": "hooks/test_hook2.json",
+      "events": [
+        "*"
+      ],
+      "matchers": [
+        "*"
+      ]
+    }
+  ],
+  "mcps": [
+    {
+      "name": "database_mcp",
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ],
+      "env": {
+        "DATABASE_URL": "sqlite:///data.db"
+      }
+    }
+  ],
+  "agents": [
+    {
+      "name": "test_agent",
+      "path": "agents/test_agent.md",
+      "model": "claude-3-sonnet",
+      "description": "Custom agent"
+    }
+  ],
+  "commands": [
+    {
+      "name": "test_command",
+      "path": "commands/test_command.md",
+      "description": "Custom command",
+      "aliases": []
+    }
+  ]
+}
