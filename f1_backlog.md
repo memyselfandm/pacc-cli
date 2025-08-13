@@ -188,15 +188,16 @@ The Core Installation System enables users to install four types of Claude exten
 
 ### 6. Configuration Management
 
-#### T-6.1: Implement settings.json updater ⏳ IN PROGRESS
+#### T-6.1: Implement settings.json updater ✅ COMPLETE
 - **Complexity:** Complex
 - **Tasks:**
-  - ⏳ Create JSON merge strategies (validation framework ready)
-  - ⏳ Implement conflict resolution
-  - ⏳ Add array deduplication for lists
-  - ✅ Create comprehensive configuration validation
+  - ✅ Create JSON merge strategies with deep merging support
+  - ✅ Implement conflict resolution with interactive user prompts
+  - ✅ Add array deduplication for extension lists (hooks, mcps, agents, commands)
+  - ✅ Create comprehensive configuration validation using existing framework
+  - ✅ Build atomic update operations with rollback using existing transaction system
 - **Dependencies:** T-1.3
-- **Status:** **FOUNDATION READY** - Validation and error handling implemented, JSON merging pending
+- **Status:** **COMPLETED** - Full JSON configuration merger with conflict resolution, deduplication, and atomic operations
 
 #### T-6.2: Build transaction system ✅ COMPLETE
 - **Complexity:** Complex
@@ -352,19 +353,18 @@ T-8.1 (Test Fixtures)
 
 ## Implementation Status Summary
 
-### ✅ **COMPLETED (20/22 tasks)**
+### ✅ **COMPLETED (21/22 tasks)**
 **Wave 1 - Foundation:** All core utilities, UI components, validation framework, error infrastructure  
 **Wave 2 - Validators:** All extension type validators (Hooks, MCP, Agents, Commands)  
 **Wave 3 - Integration:** Selection workflows, packaging, error recovery, performance optimization  
 **Wave 4 - Testing:** Comprehensive test suite, security hardening, documentation  
+**Wave 5 - Configuration:** JSON configuration merger with conflict resolution and atomic operations  
 
-### ⏳ **IN PROGRESS (2/22 tasks)**
+### ⏳ **IN PROGRESS (1/22 tasks)**
 **T-4.1:** CLI command structure (foundation ready, CLI integration pending)  
-**T-6.1:** Settings.json updater (validation ready, JSON merging pending)  
 
 ### 🎯 **Next Steps**
 1. **CLI Integration**: Connect existing components to command-line interface
-2. **JSON Configuration**: Implement settings.json merge strategies
-3. **Final Testing**: End-to-end CLI workflow validation
+2. **Final Testing**: End-to-end CLI workflow validation
 
-**Overall Progress: 91% Complete** - Foundation is rock-solid and ready for production use!
+**Overall Progress: 95% Complete** - All core functionality implemented and tested!
