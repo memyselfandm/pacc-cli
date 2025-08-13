@@ -42,11 +42,38 @@ class Extension:
     description: Optional[str] = None
 
 
+@dataclass
+class CommandResult:
+    """Represents the result of a CLI command execution."""
+    success: bool
+    message: str
+    data: Optional[Dict[str, Any]] = None
+    errors: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {
+            "success": self.success,
+            "message": self.message
+        }
+        
+        if self.data is not None:
+            result["data"] = self.data
+        if self.errors:
+            result["errors"] = self.errors
+        if self.warnings:
+            result["warnings"] = self.warnings
+            
+        return result
+
+
 class PACCCli:
     """Main CLI class for PACC operations."""
     
     def __init__(self):
-        pass
+        self._messages = []  # Store messages for JSON output
+        self._json_output = False
         
     def create_parser(self) -> argparse.ArgumentParser:
         """Create the main argument parser."""
@@ -72,6 +99,12 @@ class PACCCli:
             "--no-color",
             action="store_true", 
             help="Disable colored output"
+        )
+        
+        parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Output in JSON format for programmatic consumption"
         )
         
         # Add subcommands
@@ -186,6 +219,12 @@ class PACCCli:
             "--no-cache",
             action="store_true",
             help="Disable download caching"
+        )
+        
+        install_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Output installation results in JSON format"
         )
         
         install_parser.set_defaults(func=self.install_command)
@@ -307,6 +346,12 @@ class PACCCli:
             "--force",
             action="store_true",
             help="Force removal even if dependencies exist"
+        )
+        
+        remove_parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Output removal results in JSON format"
         )
         
         remove_parser.set_defaults(func=self.remove_command)
@@ -477,6 +522,9 @@ class PACCCli:
 
     def install_command(self, args) -> int:
         """Handle the install command."""
+        # Set JSON mode if requested
+        self._set_json_mode(getattr(args, 'json', False))
+        
         try:
             # Check source type and handle accordingly
             # Check for direct download URLs first (before Git URLs)
@@ -488,10 +536,18 @@ class PACCCli:
                 return self._install_from_local_path(args)
                 
         except Exception as e:
-            self._print_error(f"Installation failed: {e}")
-            if args.verbose:
-                import traceback
-                traceback.print_exc()
+            if self._json_output:
+                result = CommandResult(
+                    success=False,
+                    message=f"Installation failed: {e}",
+                    errors=[str(e)]
+                )
+                self._output_json_result(result)
+            else:
+                self._print_error(f"Installation failed: {e}")
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
             return 1
 
     def _is_url(self, source: str) -> bool:
@@ -843,10 +899,30 @@ class PACCCli:
                 if not args.force:
                     return 1
         
-        if args.dry_run:
-            self._print_info(f"Would install {success_count} extension(s)")
+        if self._json_output:
+            result = CommandResult(
+                success=True,
+                message=f"{'Would install' if args.dry_run else 'Successfully installed'} {success_count} extension(s)",
+                data={
+                    "installed_count": success_count,
+                    "dry_run": args.dry_run,
+                    "extensions": [
+                        {
+                            "name": ext.name,
+                            "type": ext.extension_type,
+                            "description": ext.description,
+                            "file_path": str(ext.file_path)
+                        }
+                        for ext in selected_extensions
+                    ]
+                }
+            )
+            self._output_json_result(result)
         else:
-            self._print_success(f"Successfully installed {success_count} extension(s)")
+            if args.dry_run:
+                self._print_info(f"Would install {success_count} extension(s)")
+            else:
+                self._print_success(f"Successfully installed {success_count} extension(s)")
         
         return 0
 
@@ -1057,6 +1133,9 @@ class PACCCli:
 
     def list_command(self, args) -> int:
         """Handle the list command."""
+        # Set JSON mode if requested or if format is json
+        self._set_json_mode(getattr(args, 'json', False) or args.format == 'json')
+        
         try:
             from fnmatch import fnmatch
             from datetime import datetime, timezone
@@ -1100,7 +1179,15 @@ class PACCCli:
                     continue
             
             if not all_extensions:
-                self._print_info("No extensions installed")
+                if self._json_output:
+                    result = CommandResult(
+                        success=True,
+                        message="No extensions installed",
+                        data={"extensions": [], "count": 0}
+                    )
+                    self._output_json_result(result)
+                else:
+                    self._print_info("No extensions installed")
                 return 0
             
             # Apply filters
@@ -1144,12 +1231,18 @@ class PACCCli:
                 filtered_extensions.sort(key=get_date, reverse=True)
             
             # Format and display output
-            if args.format == "json":
-                output = {
-                    "extensions": filtered_extensions,
-                    "count": len(filtered_extensions)
-                }
-                print(json.dumps(output, indent=2))
+            if self._json_output:
+                result = CommandResult(
+                    success=True,
+                    message=f"Found {len(filtered_extensions)} extension(s)",
+                    data={
+                        "extensions": filtered_extensions,
+                        "count": len(filtered_extensions),
+                        "filter_applied": bool(args.filter or args.search),
+                        "scope": "user" if args.user else "project" if args.project else "all"
+                    }
+                )
+                self._output_json_result(result)
                 
             elif args.format == "list":
                 # Simple list format
@@ -1254,6 +1347,9 @@ class PACCCli:
 
     def remove_command(self, args) -> int:
         """Handle the remove command."""
+        # Set JSON mode if requested
+        self._set_json_mode(getattr(args, 'json', False))
+        
         try:
             # Determine removal scope
             if args.user:
@@ -1329,10 +1425,32 @@ class PACCCli:
             )
             
             if success:
-                self._print_success(f"Successfully removed: {args.name} ({extension_type})")
+                if self._json_output:
+                    result = CommandResult(
+                        success=True,
+                        message=f"Successfully removed: {args.name} ({extension_type})",
+                        data={
+                            "removed_extension": {
+                                "name": args.name,
+                                "type": extension_type,
+                                "scope": remove_scope
+                            }
+                        }
+                    )
+                    self._output_json_result(result)
+                else:
+                    self._print_success(f"Successfully removed: {args.name} ({extension_type})")
                 return 0
             else:
-                self._print_error(f"Failed to remove: {args.name}")
+                if self._json_output:
+                    result = CommandResult(
+                        success=False,
+                        message=f"Failed to remove: {args.name}",
+                        errors=[f"Extension removal failed: {args.name}"]
+                    )
+                    self._output_json_result(result)
+                else:
+                    self._print_error(f"Failed to remove: {args.name}")
                 return 1
                 
         except Exception as e:
@@ -2106,19 +2224,47 @@ class PACCCli:
 
     def _print_info(self, message: str) -> None:
         """Print info message."""
-        print(f"ℹ {message}")
+        if self._json_output:
+            self._messages.append({"level": "info", "message": message})
+        else:
+            print(f"ℹ {message}")
 
     def _print_success(self, message: str) -> None:
         """Print success message."""
-        print(f"✓ {message}")
+        if self._json_output:
+            self._messages.append({"level": "success", "message": message})
+        else:
+            print(f"✓ {message}")
 
     def _print_error(self, message: str) -> None:
         """Print error message."""
-        print(f"✗ {message}", file=sys.stderr)
+        if self._json_output:
+            self._messages.append({"level": "error", "message": message})
+        else:
+            print(f"✗ {message}", file=sys.stderr)
 
     def _print_warning(self, message: str) -> None:
         """Print warning message."""
-        print(f"⚠ {message}", file=sys.stderr)
+        if self._json_output:
+            self._messages.append({"level": "warning", "message": message})
+        else:
+            print(f"⚠ {message}", file=sys.stderr)
+    
+    def _output_json_result(self, result: CommandResult) -> None:
+        """Output command result in JSON format."""
+        import json
+        result_dict = result.to_dict()
+        
+        # Add collected messages if any
+        if self._messages:
+            result_dict["messages"] = self._messages
+            
+        print(json.dumps(result_dict, indent=2, ensure_ascii=False))
+    
+    def _set_json_mode(self, enabled: bool) -> None:
+        """Enable or disable JSON output mode."""
+        self._json_output = enabled
+        self._messages = []
 
 
 def main() -> int:
