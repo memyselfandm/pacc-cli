@@ -1,0 +1,57 @@
+# Testing requirements for PACC
+# Core testing framework
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-xdist>=3.0.0  # Parallel test execution
+pytest-mock>=3.10.0
+pytest-benchmark>=4.0.0
+
+# Test utilities and fixtures
+factory-boy>=3.2.0
+Faker>=18.0.0
+freezegun>=1.2.0  # Time mocking
+
+# Performance and monitoring
+psutil>=5.9.0  # System resource monitoring
+memory-profiler>=0.60.0
+
+# Security testing
+bandit>=1.7.0  # Security linting
+safety>=2.3.0  # Dependency vulnerability scanning
+
+# Code quality
+flake8>=6.0.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.0.0
+
+# Coverage reporting
+coverage>=7.0.0
+pytest-html>=3.1.0  # HTML test reports
+
+# Cross-platform testing utilities
+pytest-mock>=3.10.0
+pathspec>=0.11.0
+
+# Data/content handling for tests
+PyYAML>=6.0.0
+toml>=0.10.0
+
+# Async testing (if needed in future)
+pytest-asyncio>=0.21.0
+
+# Test data generation
+hypothesis>=6.70.0  # Property-based testing
+
+# Linting and static analysis
+pylint>=2.17.0
+prospector>=1.9.0
+
+# Documentation testing
+doctest>=1.0.0
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Temporary file handling for tests
+tempfile>=3.11.0  # Built-in but explicit for clarity
