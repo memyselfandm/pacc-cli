@@ -18,6 +18,7 @@ from .validators import (
 )
 from .ui import MultiSelectList
 from .errors import PACCError, ValidationError, SourceError
+from .core.config_manager import ClaudeConfigManager
 
 
 @dataclass
@@ -485,20 +486,76 @@ class PACCCli:
         return 0
 
     def _install_extension(self, extension, base_dir: Path, force: bool = False) -> None:
-        """Install a single extension."""
-        # This is a placeholder - actual installation logic would go here
-        # For now, just create the directory structure
+        """Install a single extension with configuration management."""
+        import shutil
+        import json
+        from pathlib import Path
+        
+        # Create extension type directory
         ext_dir = base_dir / extension.extension_type
         ext_dir.mkdir(parents=True, exist_ok=True)
         
         # Copy the extension file
-        import shutil
         dest_path = ext_dir / extension.file_path.name
         
         if dest_path.exists() and not force:
             raise ValueError(f"Extension already exists: {dest_path}. Use --force to overwrite.")
         
         shutil.copy2(extension.file_path, dest_path)
+        
+        # Update configuration using the JSON merger
+        config_manager = ClaudeConfigManager()
+        config_path = base_dir / "settings.json"
+        
+        # Load extension metadata for configuration
+        extension_config = self._create_extension_config(extension, dest_path)
+        
+        # Add to configuration
+        from pathlib import Path
+        home_claude_dir = Path.home() / '.claude'
+        is_user_level = base_dir.resolve() == home_claude_dir.resolve()
+        success = config_manager.add_extension_config(
+            extension.extension_type, 
+            extension_config,
+            user_level=is_user_level
+        )
+        
+        if not success:
+            # Rollback file copy if config update failed
+            if dest_path.exists():
+                dest_path.unlink()
+            raise ValueError(f"Failed to update configuration for {extension.name}")
+    
+    def _create_extension_config(self, extension, dest_path: Path) -> Dict[str, Any]:
+        """Create configuration entry for an extension."""
+        config = {
+            "name": extension.name,
+            "path": str(dest_path.relative_to(dest_path.parent.parent))
+        }
+        
+        # Add type-specific configuration
+        if extension.extension_type == "hooks":
+            config.update({
+                "events": ["*"],  # Default to all events
+                "matchers": ["*"]  # Default to all matchers
+            })
+        elif extension.extension_type == "mcps":
+            config.update({
+                "command": f"python {dest_path.name}",
+                "args": []
+            })
+        elif extension.extension_type == "agents":
+            config.update({
+                "model": "claude-3-sonnet",  # Default model
+                "description": extension.description or "Custom agent"
+            })
+        elif extension.extension_type == "commands":
+            config.update({
+                "description": extension.description or "Custom command",
+                "aliases": []
+            })
+        
+        return config
 
     def _format_extension_for_selection(self, ext) -> str:
         """Format extension for selection UI."""
