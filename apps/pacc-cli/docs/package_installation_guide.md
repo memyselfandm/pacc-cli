@@ -119,10 +119,10 @@ The package structure ensures compatibility through:
 **Install with optional dependencies**:
 ```bash
 # Install with URL support
-pip install pacc[url]
+pip install pacc-cli[url]
 
 # Install with all development tools
-pip install pacc[dev]
+pip install pacc-cli[dev]
 ```
 
 ## Installation Validation
@@ -185,12 +185,12 @@ ERROR: Could not install packages due to an EnvironmentError
 ```
 **Solution**: Use `--user` flag or virtual environment:
 ```bash
-pip install --user pacc
+pip install --user pacc-cli
 # OR
 python -m venv pacc-env
 source pacc-env/bin/activate  # Linux/macOS
 # pacc-env\Scripts\activate  # Windows
-pip install pacc
+pip install pacc-cli
 ```
 
 **Missing Dependencies**:
@@ -199,7 +199,7 @@ ModuleNotFoundError: No module named 'yaml'
 ```
 **Solution**: Install with all dependencies:
 ```bash
-pip install pacc[dev]
+pip install pacc-cli[dev]
 ```
 
 ### Build Issues

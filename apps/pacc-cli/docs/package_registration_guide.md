@@ -205,7 +205,7 @@ Simplify Claude Code extension management with PACC, the official package manage
 
 ```bash
 # Install PACC
-pip install pacc
+pip install pacc-cli
 
 # Install a Claude Code extension
 pacc install ./my-extension
@@ -272,7 +272,7 @@ twine upload dist/*
 
 ```bash
 # Install from PyPI
-pip install pacc
+pip install pacc-cli
 
 # Verify functionality
 pacc --version

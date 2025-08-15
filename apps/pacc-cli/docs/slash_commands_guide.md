@@ -223,4 +223,4 @@ If installations fail:
 
 - [PACC CLI Documentation](../README.md)
 - [Claude Code Slash Commands](https://docs.anthropic.com/claude-code/slash-commands)
-- [Extension Development Guide](./extension_development.md)
+- Extension Development Guide (coming soon)
