@@ -4,13 +4,14 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 
 ## Project Status
 
-**🎯 Implementation Progress: Phase 2 Complete** ✅
+**🎯 Production Ready - Version 1.0.0** ✅
 
 ### ✅ Completed Features
 - **Wave 1-4 - MVP Foundation**: Complete core package management with >80% test coverage
 - **Phase 0 - Core CLI**: All basic package management commands implemented
 - **Phase 1 - Remote Sources**: Git and URL-based installation with security validation
 - **Phase 2 - Project Configuration**: Team collaboration via pacc.json project configs
+- **Phase 3 - Packaging & Distribution**: Production-ready package with full installation support
 
 ### 🚀 CLI Commands Ready for Production
 - **`pacc install`**: Install extensions from local sources, Git repos, or URLs
@@ -100,6 +101,55 @@ scanner = DirectoryScanner()
 file_filter = FileFilter().by_extensions(['.json', '.md', '.yaml'])
 files = scanner.scan('/path/to/directory', file_filter)
 ```
+
+## Installation
+
+### Quick Start
+
+1. **Install from wheel** (recommended):
+   ```bash
+   pip install dist/pacc-1.0.0-py3-none-any.whl
+   ```
+
+2. **Verify installation**:
+   ```bash
+   pacc --version
+   pacc --help
+   ```
+
+### Installation Options
+
+#### Option 1: Wheel Installation (Production)
+```bash
+# Build the wheel
+python scripts/build.py build --dist-type wheel
+
+# Install the wheel
+pip install dist/pacc-1.0.0-py3-none-any.whl
+```
+
+#### Option 2: Editable Installation (Development)
+```bash
+# Install in development mode
+pip install -e .
+```
+
+#### Option 3: Build Everything
+```bash
+# Complete build and test workflow
+python scripts/build.py build
+python scripts/build.py check
+python scripts/build.py test
+```
+
+### System Requirements
+
+- **Python**: 3.8 or higher
+- **Memory**: 50MB minimum
+- **Storage**: 10MB for package
+- **OS**: Windows, macOS, Linux
+
+See [Package Installation Guide](docs/package_installation_guide.md) for detailed instructions.
 
 ## CLI Usage
 
