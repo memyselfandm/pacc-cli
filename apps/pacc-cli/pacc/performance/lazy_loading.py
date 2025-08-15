@@ -4,7 +4,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, TypeVar, Union, Generic
+from typing import Any, Callable, Dict, Iterator, List, Optional, TypeVar, Union, Generic, Awaitable
 import threading
 import weakref
 import logging
@@ -315,7 +315,7 @@ class AsyncLazyLoader:
     
     async def create(
         self,
-        loader_func: Callable[[], Union[T, asyncio.coroutine]],
+        loader_func: Callable[[], Union[T, Awaitable[T]]],
         cache_key: Optional[str] = None
     ) -> T:
         """Create async lazy load operation.
@@ -407,7 +407,7 @@ class AsyncLazyLoader:
     
     async def compute(
         self,
-        func: Callable[[], Union[T, asyncio.coroutine]],
+        func: Callable[[], Union[T, Awaitable[T]]],
         cache_key: Optional[str] = None
     ) -> T:
         """Async compute value.

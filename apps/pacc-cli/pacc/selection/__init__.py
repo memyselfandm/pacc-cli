@@ -1,6 +1,7 @@
 """Selection workflow components for PACC source management."""
 
-from .workflow import SelectionWorkflow, SelectionContext, SelectionResult
+from .types import SelectionContext, SelectionResult, SelectionMode, SelectionStrategy
+from .workflow import SelectionWorkflow
 from .ui import InteractiveSelector, ConfirmationDialog, ProgressTracker
 from .persistence import SelectionCache, SelectionHistory
 from .filters import SelectionFilter, MultiCriteriaFilter

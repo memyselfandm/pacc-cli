@@ -1,6 +1,6 @@
 # PACC Development Makefile
 
-.PHONY: help install install-dev test test-unit test-integration test-e2e test-security test-performance lint format type-check security-check coverage clean docs
+.PHONY: help install install-dev test test-unit test-integration test-e2e test-security test-performance lint format type-check security-check coverage clean docs build build-sdist build-wheel build-check install-build-deps test-build
 
 # Default target
 help:
@@ -28,6 +28,14 @@ help:
 	@echo ""
 	@echo "Documentation:"
 	@echo "  docs             Generate documentation"
+	@echo ""
+	@echo "Build & Distribution:"
+	@echo "  build            Build source and wheel distributions"
+	@echo "  build-sdist      Build source distribution only"
+	@echo "  build-wheel      Build wheel distribution only"
+	@echo "  build-check      Validate distributions with twine"
+	@echo "  install-build-deps Install build dependencies"
+	@echo "  test-build       Test wheel installation"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  clean            Clean build artifacts and cache"
@@ -182,3 +190,32 @@ test-report:
 	pytest --html=test-report.html --self-contained-html --cov=pacc --cov-report=html
 	@echo "Test report generated: test-report.html"
 	@echo "Coverage report in: htmlcov/index.html"
+
+# Build & Distribution targets
+build:
+	python scripts/build.py build
+
+build-sdist:
+	python scripts/build.py build --dist-type sdist
+
+build-wheel:
+	python scripts/build.py build --dist-type wheel
+
+build-check:
+	python scripts/build.py check
+
+install-build-deps:
+	python scripts/build.py install-deps
+
+test-build:
+	python scripts/build.py test
+
+# Complete build workflow
+build-all: clean install-build-deps build build-check
+	@echo "Complete build workflow finished"
+
+# Build and test locally
+build-local: build
+	pip install --force-reinstall dist/*.whl
+	@echo "PACC installed from local wheel"
+	@echo "Test with: pacc --version"

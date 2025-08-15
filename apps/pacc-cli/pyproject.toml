@@ -96,8 +96,12 @@ Changelog = "https://github.com/anthropics/pacc/blob/main/CHANGELOG.md"
 pacc = "pacc.cli:main"
 
 [tool.setuptools]
-packages = ["pacc"]
 include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pacc*"]
+exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 pacc = ["py.typed"]

@@ -6,11 +6,11 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 import logging
 
 from ..core import PathNormalizer
-from .workflow import SelectionContext, SelectionResult
+from .types import SelectionContext, SelectionResult
 
 
 logger = logging.getLogger(__name__)
