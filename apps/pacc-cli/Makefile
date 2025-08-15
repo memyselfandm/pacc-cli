@@ -1,6 +1,6 @@
 # PACC Development Makefile
 
-.PHONY: help install install-dev test test-unit test-integration test-e2e test-security test-performance lint format type-check security-check coverage clean docs build build-sdist build-wheel build-check install-build-deps test-build
+.PHONY: help install install-dev test test-unit test-integration test-e2e test-security test-performance lint format type-check security-check coverage clean docs build build-sdist build-wheel build-check install-build-deps test-build publish-test publish-prod publish-check publish-prepare verify-release
 
 # Default target
 help:
@@ -36,6 +36,13 @@ help:
 	@echo "  build-check      Validate distributions with twine"
 	@echo "  install-build-deps Install build dependencies"
 	@echo "  test-build       Test wheel installation"
+	@echo ""
+	@echo "Publishing:"
+	@echo "  publish-prepare  Prepare for publishing (validate, build, test)"
+	@echo "  publish-test     Publish to Test PyPI"
+	@echo "  publish-prod     Publish to production PyPI"
+	@echo "  publish-check    Validate distributions before publishing"
+	@echo "  verify-release   Verify published release"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  clean            Clean build artifacts and cache"
@@ -219,3 +226,52 @@ build-local: build
 	pip install --force-reinstall dist/*.whl
 	@echo "PACC installed from local wheel"
 	@echo "Test with: pacc --version"
+
+# Publishing targets
+publish-prepare:
+	@echo "📋 Preparing for publication..."
+	python scripts/publish.py validate
+	python scripts/publish.py build
+	python scripts/publish.py test-install
+	@echo "✅ Ready for publishing"
+
+publish-test:
+	@echo "📤 Publishing to Test PyPI..."
+	python scripts/publish.py publish --test
+	@echo "✅ Published to Test PyPI"
+	@echo "Install with: pip install --index-url https://test.pypi.org/simple/ pacc"
+
+publish-prod:
+	@echo "📤 Publishing to PyPI..."
+	@echo "⚠️  This will publish to production PyPI!"
+	python scripts/publish.py publish --prod
+	@echo "✅ Published to PyPI"
+	@echo "Install with: pip install pacc"
+
+publish-check:
+	@echo "🔍 Checking distributions..."
+	python scripts/publish.py validate
+	python scripts/build.py check
+	@echo "✅ Distributions are valid"
+
+verify-release:
+	@echo "🔍 Verifying release..."
+	@if [ -z "$(VERSION)" ]; then \
+		echo "❌ Error: VERSION not specified"; \
+		echo "Usage: make verify-release VERSION=x.y.z"; \
+		exit 1; \
+	fi
+	python scripts/publish.py verify --version $(VERSION)
+	@echo "✅ Release $(VERSION) verified"
+
+# Complete release workflow
+release: pre-release publish-prepare
+	@echo "🚀 Starting release workflow..."
+	python scripts/publish.py release --test-first
+	@echo "✅ Release complete!"
+
+# Quick release (skip test PyPI)
+release-quick: pre-release publish-prepare
+	@echo "🚀 Starting quick release..."
+	python scripts/publish.py release
+	@echo "✅ Release complete!"

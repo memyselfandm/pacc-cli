@@ -1,0 +1,30 @@
+# PyPI Configuration Template
+#
+# Copy this file to ~/.pypirc and update with your actual tokens
+# Set permissions: chmod 600 ~/.pypirc
+#
+# SECURITY WARNING: Never commit this file to version control!
+
+[distutils]
+index-servers =
+    pypi
+    testpypi
+
+[pypi]
+repository = https://upload.pypi.org/legacy/
+username = __token__
+password = # Your PyPI API token here (starts with pypi-)
+# Example: pypi-AgEIcHlwaS5vcmcCJGNhNjE5...
+
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = # Your Test PyPI API token here (starts with pypi-)
+# Example: pypi-AgEIcHlwaS5vcmcCJGNhNjE5...
+
+# Alternative: Use environment variables instead
+# export TWINE_USERNAME=__token__
+# export TWINE_PASSWORD=pypi-AgEIcHlwaS5vcmcCJGNhNjE5...
+#
+# For Test PyPI:
+# export TWINE_REPOSITORY_URL=https://test.pypi.org/legacy/
