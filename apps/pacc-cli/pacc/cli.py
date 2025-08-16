@@ -1859,31 +1859,38 @@ class PACCCli:
         
         shutil.copy2(extension.file_path, dest_path)
         
-        # Update configuration using the JSON merger
-        config_manager = ClaudeConfigManager()
-        config_path = base_dir / "settings.json"
-        
-        # Load extension metadata for configuration
-        extension_config = self._create_extension_config(extension, dest_path)
-        
-        # Add to configuration
-        from pathlib import Path
-        home_claude_dir = Path.home() / '.claude'
-        is_user_level = base_dir.resolve() == home_claude_dir.resolve()
-        success = config_manager.add_extension_config(
-            extension.extension_type, 
-            extension_config,
-            user_level=is_user_level
-        )
-        
-        if not success:
-            # Rollback file copy if config update failed
-            if dest_path.exists():
-                dest_path.unlink()
-            raise ValueError(f"Failed to update configuration for {extension.name}")
+        # Only update settings.json for hooks and mcps
+        # Agents and commands are file-based and don't need configuration entries
+        if extension.extension_type in ["hooks", "mcps"]:
+            # Update configuration using the JSON merger
+            config_manager = ClaudeConfigManager()
+            config_path = base_dir / "settings.json"
+            
+            # Load extension metadata for configuration
+            extension_config = self._create_extension_config(extension, dest_path)
+            
+            # Add to configuration
+            from pathlib import Path
+            home_claude_dir = Path.home() / '.claude'
+            is_user_level = base_dir.resolve() == home_claude_dir.resolve()
+            success = config_manager.add_extension_config(
+                extension.extension_type, 
+                extension_config,
+                user_level=is_user_level
+            )
+            
+            if not success:
+                # Rollback file copy if config update failed
+                if dest_path.exists():
+                    dest_path.unlink()
+                raise ValueError(f"Failed to update configuration for {extension.name}")
     
     def _create_extension_config(self, extension, dest_path: Path) -> Dict[str, Any]:
-        """Create configuration entry for an extension."""
+        """Create configuration entry for an extension.
+        
+        Note: Only hooks and MCPs need configuration entries.
+        Agents and commands are file-based and don't require settings.json entries.
+        """
         config = {
             "name": extension.name,
             "path": str(dest_path.relative_to(dest_path.parent.parent))
@@ -1900,16 +1907,8 @@ class PACCCli:
                 "command": f"python {dest_path.name}",
                 "args": []
             })
-        elif extension.extension_type == "agents":
-            config.update({
-                "model": "claude-3-sonnet",  # Default model
-                "description": extension.description or "Custom agent"
-            })
-        elif extension.extension_type == "commands":
-            config.update({
-                "description": extension.description or "Custom command",
-                "aliases": []
-            })
+        # Agents and commands don't need configuration entries
+        # They are discovered by Claude Code from their directories
         
         return config
     

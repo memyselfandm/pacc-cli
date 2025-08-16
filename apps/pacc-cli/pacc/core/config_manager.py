@@ -480,8 +480,11 @@ class ClaudeConfigManager:
     ) -> bool:
         """Add extension configuration to Claude settings.
         
+        Note: Only hooks and MCPs require settings.json entries.
+        Agents and commands are file-based and discovered automatically.
+        
         Args:
-            extension_type: Type of extension ('hooks', 'mcps', 'agents', 'commands')
+            extension_type: Type of extension ('hooks', 'mcps')
             extension_config: Configuration for the extension
             user_level: Whether to update user-level or project-level config
             
@@ -495,10 +498,13 @@ class ClaudeConfigManager:
             updates = {"hooks": [extension_config]}
         elif extension_type == "mcps":
             updates = {"mcps": [extension_config]}
-        elif extension_type == "agents":
-            updates = {"agents": [extension_config]}
-        elif extension_type == "commands":
-            updates = {"commands": [extension_config]}
+        elif extension_type in ["agents", "commands"]:
+            # Agents and commands don't go in settings.json
+            # They are discovered from their directories
+            raise ConfigurationError(
+                f"Extension type '{extension_type}' is file-based and doesn't require settings.json entries. "
+                f"Simply place the file in the appropriate directory."
+            )
         else:
             raise ConfigurationError(f"Unknown extension type: {extension_type}")
         
@@ -511,12 +517,14 @@ class ClaudeConfigManager:
         return self.update_config_atomic(config_path, updates, merge_strategy)
     
     def _get_default_config(self) -> Dict[str, Any]:
-        """Get default Claude configuration structure."""
+        """Get default Claude configuration structure.
+        
+        Note: Only hooks and MCPs are stored in settings.json.
+        Agents and commands are file-based.
+        """
         return {
             "hooks": [],
-            "mcps": [],
-            "agents": [],
-            "commands": []
+            "mcps": []
         }
     
     def _validate_config_structure(self, config: Dict[str, Any], config_path: Path) -> None:
@@ -532,8 +540,8 @@ class ClaudeConfigManager:
         if not isinstance(config, dict):
             raise ValidationError(f"Configuration must be a JSON object in {config_path}")
         
-        # Check for required extension arrays
-        for key in ["hooks", "mcps", "agents", "commands"]:
+        # Check for required extension arrays (only hooks and mcps)
+        for key in ["hooks", "mcps"]:
             if key in config and not isinstance(config[key], list):
                 raise ValidationError(f"'{key}' must be an array in {config_path}")
         
