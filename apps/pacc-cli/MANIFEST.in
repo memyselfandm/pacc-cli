@@ -1,0 +1,29 @@
+# Include the README file
+include README.md
+
+# Include the license file
+include LICENSE
+
+# Include type information
+include pacc/py.typed
+
+# Include test configuration
+include pytest.ini
+
+# Include requirements files for reference
+include requirements*.txt
+
+# Exclude development directories
+exclude tmp/
+recursive-exclude tmp *
+recursive-exclude tests *
+recursive-exclude docs *
+recursive-exclude examples *
+recursive-exclude security *
+
+# Exclude cache and compiled files
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
+global-exclude .coverage
+global-exclude .pytest_cache

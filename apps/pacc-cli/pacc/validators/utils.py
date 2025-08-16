@@ -259,7 +259,7 @@ class ValidationRunner:
             extension_type = ExtensionDetector.detect_extension_type(file_path)
             
         if extension_type is None:
-            result = ValidationResult(file_path=str(file_path))
+            result = ValidationResult(is_valid=False, file_path=str(file_path))
             result.add_error(
                 "UNKNOWN_EXTENSION_TYPE",
                 f"Could not determine extension type for file: {file_path}",
@@ -268,7 +268,7 @@ class ValidationRunner:
             return result
         
         if extension_type not in self.validators:
-            result = ValidationResult(file_path=str(file_path))
+            result = ValidationResult(is_valid=False, file_path=str(file_path))
             result.add_error(
                 "UNSUPPORTED_EXTENSION_TYPE",
                 f"Unsupported extension type: {extension_type}",

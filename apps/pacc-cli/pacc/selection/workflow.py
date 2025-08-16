@@ -10,112 +10,13 @@ import logging
 from ..core import DirectoryScanner, FileFilter, FilePathValidator
 from ..validators import BaseValidator, ValidationResult
 from ..errors import PACCError, ValidationError, SourceError
+from .types import SelectionMode, SelectionStrategy, SelectionContext, SelectionResult
 from .ui import InteractiveSelector, ConfirmationDialog, ProgressTracker
 from .persistence import SelectionCache, SelectionHistory
 from .filters import SelectionFilter
 
 
 logger = logging.getLogger(__name__)
-
-
-class SelectionMode(Enum):
-    """Different modes for selection workflow."""
-    SINGLE_FILE = "single_file"
-    MULTI_FILE = "multi_file"
-    DIRECTORY = "directory"
-    INTERACTIVE = "interactive"
-    BATCH = "batch"
-
-
-class SelectionStrategy(Enum):
-    """Strategy for handling multiple selections."""
-    FIRST_VALID = "first_valid"
-    ALL_VALID = "all_valid"
-    BEST_MATCH = "best_match"
-    USER_CHOICE = "user_choice"
-
-
-@dataclass
-class SelectionContext:
-    """Context for a selection operation."""
-    
-    # Core parameters
-    mode: SelectionMode
-    strategy: SelectionStrategy = SelectionStrategy.USER_CHOICE
-    max_selections: int = 10
-    allow_empty: bool = False
-    
-    # File filtering
-    extensions: Optional[Set[str]] = None
-    patterns: Optional[List[str]] = None
-    size_limits: Optional[tuple[int, Optional[int]]] = None
-    exclude_hidden: bool = True
-    
-    # Validation
-    validators: List[BaseValidator] = field(default_factory=list)
-    validate_on_select: bool = True
-    stop_on_validation_error: bool = False
-    
-    # UI configuration
-    show_progress: bool = True
-    confirm_selections: bool = True
-    interactive_ui: bool = True
-    
-    # Persistence
-    cache_selections: bool = True
-    remember_choices: bool = True
-    session_id: Optional[str] = None
-    
-    # Performance
-    lazy_loading: bool = True
-    background_validation: bool = True
-    max_concurrent: int = 5
-
-
-@dataclass
-class SelectionResult:
-    """Result of a selection workflow operation."""
-    
-    success: bool
-    selected_files: List[Path] = field(default_factory=list)
-    validation_results: List[ValidationResult] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    errors: List[Exception] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    user_cancelled: bool = False
-    cached_result: bool = False
-    
-    @property
-    def is_valid(self) -> bool:
-        """Check if all selected files passed validation."""
-        return self.success and all(
-            result.is_valid for result in self.validation_results
-        )
-    
-    @property
-    def has_warnings(self) -> bool:
-        """Check if there are any warnings."""
-        return bool(self.warnings) or any(
-            result.warnings for result in self.validation_results
-        )
-    
-    def get_all_issues(self) -> List[str]:
-        """Get all error and warning messages."""
-        issues = []
-        
-        # Add error messages
-        for error in self.errors:
-            issues.append(str(error))
-        
-        # Add warning messages
-        issues.extend(self.warnings)
-        
-        # Add validation issues
-        for result in self.validation_results:
-            for issue in result.all_issues:
-                issues.append(str(issue))
-        
-        return issues
 
 
 class SelectionWorkflow:

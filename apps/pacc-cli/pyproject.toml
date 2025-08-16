@@ -1,0 +1,201 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pacc-cli"
+version = "1.0.0"
+description = "Package manager for Claude Code - simplify installation and management of Claude Code extensions"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "PACC Development Team", email = "pacc@example.com"},
+]
+maintainers = [
+    {name = "PACC Development Team", email = "pacc@example.com"},
+]
+keywords = [
+    "claude",
+    "claude-code",
+    "package-manager",
+    "extensions",
+    "hooks",
+    "mcp",
+    "agents",
+    "commands",
+    "cli",
+    "developer-tools",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Software Distribution",
+    "Topic :: Utilities",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Typing :: Typed",
+]
+
+# Core dependencies - minimal requirements for PACC functionality
+dependencies = [
+    "PyYAML>=6.0",  # Required for parsing agent and command frontmatter
+]
+
+[project.optional-dependencies]
+# URL download functionality (Git and HTTP sources)
+url = [
+    "aiohttp>=3.8.0",
+    "aiofiles>=0.8.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "tomli>=2.0.0;python_version<'3.11'",
+]
+
+# Testing dependencies (subset of dev)
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "tomli>=2.0.0;python_version<'3.11'",
+]
+
+# Documentation dependencies
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/anthropics/pacc"
+Repository = "https://github.com/anthropics/pacc"
+Documentation = "https://pacc.readthedocs.io"
+"Bug Tracker" = "https://github.com/anthropics/pacc/issues"
+Changelog = "https://github.com/anthropics/pacc/blob/main/CHANGELOG.md"
+
+[project.scripts]
+pacc = "pacc.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pacc*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+pacc = ["py.typed"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "ARG",  # flake8-unused-arguments
+    "PL",   # pylint
+    "RUF",  # ruff-specific rules
+]
+ignore = [
+    "PLR0913",  # Too many arguments to function call
+    "PLR2004",  # Magic value used in comparison
+]
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["PLR2004", "ARG001"]
+
+[tool.coverage.run]
+source = ["pacc"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__main__.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "except ImportError:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=pacc",
+    "--cov-branch",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+asyncio_mode = "auto"

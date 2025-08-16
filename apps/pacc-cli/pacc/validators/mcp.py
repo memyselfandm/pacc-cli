@@ -52,6 +52,7 @@ class MCPValidator(BaseValidator):
         """Validate a single MCP configuration file."""
         file_path = Path(file_path)
         result = ValidationResult(
+            is_valid=True,
             file_path=str(file_path),
             extension_type=self.get_extension_type()
         )

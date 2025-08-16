@@ -1,0 +1,121 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      test_pypi:
+        description: 'Publish to Test PyPI first'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build distributions
+      run: python -m build
+    
+    - name: Check distributions
+      run: twine check dist/*
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist/
+
+  test-pypi:
+    name: Publish to Test PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_pypi == 'true'
+    
+    environment:
+      name: test-pypi
+      url: https://test.pypi.org/project/pacc/
+    
+    permissions:
+      id-token: write  # OIDC publishing
+    
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        skip-existing: true
+
+  pypi-publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_pypi == 'false')
+    
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pacc/
+    
+    permissions:
+      id-token: write  # OIDC publishing
+    
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+        path: dist/
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+  verify:
+    name: Verify installation
+    needs: [pypi-publish]
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Wait for PyPI
+      run: sleep 60  # Wait for package to propagate
+    
+    - name: Install from PyPI
+      run: |
+        pip install pacc
+        pacc --version
+        pacc --help
+    
+    - name: Test basic functionality
+      run: |
+        echo '{"name": "test-hook", "events": ["PreToolUse"]}' > test-hook.json
+        pacc validate test-hook.json --type hooks

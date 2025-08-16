@@ -2,19 +2,32 @@
 
 A Python CLI tool for managing Claude Code extensions including hooks, MCP servers, agents, and slash commands.
 
+**Note on Extension Types:**
+- **Hooks & MCP Servers**: Configuration-based, stored in `settings.json`
+- **Agents & Commands**: File-based, placed in directories and auto-discovered by Claude Code
+
 ## Project Status
 
-**🎯 Implementation Progress: 91% Complete**
+**🎯 Production Ready - Version 1.0.0** ✅
 
 ### ✅ Completed Features
-- **Wave 1 - Foundation Layer**: Core utilities, file handling, UI components, validation framework
-- **Wave 2 - Extension Validators**: Complete validation for Hooks, MCP, Agents, and Commands
-- **Wave 3 - Integration Layer**: Selection workflows, packaging, error recovery, performance optimization
-- **Wave 4 - Testing & Polish**: Comprehensive test suite (>80% coverage), security hardening, documentation
+- **Wave 1-4 - MVP Foundation**: Complete core package management with >80% test coverage
+- **Phase 0 - Core CLI**: All basic package management commands implemented
+- **Phase 1 - Remote Sources**: Git and URL-based installation with security validation
+- **Phase 2 - Project Configuration**: Team collaboration via pacc.json project configs
+- **Phase 3 - Packaging & Distribution**: Production-ready package with full installation support
 
-### ⏳ In Progress
-- CLI command structure integration
-- Settings.json merge strategies
+### 🚀 CLI Commands Ready for Production
+- **`pacc install`**: Install extensions from local sources, Git repos, or URLs
+- **`pacc list`**: List installed extensions with filtering and search
+- **`pacc remove`**: Safely remove extensions with dependency checking
+- **`pacc info`**: Display detailed extension information and metadata
+- **`pacc validate`**: Validate extensions without installing
+
+### 🤝 Team Collaboration Features
+- **`pacc init --project-config`**: Initialize project with shared extension configuration
+- **`pacc sync`**: Synchronize extensions from project pacc.json configuration
+- **Project Configuration**: pacc.json files for defining team extension standards
 
 ## Architecture
 
@@ -25,6 +38,7 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 - **DirectoryScanner**: Efficient directory traversal and filtering
 - **PathNormalizer**: Windows/Mac/Linux path compatibility
 - **FileFilter**: Chainable filtering system
+- **ProjectConfigManager**: Team configuration management with pacc.json schema validation
 
 #### 2. UI Components (`pacc/ui/`)
 - **MultiSelectList**: Interactive selection with keyboard navigation
@@ -90,6 +104,113 @@ from pacc.core.file_utils import DirectoryScanner, FileFilter
 scanner = DirectoryScanner()
 file_filter = FileFilter().by_extensions(['.json', '.md', '.yaml'])
 files = scanner.scan('/path/to/directory', file_filter)
+```
+
+## Installation
+
+### Quick Start
+
+1. **Install from wheel** (recommended):
+   ```bash
+   pip install dist/pacc-1.0.0-py3-none-any.whl
+   ```
+
+2. **Verify installation**:
+   ```bash
+   pacc --version
+   pacc --help
+   ```
+
+### Installation Options
+
+#### Option 1: Wheel Installation (Production)
+```bash
+# Build the wheel
+python scripts/build.py build --dist-type wheel
+
+# Install the wheel
+pip install dist/pacc-1.0.0-py3-none-any.whl
+```
+
+#### Option 2: Editable Installation (Development)
+```bash
+# Install in development mode
+pip install -e .
+```
+
+#### Option 3: Build Everything
+```bash
+# Complete build and test workflow
+python scripts/build.py build
+python scripts/build.py check
+python scripts/build.py test
+```
+
+### System Requirements
+
+- **Python**: 3.8 or higher
+- **Memory**: 50MB minimum
+- **Storage**: 10MB for package
+- **OS**: Windows, macOS, Linux
+
+See [Package Installation Guide](docs/package_installation_guide.md) for detailed instructions.
+
+## CLI Usage
+
+PACC provides a complete package manager interface for Claude Code extensions:
+
+### Installation
+```bash
+# Install from file or directory
+pacc install /path/to/extension.json
+pacc install /path/to/extension-directory/
+
+# Install with options
+pacc install extension.json --user --force
+pacc install extensions/ --interactive --dry-run
+```
+
+### Listing Extensions
+```bash
+# List all installed extensions
+pacc list
+
+# Filter by type and scope
+pacc list hooks --user
+pacc list agents --project
+pacc list --format json
+
+# Search and filter
+pacc list --search "code" --sort date
+pacc list --filter "*-server" --format table
+```
+
+### Removing Extensions
+```bash
+# Remove extension safely
+pacc remove my-hook
+
+# Remove with options
+pacc remove extension-name --user --dry-run
+pacc remove extension-name --force --confirm
+```
+
+### Extension Information
+```bash
+# Show extension details
+pacc info extension-name
+pacc info /path/to/extension.json
+
+# Detailed information with troubleshooting
+pacc info extension-name --verbose --show-usage
+pacc info extension-name --json --show-related
+```
+
+### Validation
+```bash
+# Validate extensions
+pacc validate /path/to/extension.json
+pacc validate extensions-directory/ --strict
 ```
 
 ## Development

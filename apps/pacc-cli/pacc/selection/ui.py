@@ -5,12 +5,12 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 import shutil
 import time
 
 from ..validators import ValidationResult
-from .workflow import SelectionContext
+from .types import SelectionContext
 
 
 class DisplayMode(Enum):

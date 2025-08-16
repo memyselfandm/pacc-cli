@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(grep:*)",
+      "Bash(make test:*)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python -m pytest tests/core/ tests/unit/ tests/validation/ -v)",
+      "Bash(python:*)"
+    ],
+    "deny": []
+  }
+}
