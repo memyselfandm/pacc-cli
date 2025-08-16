@@ -23,7 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential storage recommendations
 - Token rotation procedures and best practices
 
-## [1.0.0] - 2024-01-XX
+## [0.1.0] - 2025-08-16 (Beta)
+
+**Initial beta release of PACC - Package manager for Claude Code**
 
 ### Added
 - Core installation system supporting all Claude Code extension types
