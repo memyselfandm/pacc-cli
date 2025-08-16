@@ -69,7 +69,8 @@ Currently, setting up Claude Code extensions requires:
 - ✅ Project-level installation (`.claude/` directory)
 - ✅ User-level installation (`~/.claude/` directory)
 - ✅ Automatic detection of extension type from source structure
-- ✅ Safe modification of settings.json and related configuration files
+- ✅ Safe modification of settings.json for hooks and MCP servers only
+- ✅ File-based installation for agents and commands (no settings.json modification)
 - ✅ Automatic creation of necessary directory structures
 
 **User Experience** (Actual Implementation):

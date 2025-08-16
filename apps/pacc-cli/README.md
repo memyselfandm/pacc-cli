@@ -2,6 +2,10 @@
 
 A Python CLI tool for managing Claude Code extensions including hooks, MCP servers, agents, and slash commands.
 
+**Note on Extension Types:**
+- **Hooks & MCP Servers**: Configuration-based, stored in `settings.json`
+- **Agents & Commands**: File-based, placed in directories and auto-discovered by Claude Code
+
 ## Project Status
 
 **🎯 Production Ready - Version 1.0.0** ✅

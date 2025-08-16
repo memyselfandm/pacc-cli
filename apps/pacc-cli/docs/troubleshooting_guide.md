@@ -416,6 +416,18 @@ SecurityError: Potentially dangerous command detected
 
 ## Configuration Issues
 
+### Understanding Extension Types
+
+**Important:** Not all extensions modify settings.json:
+
+- **Configuration-based** (stored in settings.json):
+  - Hooks: Require event and matcher configuration
+  - MCP Servers: Require command and argument configuration
+
+- **File-based** (no settings.json entry):
+  - Agents: Stored in `.claude/agents/`, auto-discovered
+  - Commands: Stored in `.claude/commands/`, auto-discovered
+
 ### Corrupted settings.json
 
 **Symptoms:**
@@ -439,13 +451,13 @@ python -m json.tool ~/.claude/settings.json > settings_fixed.json
 mv settings_fixed.json ~/.claude/settings.json
 ```
 
-3. **Start fresh:**
+3. **Start fresh (only hooks and mcps needed):**
 ```bash
 # Backup current
 mv ~/.claude/settings.json ~/.claude/settings.json.bak
 
-# Reinitialize
-echo '{}' > ~/.claude/settings.json
+# Reinitialize with proper structure
+echo '{"hooks": [], "mcps": []}' > ~/.claude/settings.json
 ```
 
 ### Configuration Not Loading

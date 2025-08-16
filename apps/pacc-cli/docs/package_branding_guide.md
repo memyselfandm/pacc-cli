@@ -237,6 +237,17 @@ Be celebratory but informative:
 Run 'pacc list' to see all installed extensions.
 ```
 
+For file-based extensions (agents and commands):
+```
+✅ Successfully installed code-reviewer!
+
+📁 Location: .claude/agents/code-reviewer.md
+🔧 Type: Agent
+📝 Config: File-based (no settings.json update needed)
+
+Run 'pacc list' to see all installed extensions.
+```
+
 ## Keywords and SEO
 
 ### Primary Keywords

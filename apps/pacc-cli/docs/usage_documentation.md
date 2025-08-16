@@ -147,6 +147,30 @@ pacc install ./team-agents/ --interactive
 pacc install ./commands/deploy.md --dry-run
 ```
 
+#### Extension Type Behaviors
+
+Different extension types have different installation behaviors:
+
+**Configuration-based extensions** (modify settings.json):
+- **Hooks**: Require configuration entries for events and matchers
+- **MCP Servers**: Require configuration for server commands and arguments
+
+**File-based extensions** (no settings.json modification):
+- **Agents**: Placed in `.claude/agents/` directory, auto-discovered by Claude Code
+- **Commands**: Placed in `.claude/commands/` directory, auto-discovered by Claude Code
+
+```bash
+# Hook installation (updates settings.json)
+$ pacc install ./my-hook.json --project
+✓ Installed: my-hook (hooks)
+✓ Updated .claude/settings.json
+
+# Agent installation (file-based only)
+$ pacc install ./my-agent.md --project
+✓ Installed: my-agent (agents)
+# Note: No settings.json update needed
+```
+
 ### validate Command
 
 Validates extensions without installing them.
@@ -269,6 +293,11 @@ $ pacc remove calculator --user
 ? Remove calculator MCP server from user config? (y/N) y
 ✓ Removed calculator from ~/.claude/.mcp.json
 ✓ Updated settings.json
+
+# Remove agent (file-based, no settings.json update)
+$ pacc remove code-reviewer --project
+? Remove code-reviewer agent from project? (y/N) y
+✓ Removed code-reviewer from .claude/agents/
 ```
 
 ### info Command
