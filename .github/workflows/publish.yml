@@ -30,16 +30,18 @@ jobs:
         pip install build twine
     
     - name: Build distributions
+      working-directory: apps/pacc-cli
       run: python -m build
     
     - name: Check distributions
+      working-directory: apps/pacc-cli
       run: twine check dist/*
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist
-        path: dist/
+        path: apps/pacc-cli/dist/
 
   test-pypi:
     name: Publish to Test PyPI
@@ -49,14 +51,14 @@ jobs:
     
     environment:
       name: test-pypi
-      url: https://test.pypi.org/project/pacc/
+      url: https://test.pypi.org/project/pacc-cli/
     
     permissions:
       id-token: write  # OIDC publishing
     
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
@@ -75,14 +77,14 @@ jobs:
     
     environment:
       name: pypi
-      url: https://pypi.org/project/pacc/
+      url: https://pypi.org/project/pacc-cli/
     
     permissions:
       id-token: write  # OIDC publishing
     
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
@@ -111,7 +113,7 @@ jobs:
     
     - name: Install from PyPI
       run: |
-        pip install pacc
+        pip install pacc-cli
         pacc --version
         pacc --help
     
