@@ -589,6 +589,111 @@ class PluginConfigManager:
                 logger.error(f"Failed to disable plugin {plugin_name} for {repo}: {e}")
                 return False
     
+    def install_repository(self, plugin_spec) -> bool:
+        """Install a plugin repository from specification.
+        
+        Args:
+            plugin_spec: PluginSpec object with repository details
+            
+        Returns:
+            True if installation succeeded
+        """
+        try:
+            repo_key = plugin_spec.get_repo_key()
+            owner, repo = repo_key.split("/", 1)
+            
+            # Create repository metadata
+            metadata = {
+                "version": plugin_spec.get_version_specifier(),
+                "lastUpdated": datetime.now().isoformat(),
+                "plugins": plugin_spec.plugins.copy() if plugin_spec.plugins else []
+            }
+            
+            # Add metadata from spec if present
+            if plugin_spec.metadata:
+                metadata.update(plugin_spec.metadata)
+            
+            # Add repository to config
+            success = self.add_repository(owner, repo, metadata)
+            
+            if success:
+                # Enable any specified plugins
+                for plugin_name in plugin_spec.plugins:
+                    self.enable_plugin(repo_key, plugin_name)
+                
+                logger.info(f"Installed repository: {repo_key}@{plugin_spec.get_version_specifier()}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Failed to install repository {plugin_spec.repository}: {e}")
+            return False
+    
+    def update_repository(self, repo_key: str, target_version: str) -> bool:
+        """Update a repository to a specific version.
+        
+        Args:
+            repo_key: Repository key in owner/repo format
+            target_version: Target version to update to
+            
+        Returns:
+            True if update succeeded
+        """
+        with self._lock:
+            try:
+                # Load current config
+                config = self._load_plugin_config()
+                
+                if repo_key not in config.get("repositories", {}):
+                    logger.error(f"Repository not found: {repo_key}")
+                    return False
+                
+                # Update repository metadata
+                repo_data = config["repositories"][repo_key]
+                repo_data["version"] = target_version
+                repo_data["lastUpdated"] = datetime.now().isoformat()
+                
+                # Save updated config
+                success = self._save_plugin_config(config)
+                
+                if success:
+                    logger.info(f"Updated repository {repo_key} to version {target_version}")
+                
+                return success
+                
+            except Exception as e:
+                logger.error(f"Failed to update repository {repo_key}: {e}")
+                return False
+    
+    def list_installed_repositories(self) -> Dict[str, Any]:
+        """List all installed repositories with their metadata.
+        
+        Returns:
+            Dictionary mapping repo_key to repository metadata
+        """
+        try:
+            config = self._load_plugin_config()
+            return config.get("repositories", {})
+        except Exception as e:
+            logger.error(f"Failed to list installed repositories: {e}")
+            return {}
+    
+    def get_repository_info(self, repo_key: str) -> Optional[Dict[str, Any]]:
+        """Get information about a specific repository.
+        
+        Args:
+            repo_key: Repository key in owner/repo format
+            
+        Returns:
+            Repository metadata or None if not found
+        """
+        try:
+            repositories = self.list_installed_repositories()
+            return repositories.get(repo_key)
+        except Exception as e:
+            logger.error(f"Failed to get repository info for {repo_key}: {e}")
+            return None
+    
     def sync_team_config(self, pacc_config: Dict[str, Any]) -> Dict[str, Any]:
         """Synchronize team configuration.
         
