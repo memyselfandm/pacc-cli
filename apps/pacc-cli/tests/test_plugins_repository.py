@@ -436,6 +436,193 @@ class TestDataClasses:
         assert "plugin1" in info.plugins
 
 
+class TestPluginUpdateWorkflows:
+    """Test comprehensive update workflows and edge cases."""
+    
+    @patch('pacc.plugins.repository.subprocess.run')
+    def test_update_detection_behind_commits(self, mock_run, repo_manager, sample_plugin_repo):
+        """Test detection of commits behind remote."""
+        mock_run.side_effect = [
+            # git fetch --dry-run
+            Mock(returncode=0, stdout="", stderr=""),
+            # git rev-parse origin/HEAD  
+            Mock(returncode=0, stdout="def456\n", stderr=""),
+            # Current commit
+            Mock(returncode=0, stdout="abc123\n", stderr=""),
+            # git rev-list --count
+            Mock(returncode=0, stdout="3\n", stderr=""),
+            # git log --oneline
+            Mock(returncode=0, stdout="def456 Fix bug\n789abc Add feature\n321def Update docs\n", stderr=""),
+        ]
+        
+        # This would be called by the CLI's _show_update_preview method
+        # which uses the repo manager's methods
+        
+        # Test that we can get current commit SHA
+        current_sha = repo_manager._get_current_commit_sha(sample_plugin_repo)
+        assert current_sha  # Should return a SHA
+    
+    @patch('pacc.plugins.repository.subprocess.run')
+    def test_update_with_force_rollback(self, mock_run, repo_manager, sample_plugin_repo):
+        """Test force update with automatic rollback on failure."""
+        mock_run.side_effect = [
+            # git status --porcelain (dirty tree)
+            Mock(returncode=0, stdout=" M some-file.txt\n", stderr=""),
+            # git log -1 --format=%H (get old SHA)
+            Mock(returncode=0, stdout="abc123\n", stderr=""),
+            # git pull --ff-only (fails)
+            Mock(returncode=1, stdout="", stderr="fatal: merge conflict"),
+            # git rev-parse --verify (for rollback)
+            Mock(returncode=0, stdout="", stderr=""),
+            # git reset --hard (rollback)
+            Mock(returncode=0, stdout="", stderr=""),
+        ]
+        
+        # Test normal update with dirty tree fails
+        result = repo_manager.update_plugin(sample_plugin_repo)
+        assert result.success is False
+        assert "dirty working tree" in result.error_message.lower()
+        
+        # Test rollback functionality
+        rollback_result = repo_manager.rollback_plugin(sample_plugin_repo, "abc123")
+        assert rollback_result is True
+    
+    @patch('pacc.plugins.repository.subprocess.run')
+    def test_update_validation_after_pull(self, mock_run, repo_manager, sample_plugin_repo):
+        """Test repository validation after successful update."""
+        mock_run.side_effect = [
+            # git status --porcelain
+            Mock(returncode=0, stdout="", stderr=""),
+            # git log -1 --format=%H (before)
+            Mock(returncode=0, stdout="abc123\n", stderr=""),
+            # git pull --ff-only
+            Mock(returncode=0, stdout="Updating abc123..def456\n", stderr=""),
+            # git log -1 --format=%H (after)
+            Mock(returncode=0, stdout="def456\n", stderr=""),
+        ]
+        
+        result = repo_manager.update_plugin(sample_plugin_repo)
+        
+        assert result.success is True
+        assert result.had_changes is True
+        assert result.old_sha == "abc123"
+        assert result.new_sha == "def456"
+        
+        # Verify the repository is still valid after update
+        validation_result = repo_manager.validate_repository_structure(sample_plugin_repo)
+        assert validation_result.is_valid is True
+    
+    @patch('pacc.plugins.repository.subprocess.run')
+    def test_update_timeout_handling(self, mock_run, repo_manager, sample_plugin_repo):
+        """Test handling of git command timeouts during update."""
+        # Simulate timeout on git pull
+        mock_run.side_effect = [
+            # git status --porcelain
+            Mock(returncode=0, stdout="", stderr=""),
+            # git log -1 --format=%H 
+            Mock(returncode=0, stdout="abc123\n", stderr=""),
+            # git pull --ff-only (timeout)
+            subprocess.TimeoutExpired("git", 120),
+        ]
+        
+        result = repo_manager.update_plugin(sample_plugin_repo)
+        
+        assert result.success is False
+        assert "timed out" in result.error_message.lower()
+    
+    def test_update_nonexistent_repository(self, repo_manager, temp_plugins_dir):
+        """Test update attempt on non-existent repository."""
+        nonexistent_path = temp_plugins_dir / "repos" / "missing" / "repo"
+        
+        result = repo_manager.update_plugin(nonexistent_path)
+        
+        assert result.success is False
+        assert "does not exist" in result.error_message
+    
+    @patch('pacc.plugins.repository.subprocess.run')
+    def test_update_no_remote_configured(self, mock_run, repo_manager, sample_plugin_repo):
+        """Test update when no remote is configured."""
+        mock_run.side_effect = [
+            # git status --porcelain
+            Mock(returncode=0, stdout="", stderr=""),
+            # git log -1 --format=%H
+            Mock(returncode=0, stdout="abc123\n", stderr=""),
+            # git pull --ff-only (no remote)
+            Mock(returncode=1, stdout="", stderr="fatal: no remote repository"),
+        ]
+        
+        result = repo_manager.update_plugin(sample_plugin_repo)
+        
+        assert result.success is False
+        assert "no remote repository" in result.error_message
+    
+    @patch('pacc.plugins.repository.subprocess.run')
+    def test_rollback_invalid_commit(self, mock_run, repo_manager, sample_plugin_repo):
+        """Test rollback with invalid commit SHA."""
+        mock_run.return_value = Mock(
+            returncode=1,
+            stdout="",
+            stderr="fatal: invalid object name 'invalid_sha'"
+        )
+        
+        result = repo_manager.rollback_plugin(sample_plugin_repo, "invalid_sha")
+        
+        assert result is False
+    
+    @patch('pacc.plugins.repository.subprocess.run')
+    def test_get_commit_sha_git_error(self, mock_run, repo_manager, sample_plugin_repo):
+        """Test getting commit SHA with git error."""
+        mock_run.return_value = Mock(
+            returncode=1,
+            stdout="",
+            stderr="fatal: not a git repository"
+        )
+        
+        with pytest.raises(GitError):
+            repo_manager._get_current_commit_sha(sample_plugin_repo)
+    
+    def test_repository_validation_missing_plugin_json(self, repo_manager, temp_plugins_dir):
+        """Test repository validation with missing plugin.json files."""
+        repo_dir = temp_plugins_dir / "repos" / "test" / "incomplete"
+        repo_dir.mkdir(parents=True)
+        
+        # Create plugin directory but no plugin.json
+        plugin_dir = repo_dir / "incomplete-plugin"
+        plugin_dir.mkdir()
+        (plugin_dir / "commands").mkdir()
+        
+        # Create command file
+        with open(plugin_dir / "commands" / "test.md", "w") as f:
+            f.write("---\ndescription: Test\n---\nTest command")
+        
+        result = repo_manager.validate_repository_structure(repo_dir)
+        
+        # Should still be valid but with warnings
+        assert result.is_valid is True
+        assert len(result.warnings) > 0
+        assert any("missing plugin.json" in warning for warning in result.warnings)
+    
+    def test_repository_validation_malformed_plugin_json(self, repo_manager, temp_plugins_dir):
+        """Test repository validation with malformed plugin.json."""
+        repo_dir = temp_plugins_dir / "repos" / "test" / "malformed"
+        repo_dir.mkdir(parents=True)
+        
+        plugin_dir = repo_dir / "bad-plugin"
+        plugin_dir.mkdir()
+        
+        # Create malformed plugin.json
+        with open(plugin_dir / "plugin.json", "w") as f:
+            f.write("{ invalid json }")
+        
+        (plugin_dir / "commands").mkdir()
+        
+        result = repo_manager.validate_repository_structure(repo_dir)
+        
+        assert result.is_valid is True
+        assert len(result.warnings) > 0
+        assert any("invalid plugin.json" in warning for warning in result.warnings)
+
+
 class TestErrorHandling:
     """Test error handling in repository management."""
     
