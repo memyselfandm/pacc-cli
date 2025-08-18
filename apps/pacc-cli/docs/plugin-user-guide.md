@@ -137,6 +137,118 @@ pacc plugin disable owner/repo/plugin-name
 pacc plugin disable plugin-name --repo owner/repo
 ```
 
+#### `pacc plugin info <plugin>`
+
+Get detailed information about a specific plugin.
+
+```bash
+# Get plugin information
+pacc plugin info plugin-name --repo owner/repo
+
+# JSON output for scripting
+pacc plugin info plugin-name --repo owner/repo --format json
+
+# Table format (default)
+pacc plugin info plugin-name --repo owner/repo --format table
+```
+
+**Information includes:**
+- Plugin metadata (name, version, author, description)
+- Installation status and enablement state
+- Repository details (URL, commit SHA, last updated)
+- Available components (commands, agents, hooks)
+- File path location
+
+#### `pacc plugin update <repo>`
+
+Update a plugin repository to a new version or commit.
+
+```bash
+# Update repository to latest version
+pacc plugin update owner/repo
+
+# Update to specific version
+pacc plugin update owner/repo --version v2.0.0
+
+# Update to specific commit
+pacc plugin update owner/repo --version abc1234
+
+# Preview what would be updated (dry run)
+pacc plugin update owner/repo --dry-run
+
+# Update with automatic backup creation
+pacc plugin update owner/repo --create-backup
+
+# Force update without confirmation
+pacc plugin update owner/repo --force
+```
+
+**Options:**
+- `--version`: Target version, tag, branch, or commit SHA
+- `--dry-run`: Preview what would be updated without making changes
+- `--force`: Skip confirmation prompts
+- `--create-backup`: Create backup before updating (recommended)
+- `--verbose`: Show detailed update progress
+- `--json`: Output results in JSON format
+
+**Update Behavior:**
+- Checks current repository state and target version
+- Creates backup if requested (stored in `.claude/plugins/backups/`)
+- Updates repository files to target version
+- Preserves plugin enablement states
+- Shows preview of changes before applying
+- Supports rollback on failure
+
+**Rollback Support:**
+- Automatic rollback if update fails
+- Manual rollback using backup directory
+- Transaction-based updates for safety
+- Preserves configuration state during rollback
+
+**Examples:**
+```bash
+# Safe update with backup
+pacc plugin update team/productivity-tools --create-backup --version v2.1.0
+
+# Preview update changes
+pacc plugin update team/ai-agents --dry-run --verbose
+
+# Update multiple repositories
+for repo in team/tools community/plugins; do
+  pacc plugin update $repo --create-backup
+done
+```
+
+#### `pacc plugin remove <plugin>`
+
+Remove a plugin and optionally its repository files.
+
+```bash
+# Remove plugin only (keep repository if it has other plugins)
+pacc plugin remove plugin-name --repo owner/repo
+
+# Remove plugin and repository files (if no other plugins)
+pacc plugin remove plugin-name --repo owner/repo --force
+
+# Preview what would be removed (dry run)
+pacc plugin remove plugin-name --repo owner/repo --dry-run
+
+# Keep repository files but disable plugin
+pacc plugin remove plugin-name --repo owner/repo --keep-files
+```
+
+**Options:**
+- `--dry-run`: Preview what would be removed without making changes
+- `--keep-files`: Disable plugin but keep repository files
+- `--force`: Skip confirmation prompt
+- `--repo`: Specify repository (required)
+
+**Behavior:**
+- Disables the plugin in Claude Code settings
+- Removes plugin from repository configuration
+- Optionally removes repository files if it's the last plugin
+- Uses atomic transactions for safe operations
+
 ## Repository Structure
 
 Plugin repositories must follow this structure:
@@ -291,28 +403,112 @@ Create a `pacc.json` file in your project root to define team plugin requirement
 
 ```json
 {
+  "name": "my-project",
+  "version": "1.0.0",
   "plugins": {
-    "team/utilities": ["formatter", "linter", "docs-generator"],
-    "team/agents": ["code-reviewer", "security-scanner"],
-    "community/tools": ["git-hooks"]
+    "repositories": [
+      "team/productivity-tools@v1.0.0",
+      {
+        "repository": "community/ai-agents",
+        "version": "main",
+        "plugins": ["code-reviewer", "documentation-helper"]
+      }
+    ],
+    "required": ["code-reviewer", "formatter"],
+    "optional": ["documentation-helper", "advanced-linter"]
+  },
+  "environments": {
+    "development": {
+      "plugins": {
+        "repositories": ["team/dev-tools@latest"]
+      }
+    },
+    "production": {
+      "plugins": {
+        "repositories": ["team/stable-tools@v2.0.0"]
+      }
+    }
   }
 }
 ```
 
-### Synchronization
+### Synchronization with `pacc plugin sync`
 
-Team members can sync plugins using:
+Team members can sync plugins using the sync command:
 
 ```bash
-# In project directory with pacc.json
+# Sync plugins for current project
 pacc plugin sync
+
+# Sync with specific environment
+pacc plugin sync --environment development
+
+# Preview changes without applying them
+pacc plugin sync --dry-run
+
+# Force sync without user confirmation
+pacc plugin sync --force
+
+# Verbose output for debugging
+pacc plugin sync --verbose
+
+# JSON output for scripting
+pacc plugin sync --json
 ```
 
-This will:
-1. Install any missing plugin repositories
-2. Enable the specified plugins
-3. Update existing repositories
-4. Report any conflicts or errors
+**Configuration Discovery:**
+The sync command looks for configuration files in this order:
+1. `pacc.json` (team/project configuration)
+2. `pacc.local.json` (local developer overrides)
+3. Global user settings
+
+**Sync Behavior:**
+1. **Install missing repositories** specified in configuration
+2. **Update existing repositories** to specified versions
+3. **Enable required plugins** automatically
+4. **Handle version conflicts** with intelligent resolution
+5. **Report warnings and errors** for manual review
+6. **Support rollback** if conflicts cannot be resolved
+
+### Local Overrides
+
+Create a `pacc.local.json` file for developer-specific overrides:
+
+```json
+{
+  "plugins": {
+    "repositories": ["personal/dev-utils@latest"],
+    "optional": ["personal-debugger", "custom-formatter"]
+  }
+}
+```
+
+**Conflict Resolution:**
+- Local configurations take precedence over team configurations
+- Version conflicts are resolved by preferring local versions
+- Warnings are shown for any conflicts that require attention
+
+### Version Management
+
+**Version Specifications:**
+```json
+{
+  "plugins": {
+    "repositories": [
+      "team/tools@v1.0.0",           // Specific version tag
+      "team/tools@main",             // Branch name
+      "team/tools@abc1234",          // Commit SHA
+      "team/tools@latest",           // Latest version
+      "team/tools"                   // Defaults to latest
+    ]
+  }
+}
+```
+
+**Version Locking:**
+- Specific versions (tags/commits) are locked and won't auto-update
+- Branch names and "latest" are dynamic and update during sync
+- Use specific versions for production stability
 
 ## Advanced Usage
 
@@ -362,6 +558,67 @@ export ENABLE_PLUGINS=1
 - Verify SSH keys for private repositories
 - Use HTTPS URLs for public repositories
 
+#### "No pacc.json found" during sync
+- Create a `pacc.json` file in your project root
+- Use `pacc init` to create a basic configuration template
+- Ensure you're running sync from the correct directory
+
+#### "Version conflict detected" during sync
+- Review conflicting versions in output
+- Use `pacc.local.json` for local overrides
+- Specify exact versions to avoid conflicts
+- Use `--force` to apply team configuration
+
+#### "Plugin info not available"
+- Check that the plugin repository is still accessible
+- Verify the plugin exists with `pacc plugin list`
+- Use `--verbose` for detailed error information
+
+#### "Failed to remove plugin files"
+- Check filesystem permissions
+- Ensure no processes are using plugin files
+- Use `--keep-files` to disable without removing files
+- Run with elevated permissions if necessary
+
+#### "Transaction failed" during remove operation
+- Check available disk space
+- Verify configuration file permissions
+- Use `--dry-run` to preview changes first
+- Check for concurrent PACC operations
+
+#### "Update failed" during plugin update
+- Check Git repository connectivity
+- Verify target version/commit exists
+- Use `--dry-run` to preview changes first
+- Check available disk space for backup creation
+- Ensure no processes are using plugin files
+
+#### "Rollback failed" after update failure
+- Check backup directory exists and has correct permissions
+- Verify source repository state before update
+- Use manual rollback from backup directory
+- Check for filesystem corruption or space issues
+
+#### "Version not found" during update
+- Verify the target version/tag/commit exists in repository
+- Check network connectivity to repository
+- Use `git ls-remote` to list available versions
+- Try updating to `latest` or `main` branch first
+
+### Team Collaboration Issues
+
+#### "Sync conflicts between team members"
+- Use consistent version specifications in `pacc.json`
+- Create clear team guidelines for plugin updates
+- Use local overrides (`pacc.local.json`) for personal preferences
+- Communicate plugin changes through version control
+
+#### "Different plugin versions across environments"
+- Use environment-specific configurations
+- Pin specific versions for production
+- Document version requirements in project README
+- Use automated sync in CI/CD pipelines
+
 ### Debug Mode
 
 Use verbose mode for detailed information:
@@ -409,6 +666,35 @@ pacc plugin install https://github.com/owner/repo --dry-run
 3. **Use version pinning** for stable environments
 4. **Regular sync** to keep plugins updated
 5. **Review plugin changes** before team adoption
+
+**Example Team Workflow:**
+```bash
+# Team lead: Set up project configuration
+pacc init
+# Edit pacc.json to define required plugins
+
+# Team members: Join project and sync
+git clone project-repo
+cd project-repo
+pacc plugin sync
+
+# Developer: Check plugin status
+pacc plugin list --enabled-only
+pacc plugin info code-reviewer --repo team/tools
+
+# Developer: Update existing plugin to new version
+pacc plugin update team/tools --version v2.0.0 --create-backup --dry-run
+pacc plugin update team/tools --version v2.0.0 --create-backup
+
+# Developer: Remove unwanted plugin
+pacc plugin remove old-formatter --repo team/tools --dry-run
+pacc plugin remove old-formatter --repo team/tools
+
+# Team: Update to new plugin versions
+# Update pacc.json with new versions
+pacc plugin sync --dry-run  # Preview changes
+pacc plugin sync            # Apply updates
+```
 
 ## Security Considerations
 
