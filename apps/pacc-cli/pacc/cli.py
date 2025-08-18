@@ -4,6 +4,7 @@
 import argparse
 import asyncio
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from .core.config_manager import ClaudeConfigManager
 from .core.project_config import ProjectConfigManager, ProjectSyncManager
 from .plugins import (
     PluginConfigManager,
+    PluginRepositoryManager,
     RepositoryManager,
     PluginDiscovery,
     PluginSelector,
@@ -671,6 +673,149 @@ class PACCCli:
         )
         
         disable_plugin_parser.set_defaults(func=self.handle_plugin_disable)
+        
+        # Plugin update command
+        update_plugin_parser = plugin_subparsers.add_parser(
+            "update",
+            help="Update plugins from Git repositories",
+            description="Update plugins by pulling latest changes from Git repositories"
+        )
+        
+        update_plugin_parser.add_argument(
+            "plugin",
+            nargs="?",
+            help="Specific plugin to update (format: owner/repo or repo/plugin). If not specified, updates all plugins."
+        )
+        
+        update_plugin_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be updated without making changes"
+        )
+        
+        update_plugin_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Force update even if there are conflicts (performs git reset --hard)"
+        )
+        
+        update_plugin_parser.add_argument(
+            "--show-diff",
+            action="store_true", 
+            help="Show diff of changes when updating"
+        )
+        
+        update_plugin_parser.set_defaults(func=self.handle_plugin_update)
+        
+        # Plugin sync command
+        sync_plugin_parser = plugin_subparsers.add_parser(
+            "sync",
+            help="Synchronize plugins from pacc.json configuration",
+            description="Sync team plugins by reading pacc.json configuration and installing/updating required plugins"
+        )
+        
+        sync_plugin_parser.add_argument(
+            "--project-dir",
+            type=Path,
+            default=Path.cwd(),
+            help="Project directory containing pacc.json (default: current directory)"
+        )
+        
+        sync_plugin_parser.add_argument(
+            "--environment", "-e",
+            default="default",
+            help="Environment to sync (default: default)"
+        )
+        
+        sync_plugin_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be synced without making changes"
+        )
+        
+        sync_plugin_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Force sync even if there are conflicts"
+        )
+        
+        sync_plugin_parser.add_argument(
+            "--required-only",
+            action="store_true",
+            help="Only install required plugins, skip optional ones"
+        )
+        
+        sync_plugin_parser.add_argument(
+            "--optional-only",
+            action="store_true",
+            help="Only install optional plugins, skip required ones"
+        )
+        
+        sync_plugin_parser.set_defaults(func=self.handle_plugin_sync)
+        
+        # Plugin info command
+        info_plugin_parser = plugin_subparsers.add_parser(
+            "info",
+            help="Show detailed plugin information",
+            description="Display detailed metadata, components, and status of a plugin"
+        )
+        
+        info_plugin_parser.add_argument(
+            "plugin",
+            help="Plugin to show info for (format: repo/plugin or just plugin name)"
+        )
+        
+        info_plugin_parser.add_argument(
+            "--repo",
+            help="Repository containing the plugin (owner/repo format)"
+        )
+        
+        info_plugin_parser.add_argument(
+            "--format",
+            choices=["table", "json"],
+            default="table",
+            help="Output format"
+        )
+        
+        info_plugin_parser.set_defaults(func=self.handle_plugin_info)
+        
+        # Plugin remove command
+        remove_plugin_parser = plugin_subparsers.add_parser(
+            "remove",
+            aliases=["rm"],
+            help="Remove/uninstall a plugin",
+            description="Remove plugin from enabled plugins and optionally delete repository files"
+        )
+        
+        remove_plugin_parser.add_argument(
+            "plugin",
+            help="Plugin to remove (format: repo/plugin or just plugin name)"
+        )
+        
+        remove_plugin_parser.add_argument(
+            "--repo",
+            help="Repository containing the plugin (owner/repo format)"
+        )
+        
+        remove_plugin_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Skip confirmation prompts"
+        )
+        
+        remove_plugin_parser.add_argument(
+            "--keep-files",
+            action="store_true",
+            help="Remove from settings but keep repository files"
+        )
+        
+        remove_plugin_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be removed without making changes"
+        )
+        
+        remove_plugin_parser.set_defaults(func=self.handle_plugin_remove)
         
         plugin_parser.set_defaults(func=self._plugin_help)
 
@@ -2692,6 +2837,602 @@ class PACCCli:
             self._print_error(f"Failed to disable plugin: {e}")
             return 1
     
+    def handle_plugin_info(self, args) -> int:
+        """Handle plugin info command."""
+        try:
+            # Parse plugin identifier
+            repo_key, plugin_name = self._parse_plugin_identifier(args.plugin, args.repo)
+            if not repo_key or not plugin_name:
+                self._print_error("Please specify plugin in format 'repo/plugin' or use --repo option")
+                return 1
+            
+            # Initialize managers
+            plugins_dir = Path.home() / ".claude" / "plugins"
+            plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
+            repo_manager = PluginRepositoryManager(plugins_dir=plugins_dir)
+            discovery = PluginDiscovery()
+            
+            # Load configuration
+            config = plugin_config._load_plugin_config()
+            settings = plugin_config._load_settings()
+            enabled_plugins = settings.get("enabledPlugins", {})
+            
+            # Check if repository exists in config
+            repositories = config.get("repositories", {})
+            if repo_key not in repositories:
+                self._print_error(f"Repository '{repo_key}' not found. Use 'pacc plugin list' to see available plugins.")
+                return 1
+            
+            repo_info = repositories[repo_key]
+            
+            # Check if plugin exists in repository
+            repo_plugins = repo_info.get("plugins", [])
+            if plugin_name not in repo_plugins:
+                self._print_error(f"Plugin '{plugin_name}' not found in repository '{repo_key}'")
+                self._print_info(f"Available plugins in {repo_key}: {', '.join(repo_plugins)}")
+                return 1
+            
+            # Get repository path
+            owner, repo = repo_key.split("/", 1)
+            repo_path = plugins_dir / "repos" / owner / repo
+            
+            # Check installation status
+            is_enabled = plugin_name in enabled_plugins.get(repo_key, [])
+            is_installed = repo_path.exists()
+            
+            # Basic plugin info
+            plugin_info = {
+                "name": plugin_name,
+                "repository": repo_key,
+                "enabled": is_enabled,
+                "installed": is_installed,
+                "last_updated": repo_info.get("lastUpdated"),
+                "commit_sha": repo_info.get("commitSha"),
+                "repository_url": repo_info.get("url")
+            }
+            
+            # If installed, get detailed information
+            if is_installed:
+                try:
+                    # Discover plugin details in repository
+                    repo_plugins = discovery.discover_plugins(repo_path)
+                    
+                    # Find the specific plugin
+                    plugin_details = None
+                    for plugin in repo_plugins.plugins:
+                        if plugin.name == plugin_name:
+                            plugin_details = plugin
+                            break
+                    
+                    if plugin_details:
+                        plugin_info.update({
+                            "type": getattr(plugin_details, 'type', 'unknown'),
+                            "description": plugin_details.manifest.get("description", "No description"),
+                            "version": plugin_details.manifest.get("version", "unknown"),
+                            "author": plugin_details.manifest.get("author", "unknown"),
+                            "file_path": str(plugin_details.path),
+                            "components": self._get_plugin_components_info(plugin_details),
+                            "manifest": plugin_details.manifest
+                        })
+                    else:
+                        plugin_info.update({
+                            "type": "unknown",
+                            "description": "Plugin metadata not available",
+                            "version": "unknown",
+                            "author": "unknown"
+                        })
+                        
+                except Exception as e:
+                    self._print_warning(f"Failed to scan plugin details: {e}")
+                    plugin_info.update({
+                        "type": "unknown",
+                        "description": f"Error reading plugin: {e}",
+                        "version": "unknown",
+                        "author": "unknown"
+                    })
+            else:
+                plugin_info.update({
+                    "type": "unknown",
+                    "description": "Repository not found locally",
+                    "version": "unknown",
+                    "author": "unknown",
+                    "status": "missing"
+                })
+            
+            # Display results
+            if args.format == "json":
+                import json
+                print(json.dumps(plugin_info, indent=2, ensure_ascii=False, default=str))
+            else:
+                self._display_plugin_info_table(plugin_info)
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to get plugin info: {e}")
+            return 1
+    
+    def handle_plugin_remove(self, args) -> int:
+        """Handle plugin remove command."""
+        try:
+            # Parse plugin identifier
+            repo_key, plugin_name = self._parse_plugin_identifier(args.plugin, args.repo)
+            if not repo_key or not plugin_name:
+                self._print_error("Please specify plugin in format 'repo/plugin' or use --repo option")
+                return 1
+            
+            # Initialize managers
+            plugins_dir = Path.home() / ".claude" / "plugins"
+            plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
+            repo_manager = PluginRepositoryManager(plugins_dir=plugins_dir)
+            
+            # Load configuration
+            config = plugin_config._load_plugin_config()
+            settings = plugin_config._load_settings()
+            enabled_plugins = settings.get("enabledPlugins", {})
+            
+            # Check if repository exists in config
+            repositories = config.get("repositories", {})
+            if repo_key not in repositories:
+                self._print_warning(f"Repository '{repo_key}' not found in configuration")
+            
+            # Check if plugin is enabled
+            is_enabled = plugin_name in enabled_plugins.get(repo_key, [])
+            
+            # Get repository path
+            owner, repo = repo_key.split("/", 1)
+            repo_path = plugins_dir / "repos" / owner / repo
+            repo_exists = repo_path.exists()
+            
+            # Dry run mode
+            if args.dry_run:
+                self._print_info("DRY RUN MODE - No changes will be made")
+                if is_enabled:
+                    self._print_info(f"Would disable plugin: {repo_key}/{plugin_name}")
+                if repo_exists and not args.keep_files:
+                    repo_plugins = repositories.get(repo_key, {}).get("plugins", [])
+                    if len(repo_plugins) <= 1:
+                        self._print_info(f"Would remove repository: {repo_path}")
+                    else:
+                        self._print_info(f"Would keep repository (has other plugins): {repo_path}")
+                if repo_key in repositories:
+                    self._print_info(f"Would remove from config: {repo_key}")
+                return 0
+            
+            # Confirmation prompt
+            if not args.force:
+                self._print_info(f"Plugin: {repo_key}/{plugin_name}")
+                self._print_info(f"Enabled: {'Yes' if is_enabled else 'No'}")
+                self._print_info(f"Repository exists: {'Yes' if repo_exists else 'No'}")
+                
+                if not args.keep_files and repo_exists:
+                    repo_plugins = repositories.get(repo_key, {}).get("plugins", [])
+                    if len(repo_plugins) <= 1:
+                        self._print_warning(f"This will delete the entire repository: {repo_path}")
+                    else:
+                        self._print_info(f"Repository will be kept (has {len(repo_plugins)} plugins)")
+                
+                confirm = input("Continue with removal? [y/N]: ").lower().strip()
+                if confirm not in ('y', 'yes'):
+                    self._print_info("Removal cancelled")
+                    return 0
+            
+            # Atomic removal using transaction
+            try:
+                with plugin_config.transaction():
+                    removal_success = True
+                    
+                    # Step 1: Disable plugin if enabled
+                    if is_enabled:
+                        if plugin_config.disable_plugin(repo_key, plugin_name):
+                            self._print_success(f"Disabled plugin: {repo_key}/{plugin_name}")
+                        else:
+                            self._print_error(f"Failed to disable plugin: {repo_key}/{plugin_name}")
+                            removal_success = False
+                    
+                    # Step 2: Remove repository files if requested and safe
+                    if not args.keep_files and repo_exists and removal_success:
+                        repo_plugins = repositories.get(repo_key, {}).get("plugins", [])
+                        
+                        # Only remove repository if this is the only plugin or if forced
+                        if len(repo_plugins) <= 1:
+                            try:
+                                import shutil
+                                shutil.rmtree(repo_path)
+                                self._print_success(f"Removed repository: {repo_path}")
+                            except OSError as e:
+                                self._print_error(f"Failed to remove repository files: {e}")
+                                removal_success = False
+                        else:
+                            self._print_info(f"Repository kept (contains {len(repo_plugins)} plugins)")
+                    
+                    # Step 3: Remove from config if repository is empty or doesn't exist
+                    if removal_success and repo_key in repositories:
+                        repo_plugins = repositories.get(repo_key, {}).get("plugins", [])
+                        if len(repo_plugins) <= 1 or not repo_exists:
+                            if plugin_config.remove_repository(owner, repo):
+                                self._print_success(f"Removed repository from config: {repo_key}")
+                            else:
+                                self._print_error(f"Failed to remove repository from config: {repo_key}")
+                                removal_success = False
+                    
+                    if not removal_success:
+                        raise Exception("Plugin removal failed, rolling back changes")
+                
+                self._print_success(f"Successfully removed plugin: {repo_key}/{plugin_name}")
+                return 0
+                
+            except Exception as e:
+                self._print_error(f"Failed to remove plugin (changes rolled back): {e}")
+                return 1
+            
+        except Exception as e:
+            self._print_error(f"Failed to remove plugin: {e}")
+            return 1
+    
+    def handle_plugin_update(self, args) -> int:
+        """Handle plugin update command."""
+        try:
+            plugins_dir = Path.home() / ".claude" / "plugins"
+            repo_manager = PluginRepositoryManager(plugins_dir=plugins_dir)
+            plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
+            
+            # If specific plugin specified, update only that one
+            if args.plugin:
+                return self._update_single_plugin(args, repo_manager, plugin_config)
+            else:
+                return self._update_all_plugins(args, repo_manager, plugin_config)
+                
+        except Exception as e:
+            self._print_error(f"Failed to update plugins: {e}")
+            return 1
+    
+    def _update_single_plugin(self, args, repo_manager: PluginRepositoryManager, plugin_config: PluginConfigManager) -> int:
+        """Update a single plugin repository."""
+        plugin_spec = args.plugin
+        
+        # Parse plugin specification - could be owner/repo or repo/plugin format
+        if "/" in plugin_spec:
+            parts = plugin_spec.split("/")
+            if len(parts) == 2:
+                # Assume owner/repo format for now
+                owner, repo = parts
+                repo_key = f"{owner}/{repo}"
+            else:
+                self._print_error(f"Invalid plugin specification: {plugin_spec}")
+                return 1
+        else:
+            self._print_error("Plugin specification must be in 'owner/repo' format")
+            return 1
+        
+        # Check if repository exists in config
+        config_data = plugin_config._load_plugin_config()
+        repositories = config_data.get("repositories", {})
+        
+        if repo_key not in repositories:
+            self._print_error(f"Repository not found: {repo_key}")
+            self._print_info("Use 'pacc plugin list' to see installed repositories")
+            return 1
+        
+        # Get repository path
+        plugins_dir = Path.home() / ".claude" / "plugins"
+        repo_path = plugins_dir / "repos" / owner / repo
+        if not repo_path.exists():
+            self._print_error(f"Repository directory not found: {repo_path}")
+            return 1
+        
+        return self._perform_plugin_update(repo_key, repo_path, args, repo_manager, plugin_config)
+    
+    def _update_all_plugins(self, args, repo_manager: PluginRepositoryManager, plugin_config: PluginConfigManager) -> int:
+        """Update all installed plugin repositories."""
+        config_data = plugin_config._load_plugin_config()
+        repositories = config_data.get("repositories", {})
+        
+        if not repositories:
+            self._print_info("No plugin repositories found to update")
+            return 0
+        
+        self._print_info(f"Updating {len(repositories)} plugin repositories...")
+        
+        total_updated = 0
+        total_errors = 0
+        
+        for repo_key in repositories:
+            try:
+                # Parse owner/repo from key
+                owner, repo = repo_key.split("/", 1)
+                repo_path = repo_manager.repos_dir / owner / repo
+                
+                if not repo_path.exists():
+                    self._print_warning(f"Repository directory not found: {repo_path}")
+                    total_errors += 1
+                    continue
+                
+                result = self._perform_plugin_update(repo_key, repo_path, args, repo_manager, plugin_config)
+                if result == 0:
+                    total_updated += 1
+                else:
+                    total_errors += 1
+                    
+            except Exception as e:
+                self._print_error(f"Failed to update {repo_key}: {e}")
+                total_errors += 1
+        
+        # Summary
+        self._print_info(f"\nUpdate complete: {total_updated} updated, {total_errors} errors")
+        return 0 if total_errors == 0 else 1
+    
+    def _perform_plugin_update(self, repo_key: str, repo_path: Path, args, repo_manager: PluginRepositoryManager, plugin_config: PluginConfigManager) -> int:
+        """Perform the actual update for a repository."""
+        self._print_info(f"Updating {repo_key}...")
+        
+        try:
+            # Get current status before update
+            old_sha = None
+            try:
+                old_sha = repo_manager._get_current_commit_sha(repo_path)
+            except Exception as e:
+                self._print_warning(f"Could not get current commit SHA: {e}")
+            
+            # Check for uncommitted changes if not forcing
+            if not args.force and not repo_manager._is_working_tree_clean(repo_path):
+                self._print_error(f"Repository {repo_key} has uncommitted changes. Use --force to override or commit your changes.")
+                return 1
+            
+            # Dry run - show what would be updated
+            if args.dry_run:
+                return self._show_update_preview(repo_key, repo_path, repo_manager, old_sha)
+            
+            # Perform actual update
+            update_result = repo_manager.update_plugin(repo_path)
+            
+            if not update_result.success:
+                self._print_error(f"Update failed for {repo_key}: {update_result.error_message}")
+                
+                # Attempt automatic rollback if we have old SHA
+                if old_sha and args.force:
+                    self._print_info(f"Attempting rollback to {old_sha[:8]}...")
+                    if repo_manager.rollback_plugin(repo_path, old_sha):
+                        self._print_success(f"Rolled back {repo_key} to previous state")
+                    else:
+                        self._print_error(f"Rollback failed for {repo_key}")
+                
+                return 1
+            
+            # Update successful
+            if update_result.had_changes:
+                self._print_success(f"Updated {repo_key}: {update_result.old_sha[:8]} → {update_result.new_sha[:8]}")
+                
+                # Show diff if requested
+                if args.show_diff and update_result.old_sha and update_result.new_sha:
+                    self._show_commit_diff(repo_path, update_result.old_sha, update_result.new_sha)
+                
+                # Update config with new commit SHA
+                try:
+                    metadata = plugin_config._load_plugin_config().get("repositories", {}).get(repo_key, {})
+                    metadata["commitSha"] = update_result.new_sha
+                    metadata["lastUpdated"] = datetime.now().isoformat()
+                    plugin_config.add_repository(*repo_key.split("/", 1), metadata)
+                except Exception as e:
+                    self._print_warning(f"Failed to update config metadata: {e}")
+                    
+            else:
+                self._print_info(f"{repo_key} is already up to date")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Unexpected error updating {repo_key}: {e}")
+            return 1
+    
+    def _show_update_preview(self, repo_key: str, repo_path: Path, repo_manager: PluginRepositoryManager, old_sha: Optional[str]) -> int:
+        """Show preview of what would be updated."""
+        try:
+            # Fetch remote changes without merging
+            import subprocess
+            result = subprocess.run(
+                ["git", "fetch", "--dry-run"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode != 0:
+                self._print_error(f"Failed to fetch remote for {repo_key}: {result.stderr}")
+                return 1
+            
+            # Get remote HEAD SHA
+            result = subprocess.run(
+                ["git", "rev-parse", "origin/HEAD"],
+                cwd=repo_path,
+                capture_output=True, 
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode != 0:
+                # Try origin/main or origin/master
+                for branch in ["origin/main", "origin/master"]:
+                    result = subprocess.run(
+                        ["git", "rev-parse", branch],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    if result.returncode == 0:
+                        break
+                else:
+                    self._print_error(f"Could not determine remote HEAD for {repo_key}")
+                    return 1
+            
+            remote_sha = result.stdout.strip()
+            
+            if old_sha == remote_sha:
+                self._print_info(f"{repo_key} is already up to date")
+                return 0
+            
+            # Show commits behind
+            if old_sha:
+                result = subprocess.run(
+                    ["git", "rev-list", "--count", f"{old_sha}..{remote_sha}"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if result.returncode == 0:
+                    commits_behind = result.stdout.strip()
+                    self._print_info(f"{repo_key} is {commits_behind} commits behind remote")
+                
+                # Show commit log
+                result = subprocess.run(
+                    ["git", "log", "--oneline", f"{old_sha}..{remote_sha}"],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    self._print_info(f"Recent changes in {repo_key}:")
+                    for line in result.stdout.strip().split('\n'):
+                        self._print_info(f"  • {line}")
+            else:
+                self._print_info(f"{repo_key} would be updated to {remote_sha[:8]}")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to show preview for {repo_key}: {e}")
+            return 1
+    
+    def _show_commit_diff(self, repo_path: Path, old_sha: str, new_sha: str) -> None:
+        """Show diff between two commits."""
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "diff", "--stat", f"{old_sha}..{new_sha}"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                self._print_info("Changes:")
+                for line in result.stdout.strip().split('\n'):
+                    self._print_info(f"  {line}")
+            else:
+                self._print_info("No file changes detected")
+                
+        except Exception as e:
+            self._print_warning(f"Could not show diff: {e}")
+
+    def handle_plugin_sync(self, args) -> int:
+        """Handle plugin sync command for team collaboration."""
+        try:
+            from .core.project_config import PluginSyncManager
+            
+            # Initialize sync manager
+            sync_manager = PluginSyncManager()
+            
+            # Check if pacc.json exists
+            project_dir = args.project_dir
+            config_path = project_dir / "pacc.json"
+            
+            if not config_path.exists():
+                self._print_error(f"No pacc.json found in {project_dir}")
+                self._print_info("Initialize a project configuration with 'pacc init' or create pacc.json manually")
+                return 1
+            
+            # Set output mode
+            self._set_json_mode(getattr(args, 'json', False))
+            
+            # Show what we're syncing
+            if args.dry_run:
+                self._print_info(f"🔍 Dry-run: Checking plugin synchronization for {project_dir}")
+            else:
+                self._print_info(f"🔄 Synchronizing plugins from {config_path}")
+            
+            if args.environment != "default":
+                self._print_info(f"Environment: {args.environment}")
+            
+            # Perform sync
+            result = sync_manager.sync_plugins(
+                project_dir=project_dir,
+                environment=args.environment,
+                dry_run=args.dry_run
+            )
+            
+            # Process filtering options
+            if args.required_only or args.optional_only:
+                # This would need additional logic in sync_manager
+                # For now, just warn the user
+                if args.required_only:
+                    self._print_warning("--required-only filtering not yet implemented")
+                if args.optional_only:
+                    self._print_warning("--optional-only filtering not yet implemented")
+            
+            # Display results
+            if result.success:
+                self._print_success("✅ Plugin synchronization completed successfully")
+                
+                if result.installed_count > 0:
+                    self._print_info(f"📦 Installed: {result.installed_count} plugins")
+                
+                if result.updated_count > 0:
+                    self._print_info(f"🔄 Updated: {result.updated_count} plugins")
+                
+                if result.skipped_count > 0:
+                    self._print_info(f"⏭️  Skipped: {result.skipped_count} plugins (already up to date)")
+                
+                if not result.installed_count and not result.updated_count:
+                    self._print_info("💡 All plugins are already synchronized")
+            
+            else:
+                self._print_error("❌ Plugin synchronization failed")
+                if result.error_message:
+                    self._print_error(f"Error: {result.error_message}")
+            
+            # Show warnings
+            for warning in result.warnings:
+                self._print_warning(warning)
+            
+            # Show failed plugins
+            if result.failed_plugins:
+                self._print_error(f"Failed to sync {len(result.failed_plugins)} plugins:")
+                for plugin in result.failed_plugins:
+                    self._print_error(f"  • {plugin}")
+            
+            # JSON output
+            if self._json_output:
+                command_result = CommandResult(
+                    success=result.success,
+                    message="Plugin sync completed" if result.success else "Plugin sync failed",
+                    data={
+                        "installed_count": result.installed_count,
+                        "updated_count": result.updated_count,
+                        "skipped_count": result.skipped_count,
+                        "failed_plugins": result.failed_plugins,
+                        "environment": args.environment,
+                        "dry_run": args.dry_run
+                    },
+                    warnings=result.warnings if result.warnings else None
+                )
+                print(json.dumps(command_result.to_dict(), indent=2))
+            
+            return 0 if result.success else 1
+            
+        except Exception as e:
+            self._print_error(f"Sync failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+    
     def _parse_plugin_identifier(self, plugin_arg: str, repo_arg: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
         """Parse plugin identifier from arguments.
         
@@ -2787,6 +3528,102 @@ class PACCCli:
                 raise
         
         return indicator()
+    
+    def _get_plugin_components_info(self, plugin_details) -> dict:
+        """Get information about plugin components.
+        
+        Args:
+            plugin_details: PluginInfo object from discovery
+            
+        Returns:
+            Dict with component counts and details
+        """
+        components_info = {
+            "commands": [],
+            "agents": [],
+            "hooks": [],
+            "total_count": 0
+        }
+        
+        try:
+            # Get namespaced components
+            namespaced = plugin_details.get_namespaced_components()
+            
+            for comp_type, comp_list in namespaced.items():
+                components_info[comp_type] = comp_list
+                components_info["total_count"] += len(comp_list)
+            
+            return components_info
+            
+        except Exception as e:
+            self._print_warning(f"Failed to analyze plugin components: {e}")
+            return components_info
+    
+    def _display_plugin_info_table(self, plugin_info: dict) -> None:
+        """Display plugin information in table format.
+        
+        Args:
+            plugin_info: Plugin information dictionary
+        """
+        # Plugin header
+        print(f"\nPlugin: {plugin_info['name']}")
+        print("=" * (len(plugin_info['name']) + 8))
+        
+        # Basic information
+        print(f"Repository: {plugin_info['repository']}")
+        print(f"Enabled: {'✓ Yes' if plugin_info['enabled'] else '✗ No'}")
+        print(f"Installed: {'✓ Yes' if plugin_info['installed'] else '✗ No'}")
+        
+        if plugin_info.get('description'):
+            print(f"Description: {plugin_info['description']}")
+        
+        if plugin_info.get('version'):
+            print(f"Version: {plugin_info['version']}")
+        
+        if plugin_info.get('author'):
+            print(f"Author: {plugin_info['author']}")
+        
+        # Repository information
+        if plugin_info.get('repository_url'):
+            print(f"Repository URL: {plugin_info['repository_url']}")
+        
+        if plugin_info.get('last_updated'):
+            print(f"Last Updated: {plugin_info['last_updated']}")
+        
+        if plugin_info.get('commit_sha'):
+            print(f"Commit SHA: {plugin_info['commit_sha'][:8]}...")
+        
+        if plugin_info.get('file_path'):
+            print(f"Location: {plugin_info['file_path']}")
+        
+        # Components information
+        if plugin_info.get('components'):
+            components = plugin_info['components']
+            total_components = components.get('total_count', 0)
+            
+            if total_components > 0:
+                print(f"\nComponents ({total_components} total):")
+                
+                if components.get('commands'):
+                    print(f"  Commands ({len(components['commands'])}):")
+                    for cmd in components['commands']:
+                        print(f"    - {cmd}")
+                
+                if components.get('agents'):
+                    print(f"  Agents ({len(components['agents'])}):")
+                    for agent in components['agents']:
+                        print(f"    - {agent}")
+                
+                if components.get('hooks'):
+                    print(f"  Hooks ({len(components['hooks'])}):")
+                    for hook in components['hooks']:
+                        print(f"    - {hook}")
+            else:
+                print("\nComponents: None found")
+        
+        # Status information
+        if plugin_info.get('status'):
+            print(f"\nStatus: {plugin_info['status']}")
 
 
 def main() -> int:
