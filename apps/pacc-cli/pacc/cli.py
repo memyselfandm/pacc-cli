@@ -22,6 +22,13 @@ from .ui import MultiSelectList
 from .errors import PACCError, ValidationError, SourceError
 from .core.config_manager import ClaudeConfigManager
 from .core.project_config import ProjectConfigManager, ProjectSyncManager
+from .plugins import (
+    PluginConfigManager,
+    RepositoryManager,
+    PluginDiscovery,
+    PluginSelector,
+    GitRepository
+)
 
 # URL downloader imports (conditional for optional dependency)
 try:
@@ -134,6 +141,9 @@ class PACCCli:
         
         # Sync command
         self._add_sync_parser(subparsers)
+        
+        # Plugin command
+        self._add_plugin_parser(subparsers)
         
         return parser
     
@@ -519,6 +529,150 @@ class PACCCli:
         )
         
         sync_parser.set_defaults(func=self.sync_command)
+
+    def _add_plugin_parser(self, subparsers) -> None:
+        """Add the plugin command parser."""
+        plugin_parser = subparsers.add_parser(
+            "plugin",
+            help="Manage Claude Code plugins",
+            description="Install, list, enable, and disable Claude Code plugins from Git repositories"
+        )
+        
+        plugin_subparsers = plugin_parser.add_subparsers(
+            dest="plugin_command",
+            help="Plugin commands",
+            metavar="<plugin_command>"
+        )
+        
+        # Plugin install command
+        install_plugin_parser = plugin_subparsers.add_parser(
+            "install",
+            help="Install plugins from Git repository",
+            description="Clone Git repository and install discovered Claude Code plugins"
+        )
+        
+        install_plugin_parser.add_argument(
+            "repo_url",
+            help="Git repository URL (e.g., https://github.com/owner/repo)"
+        )
+        
+        install_plugin_parser.add_argument(
+            "--enable",
+            action="store_true",
+            help="Automatically enable installed plugins"
+        )
+        
+        install_plugin_parser.add_argument(
+            "--all",
+            action="store_true",
+            help="Install all plugins found in repository"
+        )
+        
+        install_plugin_parser.add_argument(
+            "--type", "-t",
+            choices=["hooks", "agents", "mcps", "commands"],
+            help="Install only plugins of specified type"
+        )
+        
+        install_plugin_parser.add_argument(
+            "--update",
+            action="store_true", 
+            help="Update repository if it already exists"
+        )
+        
+        install_plugin_parser.add_argument(
+            "--interactive", "-i",
+            action="store_true",
+            help="Interactively select plugins to install"
+        )
+        
+        install_plugin_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be installed without making changes"
+        )
+        
+        install_plugin_parser.set_defaults(func=self.handle_plugin_install)
+        
+        # Plugin list command
+        list_plugin_parser = plugin_subparsers.add_parser(
+            "list",
+            aliases=["ls"],
+            help="List installed plugins",
+            description="List installed plugins and their status"
+        )
+        
+        list_plugin_parser.add_argument(
+            "--repo",
+            help="Show plugins from specific repository (owner/repo format)"
+        )
+        
+        list_plugin_parser.add_argument(
+            "--type", "-t",
+            choices=["hooks", "agents", "mcps", "commands"],
+            help="Show only plugins of specified type"
+        )
+        
+        list_plugin_parser.add_argument(
+            "--enabled-only",
+            action="store_true",
+            help="Show only enabled plugins"
+        )
+        
+        list_plugin_parser.add_argument(
+            "--disabled-only", 
+            action="store_true",
+            help="Show only disabled plugins"
+        )
+        
+        list_plugin_parser.add_argument(
+            "--format",
+            choices=["table", "list", "json"],
+            default="table",
+            help="Output format"
+        )
+        
+        list_plugin_parser.set_defaults(func=self.handle_plugin_list)
+        
+        # Plugin enable command
+        enable_plugin_parser = plugin_subparsers.add_parser(
+            "enable",
+            help="Enable a specific plugin",
+            description="Enable a plugin by adding it to enabledPlugins in settings.json"
+        )
+        
+        enable_plugin_parser.add_argument(
+            "plugin",
+            help="Plugin to enable (format: repo/plugin or just plugin name)"
+        )
+        
+        enable_plugin_parser.add_argument(
+            "--repo",
+            help="Repository containing the plugin (owner/repo format)"
+        )
+        
+        enable_plugin_parser.set_defaults(func=self.handle_plugin_enable)
+        
+        # Plugin disable command  
+        disable_plugin_parser = plugin_subparsers.add_parser(
+            "disable",
+            help="Disable a specific plugin",
+            description="Disable a plugin by removing it from enabledPlugins in settings.json"
+        )
+        
+        disable_plugin_parser.add_argument(
+            "plugin",
+            help="Plugin to disable (format: repo/plugin or just plugin name)"
+        )
+        
+        disable_plugin_parser.add_argument(
+            "--repo", 
+            help="Repository containing the plugin (owner/repo format)"
+        )
+        
+        disable_plugin_parser.set_defaults(func=self.handle_plugin_disable)
+        
+        plugin_parser.set_defaults(func=self._plugin_help)
 
     def install_command(self, args) -> int:
         """Handle the install command."""
@@ -2264,6 +2418,375 @@ class PACCCli:
         """Enable or disable JSON output mode."""
         self._json_output = enabled
         self._messages = []
+    
+    def _plugin_help(self, args) -> int:
+        """Show plugin command help when no subcommand is specified."""
+        print("pacc plugin: Manage Claude Code plugins\n")
+        print("Available commands:")
+        print("  install <repo_url>  Install plugins from Git repository")
+        print("  list               List installed plugins with status")
+        print("  enable <plugin>    Enable a specific plugin")
+        print("  disable <plugin>   Disable a specific plugin")
+        print("\nUse 'pacc plugin <command> --help' for more information on a command.")
+        return 0
+    
+    def handle_plugin_install(self, args) -> int:
+        """Handle plugin install command."""
+        try:
+            self._print_info(f"Installing plugins from repository: {args.repo_url}")
+            
+            if args.dry_run:
+                self._print_info("DRY RUN MODE - No changes will be made")
+            
+            # Validate Git URL
+            if not GitRepository.is_valid_git_url(args.repo_url):
+                self._print_error(f"Invalid Git repository URL: {args.repo_url}")
+                return 1
+            
+            # Initialize plugin managers
+            plugins_dir = Path.home() / ".claude" / "plugins"
+            repo_manager = RepositoryManager(plugins_dir)
+            plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
+            discovery = PluginDiscovery()
+            selector = PluginSelector()
+            
+            # Clone or update repository
+            with self._progress_indicator("Cloning repository"):
+                repo_path, repo_info = repo_manager.install_repository(
+                    args.repo_url, 
+                    update_if_exists=args.update
+                )
+            
+            self._print_success(f"Repository cloned: {repo_info.owner}/{repo_info.repo}")
+            
+            # Discover plugins
+            with self._progress_indicator("Discovering plugins"):
+                repo_plugins = discovery.discover_plugins(repo_path)
+            
+            if not repo_plugins.plugins:
+                self._print_warning("No plugins found in repository")
+                return 0
+            
+            self._print_info(f"Found {len(repo_plugins.plugins)} plugin(s)")
+            
+            # Select plugins to install
+            if args.all:
+                selected_plugins = selector.select_all_plugins(repo_plugins)
+            elif args.type:
+                selected_plugins = selector.select_plugins_by_type(repo_plugins, args.type)
+            elif args.interactive:
+                selected_plugins = selector.select_plugins_interactive(repo_plugins)
+            else:
+                # Default: show plugins and ask for confirmation
+                self._display_discovered_plugins(repo_plugins)
+                if self._confirm_plugin_installation(repo_plugins):
+                    selected_plugins = repo_plugins.plugins
+                else:
+                    self._print_info("Installation cancelled")
+                    return 0
+            
+            if not selected_plugins:
+                self._print_info("No plugins selected for installation")
+                return 0
+            
+            # Install selected plugins
+            success_count = 0
+            repo_key = f"{repo_info.owner}/{repo_info.repo}"
+            
+            if not args.dry_run:
+                # Add repository to config
+                plugin_config.add_repository(
+                    repo_info.owner, 
+                    repo_info.repo,
+                    metadata={
+                        "url": args.repo_url,
+                        "commit": repo_info.commit_hash,
+                        "plugins": [p.name for p in selected_plugins]
+                    }
+                )
+            
+            for plugin in selected_plugins:
+                try:
+                    if args.dry_run:
+                        self._print_info(f"Would install: {plugin.name} ({plugin.type})")
+                    else:
+                        # Plugin files are already in the repository directory
+                        # Just need to enable them if requested
+                        if args.enable:
+                            plugin_config.enable_plugin(repo_key, plugin.name)
+                            self._print_success(f"Installed and enabled: {plugin.name} ({plugin.type})")
+                        else:
+                            self._print_success(f"Installed: {plugin.name} ({plugin.type})")
+                    
+                    success_count += 1
+                    
+                except Exception as e:
+                    self._print_error(f"Failed to install {plugin.name}: {e}")
+                    
+            # Summary
+            if args.dry_run:
+                self._print_info(f"Would install {success_count} plugin(s)")
+            else:
+                self._print_success(f"Successfully installed {success_count} plugin(s)")
+                if args.enable:
+                    self._print_info("Plugins have been enabled automatically")
+                else:
+                    self._print_info("Use 'pacc plugin enable <plugin>' to enable plugins")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Plugin installation failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def handle_plugin_list(self, args) -> int:
+        """Handle plugin list command."""
+        try:
+            # Initialize plugin managers
+            plugins_dir = Path.home() / ".claude" / "plugins"
+            plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
+            repo_manager = RepositoryManager(plugins_dir)
+            discovery = PluginDiscovery()
+            
+            # Load plugin configuration
+            config = plugin_config._load_plugin_config()
+            settings = plugin_config._load_settings()
+            enabled_plugins = settings.get("enabledPlugins", {})
+            
+            # Collect plugin information
+            all_plugins = []
+            
+            for repo_key, repo_data in config.get("repositories", {}).items():
+                # Skip if filtering by specific repo
+                if args.repo and args.repo != repo_key:
+                    continue
+                
+                owner, repo = repo_key.split("/", 1)
+                repo_path = repo_manager.get_repository_path(owner, repo)
+                
+                if not repo_path or not repo_path.exists():
+                    # Repository not found locally
+                    for plugin_name in repo_data.get("plugins", []):
+                        plugin_info = {
+                            "name": plugin_name,
+                            "repository": repo_key,
+                            "type": "unknown",
+                            "enabled": plugin_name in enabled_plugins.get(repo_key, []),
+                            "status": "missing",
+                            "description": "Repository not found locally"
+                        }
+                        all_plugins.append(plugin_info)
+                    continue
+                
+                # Discover plugins in repository
+                try:
+                    repo_plugins = discovery.discover_plugins(repo_path)
+                    
+                    for plugin in repo_plugins.plugins:
+                        # Skip if filtering by type
+                        if args.type and plugin.type != args.type:
+                            continue
+                        
+                        is_enabled = plugin.name in enabled_plugins.get(repo_key, [])
+                        
+                        # Skip if filtering by enabled/disabled status
+                        if args.enabled_only and not is_enabled:
+                            continue
+                        if args.disabled_only and is_enabled:
+                            continue
+                        
+                        plugin_info = {
+                            "name": plugin.name,
+                            "repository": repo_key,
+                            "type": plugin.type,
+                            "enabled": is_enabled,
+                            "status": "installed",
+                            "description": plugin.description or "No description",
+                            "version": plugin.version,
+                            "file_path": str(plugin.file_path)
+                        }
+                        all_plugins.append(plugin_info)
+                        
+                except Exception as e:
+                    self._print_warning(f"Failed to scan repository {repo_key}: {e}")
+            
+            if not all_plugins:
+                self._print_info("No plugins found")
+                return 0
+            
+            # Display results
+            if args.format == "json":
+                import json
+                result = {
+                    "plugins": all_plugins,
+                    "count": len(all_plugins)
+                }
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+            elif args.format == "list":
+                for plugin in all_plugins:
+                    status = "✓" if plugin["enabled"] else "✗"
+                    print(f"{status} {plugin['repository']}/{plugin['name']} ({plugin['type']}) - {plugin['description']}")
+            else:
+                # Table format
+                self._display_plugins_table(all_plugins)
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to list plugins: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def handle_plugin_enable(self, args) -> int:
+        """Handle plugin enable command."""
+        try:
+            # Parse plugin identifier
+            repo_key, plugin_name = self._parse_plugin_identifier(args.plugin, args.repo)
+            if not repo_key or not plugin_name:
+                self._print_error("Please specify plugin in format 'repo/plugin' or use --repo option")
+                return 1
+            
+            # Initialize plugin config
+            plugins_dir = Path.home() / ".claude" / "plugins"
+            plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
+            
+            # Enable plugin
+            if plugin_config.enable_plugin(repo_key, plugin_name):
+                self._print_success(f"Enabled plugin: {repo_key}/{plugin_name}")
+                return 0
+            else:
+                self._print_error(f"Failed to enable plugin: {repo_key}/{plugin_name}")
+                return 1
+                
+        except Exception as e:
+            self._print_error(f"Failed to enable plugin: {e}")
+            return 1
+    
+    def handle_plugin_disable(self, args) -> int:
+        """Handle plugin disable command."""
+        try:
+            # Parse plugin identifier
+            repo_key, plugin_name = self._parse_plugin_identifier(args.plugin, args.repo)
+            if not repo_key or not plugin_name:
+                self._print_error("Please specify plugin in format 'repo/plugin' or use --repo option")
+                return 1
+            
+            # Initialize plugin config
+            plugins_dir = Path.home() / ".claude" / "plugins"
+            plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
+            
+            # Disable plugin
+            if plugin_config.disable_plugin(repo_key, plugin_name):
+                self._print_success(f"Disabled plugin: {repo_key}/{plugin_name}")
+                return 0
+            else:
+                self._print_error(f"Failed to disable plugin: {repo_key}/{plugin_name}")
+                return 1
+                
+        except Exception as e:
+            self._print_error(f"Failed to disable plugin: {e}")
+            return 1
+    
+    def _parse_plugin_identifier(self, plugin_arg: str, repo_arg: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+        """Parse plugin identifier from arguments.
+        
+        Args:
+            plugin_arg: Plugin argument (could be 'plugin' or 'repo/plugin')
+            repo_arg: Optional repository argument
+            
+        Returns:
+            Tuple of (repo_key, plugin_name) or (None, None) if invalid
+        """
+        if "/" in plugin_arg:
+            # Format: repo/plugin
+            parts = plugin_arg.split("/", 1)
+            if len(parts) == 2:
+                return parts[0], parts[1]
+        elif repo_arg:
+            # Separate repo and plugin args
+            return repo_arg, plugin_arg
+        
+        return None, None
+    
+    def _display_discovered_plugins(self, repo_plugins) -> None:
+        """Display discovered plugins for user review."""
+        print(f"\nFound {len(repo_plugins.plugins)} plugin(s) in {repo_plugins.repository}:")
+        
+        # Group by type
+        by_type = {}
+        for plugin in repo_plugins.plugins:
+            if plugin.type not in by_type:
+                by_type[plugin.type] = []
+            by_type[plugin.type].append(plugin)
+        
+        for plugin_type, plugins in by_type.items():
+            print(f"\n{plugin_type.upper()}:")
+            for plugin in plugins:
+                desc = plugin.description or "No description"
+                print(f"  • {plugin.name} - {desc}")
+    
+    def _confirm_plugin_installation(self, repo_plugins) -> bool:
+        """Confirm plugin installation with user."""
+        try:
+            response = input(f"\nInstall all {len(repo_plugins.plugins)} plugin(s)? [Y/n]: ").strip().lower()
+            return response in ('', 'y', 'yes')
+        except KeyboardInterrupt:
+            return False
+    
+    def _display_plugins_table(self, plugins: List[Dict[str, Any]]) -> None:
+        """Display plugins in table format."""
+        if not plugins:
+            return
+        
+        # Calculate column widths
+        headers = ["Status", "Repository", "Plugin", "Type", "Description"]
+        col_widths = [len(h) for h in headers]
+        
+        rows = []
+        for plugin in plugins:
+            status = "✓ Enabled" if plugin["enabled"] else "✗ Disabled"
+            row = [
+                status,
+                plugin["repository"],
+                plugin["name"],
+                plugin["type"],
+                plugin["description"][:50] + "..." if len(plugin["description"]) > 50 else plugin["description"]
+            ]
+            rows.append(row)
+            
+            # Update column widths
+            for i, val in enumerate(row):
+                col_widths[i] = max(col_widths[i], len(str(val)))
+        
+        # Print header
+        header_line = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
+        print(header_line)
+        print("-" * len(header_line))
+        
+        # Print rows
+        for row in rows:
+            print(" | ".join(str(val).ljust(w) for val, w in zip(row, col_widths)))
+    
+    def _progress_indicator(self, message: str):
+        """Simple progress indicator context manager."""
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def indicator():
+            print(f"{message}...", end="", flush=True)
+            try:
+                yield
+                print(" ✓")
+            except Exception:
+                print(" ✗")
+                raise
+        
+        return indicator()
 
 
 def main() -> int:
