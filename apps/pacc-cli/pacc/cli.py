@@ -32,7 +32,9 @@ from .plugins import (
     GitRepository,
     ExtensionToPluginConverter,
     PluginPusher,
-    PluginMetadata
+    PluginMetadata,
+    EnvironmentManager,
+    get_environment_manager
 )
 
 # URL downloader imports (conditional for optional dependency)
@@ -911,6 +913,63 @@ class PACCCli:
         )
         
         push_plugin_parser.set_defaults(func=self.handle_plugin_push)
+        
+        # Plugin environment commands
+        env_plugin_parser = plugin_subparsers.add_parser(
+            "env",
+            help="Manage Claude Code plugin environment",
+            description="Configure environment variables for Claude Code plugin support"
+        )
+        
+        env_subparsers = env_plugin_parser.add_subparsers(
+            dest="env_command",
+            help="Environment commands",
+            metavar="<env_command>"
+        )
+        
+        # Environment setup command
+        setup_env_parser = env_subparsers.add_parser(
+            "setup",
+            help="Configure environment for plugins",
+            description="Automatically configure ENABLE_PLUGINS environment variable"
+        )
+        setup_env_parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Force setup even if already configured"
+        )
+        setup_env_parser.set_defaults(func=self.handle_plugin_env_setup)
+        
+        # Environment status command
+        status_env_parser = env_subparsers.add_parser(
+            "status",
+            help="Show environment status", 
+            description="Display current environment configuration status"
+        )
+        status_env_parser.set_defaults(func=self.handle_plugin_env_status)
+        
+        # Environment verify command
+        verify_env_parser = env_subparsers.add_parser(
+            "verify",
+            help="Verify environment configuration",
+            description="Test if environment is properly configured for plugins"
+        )
+        verify_env_parser.set_defaults(func=self.handle_plugin_env_verify)
+        
+        # Environment reset command
+        reset_env_parser = env_subparsers.add_parser(
+            "reset",
+            help="Reset environment configuration", 
+            description="Remove PACC environment modifications"
+        )
+        reset_env_parser.add_argument(
+            "--confirm",
+            action="store_true",
+            help="Skip confirmation prompt"
+        )
+        reset_env_parser.set_defaults(func=self.handle_plugin_env_reset)
+        
+        env_plugin_parser.set_defaults(func=self._plugin_env_help)
         
         plugin_parser.set_defaults(func=self._plugin_help)
 
@@ -3703,6 +3762,149 @@ class PACCCli:
             return 1
         except Exception as e:
             self._print_error(f"Push failed: {e}")
+            return 1
+    
+    def _plugin_env_help(self, args) -> int:
+        """Show plugin environment help."""
+        self._print_info("Available environment commands:")
+        self._print_info("  setup  - Configure environment for Claude Code plugins")
+        self._print_info("  status - Show current environment configuration")
+        self._print_info("  verify - Verify environment is properly configured")
+        self._print_info("  reset  - Remove PACC environment modifications")
+        self._print_info("")
+        self._print_info("Use 'pacc plugin env <command> --help' for more information")
+        return 0
+    
+    def handle_plugin_env_setup(self, args) -> int:
+        """Handle plugin environment setup command."""
+        try:
+            env_manager = get_environment_manager()
+            
+            self._print_info("Setting up environment for Claude Code plugins...")
+            self._print_info(f"Platform: {env_manager.platform.value}")
+            self._print_info(f"Shell: {env_manager.shell.value}")
+            
+            # Setup environment
+            success, message, warnings = env_manager.setup_environment(force=args.force)
+            
+            if success:
+                self._print_success(message)
+                if warnings:
+                    for warning in warnings:
+                        self._print_warning(warning)
+                return 0
+            else:
+                self._print_error(message)
+                if warnings:
+                    for warning in warnings:
+                        self._print_warning(warning)
+                return 1
+                
+        except Exception as e:
+            self._print_error(f"Environment setup failed: {e}")
+            return 1
+    
+    def handle_plugin_env_status(self, args) -> int:
+        """Handle plugin environment status command."""
+        try:
+            env_manager = get_environment_manager()
+            status = env_manager.get_environment_status()
+            
+            self._print_info("Environment Status:")
+            self._print_info(f"  Platform: {status.platform.value}")
+            self._print_info(f"  Shell: {status.shell.value}")
+            self._print_info(f"  ENABLE_PLUGINS set: {status.enable_plugins_set}")
+            
+            if status.enable_plugins_set:
+                self._print_info(f"  ENABLE_PLUGINS value: {status.enable_plugins_value}")
+            
+            if status.config_file:
+                self._print_info(f"  Configuration file: {status.config_file}")
+                self._print_info(f"  File writable: {status.writable}")
+                if status.backup_exists:
+                    self._print_info(f"  Backup exists: Yes")
+            
+            if status.containerized:
+                self._print_info(f"  Containerized: Yes")
+            
+            if status.conflicts:
+                self._print_warning("Conflicts detected:")
+                for conflict in status.conflicts:
+                    self._print_warning(f"  - {conflict}")
+            
+            # Overall status
+            if status.enable_plugins_set and status.enable_plugins_value == env_manager.ENABLE_PLUGINS_VALUE:
+                self._print_success("Environment is configured for Claude Code plugins")
+            else:
+                self._print_warning("Environment may need configuration")
+                self._print_info("Run 'pacc plugin env setup' to configure automatically")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to get environment status: {e}")
+            return 1
+    
+    def handle_plugin_env_verify(self, args) -> int:
+        """Handle plugin environment verify command."""
+        try:
+            env_manager = get_environment_manager()
+            
+            self._print_info("Verifying environment configuration...")
+            
+            success, message, details = env_manager.verify_environment()
+            
+            if success:
+                self._print_success(message)
+                self._print_info("Environment verification details:")
+                for key, value in details.items():
+                    if value is not None:
+                        self._print_info(f"  {key}: {value}")
+                return 0
+            else:
+                self._print_error(message)
+                self._print_info("Environment verification details:")
+                for key, value in details.items():
+                    if value is not None:
+                        self._print_info(f"  {key}: {value}")
+                self._print_info("")
+                self._print_info("Run 'pacc plugin env setup' to configure the environment")
+                return 1
+                
+        except Exception as e:
+            self._print_error(f"Environment verification failed: {e}")
+            return 1
+    
+    def handle_plugin_env_reset(self, args) -> int:
+        """Handle plugin environment reset command."""
+        try:
+            env_manager = get_environment_manager()
+            
+            # Confirm reset unless --confirm flag is used
+            if not args.confirm:
+                if not self._confirm_action("Reset environment configuration (remove PACC modifications)?"):
+                    self._print_info("Reset cancelled")
+                    return 0
+            
+            self._print_info("Resetting environment configuration...")
+            
+            success, message, warnings = env_manager.reset_environment()
+            
+            if success:
+                self._print_success(message)
+                if warnings:
+                    for warning in warnings:
+                        self._print_warning(warning)
+                return 0
+            else:
+                self._print_error(message)
+                if warnings:
+                    for warning in warnings:
+                        self._print_warning(warning)
+                return 1
+                
+        except Exception as e:
+            self._print_error(f"Environment reset failed: {e}")
             return 1
     
     def _parse_plugin_identifier(self, plugin_arg: str, repo_arg: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
