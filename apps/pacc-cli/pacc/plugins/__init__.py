@@ -39,6 +39,16 @@ from .environment import (
     ProfileUpdate,
     get_environment_manager
 )
+from .creator import (
+    PluginCreator,
+    PluginTemplate,
+    CreationPluginType,
+    CreationMode,
+    CreationResult,
+    TemplateEngine,
+    GitInitializer,
+    MetadataCollector
+)
 
 # Create aliases for CLI compatibility
 RepositoryManager = PluginRepositoryManager
@@ -46,6 +56,18 @@ GitRepository = PluginRepo
 
 # For backward compatibility, import old classes as stubs
 from .discovery_old import PluginDiscovery, RepositoryPlugins, PluginSelector
+
+# Search functionality
+from .search import (
+    PluginSearchEngine,
+    PluginRegistry,
+    LocalPluginIndex,
+    SearchResult,
+    SearchPluginType,
+    SortBy,
+    search_plugins,
+    get_plugin_recommendations
+)
 
 __all__ = [
     "PluginConfigManager",
@@ -88,5 +110,23 @@ __all__ = [
     # Backward compatibility
     "PluginDiscovery",
     "RepositoryPlugins", 
-    "PluginSelector"
+    "PluginSelector",
+    # Search functionality
+    "PluginSearchEngine",
+    "PluginRegistry",
+    "LocalPluginIndex", 
+    "SearchResult",
+    "SearchPluginType",
+    "SortBy",
+    "search_plugins",
+    "get_plugin_recommendations",
+    # Plugin creation
+    "PluginCreator",
+    "PluginTemplate",
+    "CreationPluginType",
+    "CreationMode",
+    "CreationResult",
+    "TemplateEngine",
+    "GitInitializer",
+    "MetadataCollector"
 ]

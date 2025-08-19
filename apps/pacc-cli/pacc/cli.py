@@ -36,6 +36,7 @@ from .plugins import (
     EnvironmentManager,
     get_environment_manager
 )
+from .plugins.search import PluginSearchEngine, SearchPluginType, search_plugins, get_plugin_recommendations
 
 # URL downloader imports (conditional for optional dependency)
 try:
@@ -913,6 +914,107 @@ class PACCCli:
         )
         
         push_plugin_parser.set_defaults(func=self.handle_plugin_push)
+        
+        # Plugin search command
+        search_plugin_parser = plugin_subparsers.add_parser(
+            "search",
+            help="Search for available plugins",
+            description="Search community plugins and locally installed plugins"
+        )
+        
+        search_plugin_parser.add_argument(
+            "query",
+            nargs="?",
+            help="Search query (optional - shows all plugins if omitted)"
+        )
+        
+        search_plugin_parser.add_argument(
+            "--type", "-t",
+            choices=["all", "command", "agent", "hook", "mcp"],
+            default="all",
+            help="Filter by plugin type (default: all)"
+        )
+        
+        search_plugin_parser.add_argument(
+            "--sort", "-s",
+            choices=["relevance", "popularity", "date", "name"],
+            default="relevance",
+            help="Sort results by criteria (default: relevance)"
+        )
+        
+        search_plugin_parser.add_argument(
+            "--installed-only",
+            action="store_true",
+            help="Only show locally installed plugins"
+        )
+        
+        search_plugin_parser.add_argument(
+            "--exclude-installed",
+            action="store_true",
+            help="Exclude locally installed plugins from results"
+        )
+        
+        search_plugin_parser.add_argument(
+            "--recommendations",
+            action="store_true",
+            help="Show recommendations based on current project"
+        )
+        
+        search_plugin_parser.add_argument(
+            "--limit", "-l",
+            type=int,
+            default=20,
+            help="Maximum number of results to show (default: 20)"
+        )
+        
+        search_plugin_parser.set_defaults(func=self.handle_plugin_search)
+        
+        # Plugin create command
+        create_plugin_parser = plugin_subparsers.add_parser(
+            "create",
+            help="Create new Claude Code plugin",
+            description="Interactive wizard for creating new Claude Code plugins with templates"
+        )
+        
+        create_plugin_parser.add_argument(
+            "name",
+            nargs="?",
+            help="Plugin name (will prompt if not provided)"
+        )
+        
+        create_plugin_parser.add_argument(
+            "--type", "-t",
+            choices=["hooks", "agents", "commands", "mcp"],
+            help="Plugin type (will prompt if not provided)"
+        )
+        
+        create_plugin_parser.add_argument(
+            "--output-dir", "-o",
+            type=str,
+            default=".",
+            help="Output directory for the plugin (default: current directory)"
+        )
+        
+        create_plugin_parser.add_argument(
+            "--mode", "-m",
+            choices=["guided", "quick"],
+            default="guided",
+            help="Creation mode: guided (full wizard) or quick (minimal prompts) (default: guided)"
+        )
+        
+        create_plugin_parser.add_argument(
+            "--init-git",
+            action="store_true",
+            help="Initialize Git repository (will prompt in guided mode if not specified)"
+        )
+        
+        create_plugin_parser.add_argument(
+            "--no-git",
+            action="store_true",
+            help="Skip Git initialization"
+        )
+        
+        create_plugin_parser.set_defaults(func=self.handle_plugin_create)
         
         # Plugin environment commands
         env_plugin_parser = plugin_subparsers.add_parser(
@@ -3763,6 +3865,281 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Push failed: {e}")
             return 1
+    
+    def handle_plugin_search(self, args) -> int:
+        """Handle plugin search command."""
+        try:
+            # Handle recommendations mode
+            if args.recommendations:
+                return self._handle_search_recommendations(args)
+            
+            # Set up search parameters
+            query = args.query or ""
+            plugin_type = args.type
+            sort_by = args.sort
+            
+            # Handle conflicting flags
+            if args.installed_only and args.exclude_installed:
+                self._print_error("Cannot use --installed-only and --exclude-installed together")
+                return 1
+            
+            include_installed = not args.exclude_installed
+            installed_only = args.installed_only
+            
+            self._print_info(f"Searching plugins{f' for \"{query}\"' if query else ''}...")
+            
+            # Perform search
+            results = search_plugins(
+                query=query,
+                plugin_type=plugin_type,
+                sort_by=sort_by,
+                include_installed=include_installed,
+                installed_only=installed_only
+            )
+            
+            # Apply limit
+            if args.limit > 0:
+                results = results[:args.limit]
+            
+            # Display results
+            if not results:
+                if installed_only:
+                    self._print_info("No installed plugins found matching your criteria.")
+                    self._print_info("Use 'pacc plugin install <repo>' to install plugins.")
+                else:
+                    self._print_info("No plugins found matching your criteria.")
+                    if query:
+                        self._print_info("Try a different search term or use --type to filter by plugin type.")
+                return 0
+            
+            self._display_search_results(results, query)
+            
+            # Show helpful info
+            installed_count = sum(1 for r in results if r.get("installed", False))
+            total_count = len(results)
+            
+            if installed_count > 0:
+                self._print_info(f"\nShowing {total_count} plugins ({installed_count} installed)")
+            else:
+                self._print_info(f"\nShowing {total_count} plugins")
+            
+            if not installed_only and total_count > 0:
+                self._print_info("Use 'pacc plugin install <repo>' to install a plugin")
+                self._print_info("Use 'pacc plugin search --installed-only' to see only installed plugins")
+            
+            return 0
+            
+        except KeyboardInterrupt:
+            self._print_info("Search cancelled by user")
+            return 1
+        except Exception as e:
+            self._print_error(f"Search failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return 1
+    
+    def handle_plugin_create(self, args) -> int:
+        """Handle plugin create command."""
+        try:
+            from .plugins.creator import (
+                PluginCreator,
+                CreationPluginType,
+                CreationMode
+            )
+            
+            # Determine output directory
+            output_dir = Path(args.output_dir).resolve()
+            if not output_dir.exists():
+                self._print_error(f"Output directory does not exist: {output_dir}")
+                return 1
+            
+            # Map CLI arguments to creator parameters
+            plugin_type = None
+            if args.type:
+                type_map = {
+                    'hooks': CreationPluginType.HOOKS,
+                    'agents': CreationPluginType.AGENTS,
+                    'commands': CreationPluginType.COMMANDS,
+                    'mcp': CreationPluginType.MCP
+                }
+                plugin_type = type_map[args.type]
+            
+            creation_mode = CreationMode.GUIDED if args.mode == 'guided' else CreationMode.QUICK
+            
+            # Determine Git initialization preference
+            init_git = None
+            if args.init_git:
+                init_git = True
+            elif args.no_git:
+                init_git = False
+            # If neither flag is set, let the creator decide based on mode
+            
+            # Create the plugin
+            creator = PluginCreator()
+            self._print_info("🚀 Starting plugin creation wizard...")
+            
+            if creation_mode == CreationMode.GUIDED:
+                self._print_info("📋 Guided mode: comprehensive plugin setup")
+            else:
+                self._print_info("⚡ Quick mode: minimal configuration")
+            
+            result = creator.create_plugin(
+                name=args.name,
+                plugin_type=plugin_type,
+                output_dir=output_dir,
+                mode=creation_mode,
+                init_git=init_git
+            )
+            
+            if result.success:
+                self._print_success(f"✅ Plugin created successfully!")
+                self._print_info(f"📁 Location: {result.plugin_path}")
+                
+                if result.created_files:
+                    self._print_info("📝 Created files:")
+                    for file_name in result.created_files:
+                        self._print_info(f"   • {file_name}")
+                
+                if result.git_initialized:
+                    self._print_info("🔧 Git repository initialized")
+                
+                if result.warnings:
+                    self._print_info("⚠️  Warnings:")
+                    for warning in result.warnings:
+                        self._print_warning(f"   • {warning}")
+                
+                self._print_info("")
+                self._print_info("🎯 Next steps:")
+                self._print_info("   1. Edit the plugin files to implement your functionality")
+                self._print_info("   2. Test your plugin locally")
+                if result.git_initialized:
+                    self._print_info("   3. Commit your changes: git add . && git commit -m 'Initial plugin structure'")
+                    self._print_info("   4. Push to a Git repository for sharing")
+                else:
+                    self._print_info("   3. Initialize Git if you want to share: git init")
+                
+                return 0
+            else:
+                self._print_error(f"❌ Plugin creation failed: {result.error_message}")
+                return 1
+                
+        except KeyboardInterrupt:
+            self._print_info("Plugin creation cancelled by user")
+            return 1
+        except Exception as e:
+            self._print_error(f"Plugin creation failed: {e}")
+            if hasattr(args, 'verbose') and args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def _handle_search_recommendations(self, args) -> int:
+        """Handle search recommendations mode."""
+        try:
+            self._print_info("Getting plugin recommendations for your project...")
+            
+            results = get_plugin_recommendations(limit=args.limit)
+            
+            if not results:
+                self._print_info("No recommendations found for your project.")
+                self._print_info("This might be because:")
+                self._print_info("  • Your project type is not recognized")
+                self._print_info("  • No matching plugins are available")
+                self._print_info("Use 'pacc plugin search' to browse all available plugins.")
+                return 0
+            
+            print()
+            print("🎯 Recommended plugins for your project:")
+            print()
+            
+            self._display_search_results(results, "", show_relevance=True)
+            
+            self._print_info(f"\nShowing {len(results)} recommendations")
+            self._print_info("Use 'pacc plugin install <repo>' to install a recommended plugin")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to get recommendations: {e}")
+            return 1
+    
+    def _display_search_results(self, results: List[Dict[str, Any]], query: str = "", show_relevance: bool = False) -> None:
+        """Display search results in a formatted table."""
+        if not results:
+            return
+        
+        # Prepare table data
+        headers = ["Name", "Type", "Description", "Author", "Status"]
+        if show_relevance:
+            headers.append("Match")
+        
+        rows = []
+        for result in results:
+            name = result.get("name", "")
+            namespace = result.get("namespace")
+            if namespace:
+                name = f"{namespace}:{name}"
+            
+            plugin_type = result.get("plugin_type", "").upper()
+            description = result.get("description", "")
+            author = result.get("author", "")
+            
+            # Status indicator
+            status_parts = []
+            if result.get("installed", False):
+                if result.get("enabled", False):
+                    status_parts.append("✅ Enabled")
+                else:
+                    status_parts.append("📦 Installed")
+            else:
+                status_parts.append("🌐 Available")
+            
+            status = " ".join(status_parts)
+            
+            # Truncate long descriptions
+            if len(description) > 60:
+                description = description[:57] + "..."
+            
+            row = [name, plugin_type, description, author, status]
+            
+            if show_relevance:
+                popularity = result.get("popularity_score", 0)
+                row.append(f"{popularity}")
+            
+            rows.append(row)
+        
+        # Print table
+        self._print_table(headers, rows)
+        
+        # Add search tips if query was provided
+        if query and not show_relevance:
+            print()
+            self._print_info(f"💡 Tips:")
+            self._print_info(f"  • Use --type to filter by plugin type (command, agent, hook, mcp)")
+            self._print_info(f"  • Use --sort to change sort order (popularity, date, name)")
+            self._print_info(f"  • Use --recommendations to get suggestions for your project")
+    
+    def _print_table(self, headers: List[str], rows: List[List[str]]) -> None:
+        """Print a formatted table."""
+        if not rows:
+            return
+        
+        # Calculate column widths
+        col_widths = [len(header) for header in headers]
+        for row in rows:
+            for i, cell in enumerate(row):
+                if i < len(col_widths):
+                    col_widths[i] = max(col_widths[i], len(str(cell)))
+        
+        # Print header
+        header_row = " | ".join(header.ljust(col_widths[i]) for i, header in enumerate(headers))
+        print(header_row)
+        print("-" * len(header_row))
+        
+        # Print rows
+        for row in rows:
+            row_str = " | ".join(str(cell).ljust(col_widths[i]) for i, cell in enumerate(row))
+            print(row_str)
     
     def _plugin_env_help(self, args) -> int:
         """Show plugin environment help."""
