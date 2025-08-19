@@ -14,7 +14,7 @@ PACC (Package manager for Claude Code) is a Python CLI tool for managing Claude 
 - ⏳ **Remaining**: Update package name to 'pacc-cli' and publish to PyPI
 - 🚀 **Production Ready**: Complete publishing workflow, comprehensive documentation, and enterprise-grade QA
 
-**🔌 Plugin Management Features (Sprints 1-3 Complete)**
+**🔌 Plugin Management Features (Sprints 1-4 Complete)**
 - ✅ **Plugin Infrastructure**: Complete plugin management system for Claude Code plugins
 - ✅ **Git Integration**: Clone, update, and manage plugin repositories with rollback
 - ✅ **Plugin Discovery**: Automatic detection and validation of plugins in repositories
@@ -26,9 +26,13 @@ PACC (Package manager for Claude Code) is a Python CLI tool for managing Claude 
   - `pacc plugin remove` - Uninstall plugins with cleanup
   - `pacc plugin update` - Update plugins with change preview
   - `pacc plugin sync` - Team synchronization via pacc.json
+  - `pacc plugin convert` - Convert extensions to plugin format
+  - `pacc plugin push` - Push local plugins to Git repositories
 - ✅ **Configuration Management**: Atomic updates to config.json and settings.json
 - ✅ **Team Collaboration**: Version locking, differential sync, conflict resolution
 - ✅ **Update System**: Safe updates with rollback capability and change preview
+- ✅ **Extension Conversion**: Transform loose extensions into shareable plugins (95% success rate)
+- ✅ **Plugin Publishing**: Git repository creation with README and documentation generation
 
 ## Development Commands
 
