@@ -22,6 +22,15 @@ from .discovery import (
     resolve_template_variables,
     extract_template_variables
 )
+from .converter import (
+    PluginConverter,
+    ExtensionToPluginConverter,
+    PluginPusher,
+    ConversionResult,
+    PluginMetadata,
+    ExtensionInfo,
+    convert_extensions_to_plugin
+)
 
 # Create aliases for CLI compatibility
 RepositoryManager = PluginRepositoryManager
@@ -53,6 +62,14 @@ __all__ = [
     "extract_plugin_metadata",
     "resolve_template_variables",
     "extract_template_variables",
+    # Conversion functionality
+    "PluginConverter",
+    "ExtensionToPluginConverter",
+    "PluginPusher",
+    "ConversionResult",
+    "PluginMetadata",
+    "ExtensionInfo",
+    "convert_extensions_to_plugin",
     # Backward compatibility
     "PluginDiscovery",
     "RepositoryPlugins", 

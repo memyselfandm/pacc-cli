@@ -395,6 +395,231 @@ Hooks are JSON files defining event-driven behavior:
 - `UserPromptSubmit`: When user submits a prompt
 - `Notification`: System notifications
 
+## Converting Extensions to Plugins
+
+PACC provides powerful conversion tools to transform existing Claude Code extensions (hooks, agents, commands, MCP servers) into the structured plugin format. This enables you to share your extensions with the community or organize them into reusable plugins.
+
+### Quick Conversion
+
+Convert a single directory containing extensions:
+
+```bash
+# Convert extensions from a .claude directory
+pacc plugin convert /path/to/project
+
+# Convert with custom metadata
+pacc plugin convert /path/to/project --name my-plugin --author "Your Name" --version 2.0.0
+
+# Convert to specific output directory
+pacc plugin convert /path/to/project --output ~/my-plugins
+```
+
+### Batch Conversion
+
+Convert multiple extensions into separate plugins:
+
+```bash
+# Convert all extensions in a directory (creates separate plugins by type)
+pacc plugin convert /path/to/project --batch
+
+# Batch convert with custom output location
+pacc plugin convert /path/to/project --batch --output ~/converted-plugins
+```
+
+### Direct Git Push
+
+Convert and immediately push to a Git repository:
+
+```bash
+# Convert and push to GitHub
+pacc plugin convert /path/to/project --repo https://github.com/username/my-plugin.git
+
+# Convert with metadata and push
+pacc plugin convert /path/to/project \
+  --name my-awesome-plugin \
+  --author "Your Name" \
+  --repo https://github.com/username/my-awesome-plugin.git
+```
+
+### Push Existing Plugins
+
+Push a local plugin directory to Git:
+
+```bash
+# Push plugin to repository
+pacc plugin push /path/to/plugin https://github.com/username/plugin-repo.git
+
+# Push with specific authentication method
+pacc plugin push /path/to/plugin https://github.com/username/plugin-repo.git --auth ssh
+
+# Push private repository
+pacc plugin push /path/to/plugin https://github.com/username/private-plugin.git --private
+```
+
+### Conversion Options
+
+#### `pacc plugin convert <extension_path>`
+
+Convert Claude Code extensions to plugin format.
+
+**Arguments:**
+- `extension_path`: Path to extension file or directory containing `.claude` folder
+
+**Options:**
+- `--name`: Plugin name (auto-generated from directory if not specified)
+- `--version`: Plugin version (default: 1.0.0)
+- `--author`: Plugin author information
+- `--output, -o`: Output directory for converted plugins
+- `--batch`: Convert all extensions in directory as separate plugins
+- `--repo`: Git repository URL for direct push after conversion
+- `--overwrite`: Overwrite existing plugin directories
+
+**Examples:**
+
+```bash
+# Basic conversion with interactive prompts
+pacc plugin convert ~/my-project
+
+# Full specification
+pacc plugin convert ~/my-project \
+  --name productivity-tools \
+  --version 1.2.0 \
+  --author "Development Team <team@company.com>" \
+  --output ~/plugins
+
+# Batch conversion of multiple extensions
+pacc plugin convert ~/large-project --batch --output ~/converted-plugins
+
+# Convert and push in one step
+pacc plugin convert ~/my-project --repo https://github.com/team/tools.git
+```
+
+#### `pacc plugin push <plugin_path> <repo_url>`
+
+Push a local plugin to a Git repository.
+
+**Arguments:**
+- `plugin_path`: Path to local plugin directory
+- `repo_url`: Git repository URL (HTTPS or SSH)
+
+**Options:**
+- `--private`: Repository is private (affects auth handling)
+- `--auth`: Authentication method (`https` or `ssh`, default: https)
+
+**Examples:**
+
+```bash
+# Push to GitHub with HTTPS
+pacc plugin push ~/plugins/my-plugin https://github.com/username/my-plugin.git
+
+# Push to private repository with SSH
+pacc plugin push ~/plugins/secret-plugin git@github.com:username/secret-plugin.git --auth ssh
+
+# Push to GitLab
+pacc plugin push ~/plugins/my-plugin https://gitlab.com/username/my-plugin.git
+```
+
+### Conversion Process
+
+The conversion process performs these steps:
+
+1. **Scan**: Discovers all Claude Code extensions in the source directory
+2. **Validate**: Checks each extension for proper format and structure
+3. **Convert**: Transforms extensions into plugin format:
+   - **Hooks**: Merges multiple hook files into `hooks/hooks.json`
+   - **Agents**: Copies agent files to `agents/` directory
+   - **Commands**: Preserves directory structure in `commands/`
+   - **MCP**: Merges server configurations into `mcp/config.json`
+4. **Generate**: Creates `plugin.json` manifest with metadata
+5. **Package**: Creates complete plugin directory structure
+
+### Generated Plugin Structure
+
+Converted plugins follow the standard structure:
+
+```
+converted-plugin/
+├── plugin.json              # Generated manifest
+├── README.md               # Auto-generated documentation
+├── .gitignore             # Git ignore file
+├── hooks/                 # Converted hooks (if any)
+│   └── hooks.json
+├── agents/                # Converted agents (if any)
+│   ├── agent1.md
+│   └── agent2.md
+├── commands/              # Converted commands (if any)
+│   ├── cmd1.md
+│   └── subdir/
+│       └── cmd2.md
+└── mcp/                   # Converted MCP servers (if any)
+    └── config.json
+```
+
+### Auto-Generated Documentation
+
+Converted plugins include comprehensive documentation:
+
+- **README.md**: Complete usage guide with installation instructions
+- **Component inventory**: Lists all commands, agents, and hooks
+- **Installation examples**: Ready-to-use pacc commands
+- **Usage examples**: Sample invocations for each component
+
+### Conversion Best Practices
+
+1. **Review before converting**: Ensure extensions work correctly
+2. **Use descriptive names**: Choose clear, searchable plugin names
+3. **Add version information**: Start with semantic versioning (1.0.0)
+4. **Include author details**: Provide contact information
+5. **Test conversions**: Verify converted plugins install correctly
+6. **Document custom features**: Add specific usage notes to generated README
+
+### Conversion Troubleshooting
+
+#### "No extensions found"
+- Verify the source directory contains a `.claude` folder
+- Check that extensions are in the correct subdirectories (`hooks/`, `agents/`, etc.)
+- Use `--verbose` flag for detailed scanning information
+
+#### "Validation errors during conversion"
+- Review extension files for syntax errors
+- Ensure hook files use valid JSON format
+- Check agent markdown files have proper YAML frontmatter
+- Verify command files are valid markdown
+
+#### "Plugin name conflicts"
+- Use `--name` option to specify a unique plugin name
+- Check existing plugins with `pacc plugin list`
+- Use namespace prefixes (e.g., `company-toolname`)
+
+#### "Git push authentication failed"
+- Configure Git credentials properly
+- Use SSH keys for SSH URLs
+- Use personal access tokens for HTTPS to private repositories
+- Verify repository permissions and existence
+
+#### "Conversion rate below 95%"
+- Check validation errors in output
+- Fix invalid extension files before conversion
+- Some extensions may be intentionally skipped (corrupted files)
+
+### Integration with Plugin System
+
+Converted plugins work seamlessly with the existing plugin system:
+
+```bash
+# Convert extensions
+pacc plugin convert ~/my-project --name my-tools
+
+# Push to GitHub
+pacc plugin push ~/converted-plugins/my-tools https://github.com/username/my-tools.git
+
+# Install from repository (different machine/team member)
+pacc plugin install https://github.com/username/my-tools
+
+# Enable the plugin
+pacc plugin enable my-tools --repo username/my-tools
+```
+
 ## Team Collaboration
 
 ### Project Configuration
