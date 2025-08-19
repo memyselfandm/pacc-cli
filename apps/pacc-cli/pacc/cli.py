@@ -29,7 +29,10 @@ from .plugins import (
     RepositoryManager,
     PluginDiscovery,
     PluginSelector,
-    GitRepository
+    GitRepository,
+    ExtensionToPluginConverter,
+    PluginPusher,
+    PluginMetadata
 )
 
 # URL downloader imports (conditional for optional dependency)
@@ -816,6 +819,98 @@ class PACCCli:
         )
         
         remove_plugin_parser.set_defaults(func=self.handle_plugin_remove)
+        
+        # Plugin convert command
+        convert_plugin_parser = plugin_subparsers.add_parser(
+            "convert",
+            help="Convert extensions to plugin format",
+            description="Convert Claude Code extensions (hooks, agents, MCPs, commands) to plugin format"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "extension",
+            help="Path to extension file or directory to convert"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--name",
+            help="Plugin name (auto-generated if not provided)"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--version",
+            default="1.0.0",
+            help="Plugin version (default: 1.0.0)"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--author",
+            help="Plugin author information"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--repo",
+            help="Git repository URL for direct push after conversion"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--local",
+            action="store_true",
+            default=True,
+            help="Local-only conversion (default behavior)"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--batch",
+            action="store_true",
+            help="Convert all extensions in directory"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--output", "-o",
+            type=Path,
+            help="Output directory for converted plugins"
+        )
+        
+        convert_plugin_parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            help="Overwrite existing plugin directories"
+        )
+        
+        convert_plugin_parser.set_defaults(func=self.handle_plugin_convert)
+        
+        # Plugin push command
+        push_plugin_parser = plugin_subparsers.add_parser(
+            "push",
+            help="Push local plugin to Git repository",
+            description="Push a local plugin directory to a Git repository"
+        )
+        
+        push_plugin_parser.add_argument(
+            "plugin",
+            help="Path to local plugin directory"
+        )
+        
+        push_plugin_parser.add_argument(
+            "repo",
+            help="Git repository URL (e.g., https://github.com/owner/repo)"
+        )
+        
+        push_plugin_parser.add_argument(
+            "--private",
+            action="store_true",
+            help="Repository is private (affects auth handling)"
+        )
+        
+        push_plugin_parser.add_argument(
+            "--auth",
+            choices=["https", "ssh"],
+            default="https",
+            help="Authentication method (default: https)"
+        )
+        
+        push_plugin_parser.set_defaults(func=self.handle_plugin_push)
         
         plugin_parser.set_defaults(func=self._plugin_help)
 
@@ -2568,10 +2663,16 @@ class PACCCli:
         """Show plugin command help when no subcommand is specified."""
         print("pacc plugin: Manage Claude Code plugins\n")
         print("Available commands:")
-        print("  install <repo_url>  Install plugins from Git repository")
-        print("  list               List installed plugins with status")
-        print("  enable <plugin>    Enable a specific plugin")
-        print("  disable <plugin>   Disable a specific plugin")
+        print("  install <repo_url>     Install plugins from Git repository")
+        print("  list                   List installed plugins with status")
+        print("  enable <plugin>        Enable a specific plugin")
+        print("  disable <plugin>       Disable a specific plugin")
+        print("  update [plugin]        Update plugins from Git repositories")
+        print("  remove <plugin>        Remove/uninstall a plugin")
+        print("  info <plugin>          Show detailed plugin information")
+        print("  sync                   Synchronize plugins from pacc.json")
+        print("  convert <extension>    Convert extension to plugin format")
+        print("  push <plugin> <repo>   Push local plugin to Git repository")
         print("\nUse 'pacc plugin <command> --help' for more information on a command.")
         return 0
     
@@ -3433,6 +3534,177 @@ class PACCCli:
                 traceback.print_exc()
             return 1
     
+    def handle_plugin_convert(self, args) -> int:
+        """Handle plugin convert command."""
+        try:
+            source_path = Path(args.extension)
+            
+            # Validate source path
+            if not source_path.exists():
+                self._print_error(f"Extension path does not exist: {source_path}")
+                return 1
+            
+            # Initialize converter
+            output_dir = args.output or Path.cwd() / "converted_plugins"
+            converter = ExtensionToPluginConverter(output_dir=output_dir)
+            
+            # Interactive prompts for missing metadata
+            plugin_name = args.name
+            if not plugin_name:
+                plugin_name = input(f"Enter plugin name (leave empty for auto-generation): ").strip()
+                if not plugin_name:
+                    plugin_name = None  # Let converter auto-generate
+            
+            author = args.author
+            if not author:
+                author = input("Enter plugin author (optional): ").strip() or ""
+            
+            # Create metadata
+            metadata = PluginMetadata(
+                name=plugin_name or "temp",  # Will be updated by converter if auto-generated
+                version=args.version,
+                author=author
+            )
+            
+            self._print_info(f"Converting extension: {source_path}")
+            
+            if args.batch:
+                # Batch conversion
+                self._print_info("Running batch conversion...")
+                metadata_defaults = {
+                    "version": args.version,
+                    "author": author
+                }
+                
+                results = converter.convert_directory(
+                    source_path,
+                    metadata_defaults=metadata_defaults,
+                    overwrite=args.overwrite
+                )
+                
+                # Display results
+                success_count = sum(1 for r in results if r.success)
+                self._print_info(f"Batch conversion completed: {success_count}/{len(results)} successful")
+                
+                for result in results:
+                    if result.success:
+                        self._print_success(f"✓ {result.plugin_name} -> {result.plugin_path}")
+                    else:
+                        self._print_error(f"✗ {result.plugin_name}: {result.error_message}")
+                
+                # Handle direct push to repo if specified
+                if args.repo and success_count > 0:
+                    self._print_info(f"Pushing successful conversions to {args.repo}")
+                    pusher = PluginPusher()
+                    
+                    push_success = 0
+                    for result in results:
+                        if result.success and result.plugin_path:
+                            if pusher.push_plugin(result.plugin_path, args.repo):
+                                push_success += 1
+                                self._print_success(f"Pushed {result.plugin_name} to repository")
+                            else:
+                                self._print_error(f"Failed to push {result.plugin_name}")
+                    
+                    self._print_info(f"Successfully pushed {push_success}/{success_count} plugins")
+                
+                return 0 if success_count > 0 else 1
+                
+            else:
+                # Single conversion
+                result = converter.convert_extension(
+                    source_path,
+                    plugin_name,
+                    metadata,
+                    args.overwrite
+                )
+                
+                if result.success:
+                    self._print_success(f"Successfully converted to plugin: {result.plugin_name}")
+                    self._print_info(f"Plugin location: {result.plugin_path}")
+                    self._print_info(f"Components: {', '.join(result.components)}")
+                    
+                    # Handle direct push to repo if specified
+                    if args.repo:
+                        self._print_info(f"Pushing plugin to {args.repo}")
+                        pusher = PluginPusher()
+                        
+                        if pusher.push_plugin(result.plugin_path, args.repo):
+                            self._print_success(f"Successfully pushed to repository: {args.repo}")
+                        else:
+                            self._print_error("Failed to push to repository")
+                            return 1
+                    
+                    return 0
+                else:
+                    self._print_error(f"Conversion failed: {result.error_message}")
+                    return 1
+                    
+        except KeyboardInterrupt:
+            self._print_info("Conversion cancelled by user")
+            return 1
+        except Exception as e:
+            self._print_error(f"Conversion failed: {e}")
+            return 1
+    
+    def handle_plugin_push(self, args) -> int:
+        """Handle plugin push command."""
+        try:
+            plugin_path = Path(args.plugin)
+            
+            # Validate plugin path
+            if not plugin_path.exists():
+                self._print_error(f"Plugin path does not exist: {plugin_path}")
+                return 1
+            
+            if not plugin_path.is_dir():
+                self._print_error(f"Plugin path must be a directory: {plugin_path}")
+                return 1
+            
+            # Validate plugin structure
+            manifest_path = plugin_path / "plugin.json"
+            if not manifest_path.exists():
+                self._print_error(f"No plugin.json found in {plugin_path}")
+                self._print_info("This doesn't appear to be a valid plugin directory")
+                return 1
+            
+            # Preview what will be pushed
+            self._print_info(f"Preparing to push plugin: {plugin_path.name}")
+            self._print_info(f"Target repository: {args.repo}")
+            self._print_info(f"Authentication method: {args.auth}")
+            
+            # Confirm push
+            if not self._confirm_action(f"Push plugin {plugin_path.name} to {args.repo}?"):
+                self._print_info("Push cancelled")
+                return 0
+            
+            # Initialize pusher and push
+            pusher = PluginPusher()
+            
+            with self._progress_indicator("Pushing plugin to repository"):
+                success = pusher.push_plugin(
+                    plugin_path,
+                    args.repo,
+                    private=args.private,
+                    auth_method=args.auth
+                )
+            
+            if success:
+                self._print_success(f"Successfully pushed {plugin_path.name} to {args.repo}")
+                self._print_info(f"Repository URL: {args.repo}")
+                return 0
+            else:
+                self._print_error("Failed to push plugin to repository")
+                self._print_info("Check your Git credentials and repository permissions")
+                return 1
+                
+        except KeyboardInterrupt:
+            self._print_info("Push cancelled by user")
+            return 1
+        except Exception as e:
+            self._print_error(f"Push failed: {e}")
+            return 1
+    
     def _parse_plugin_identifier(self, plugin_arg: str, repo_arg: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
         """Parse plugin identifier from arguments.
         
@@ -3624,6 +3896,42 @@ class PACCCli:
         # Status information
         if plugin_info.get('status'):
             print(f"\nStatus: {plugin_info['status']}")
+    
+    def _confirm_action(self, message: str) -> bool:
+        """Prompt user for confirmation.
+        
+        Args:
+            message: Confirmation message to display
+            
+        Returns:
+            True if user confirms, False otherwise
+        """
+        try:
+            response = input(f"{message} [y/N]: ").strip().lower()
+            return response in ('y', 'yes')
+        except (KeyboardInterrupt, EOFError):
+            return False
+    
+    def _progress_indicator(self, message: str):
+        """Context manager for progress indication.
+        
+        Args:
+            message: Progress message to display
+            
+        Returns:
+            Context manager for progress indication
+        """
+        from contextlib import contextmanager
+        
+        @contextmanager
+        def progress():
+            print(f"⏳ {message}...")
+            try:
+                yield
+            finally:
+                pass  # Could add completion message here
+        
+        return progress()
 
 
 def main() -> int:
