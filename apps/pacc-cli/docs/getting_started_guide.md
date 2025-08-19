@@ -31,7 +31,33 @@ pipx install pacc-cli
 pacc --version
 ```
 
-### 2. Create Your First Extension
+### 2. Setup Environment (Plugin Support)
+
+If you plan to use plugins, configure your environment first:
+
+```bash
+# Check if environment is already configured
+pacc env check
+
+# If not configured, set it up automatically
+pacc env setup
+
+# Verify the setup worked
+pacc env check
+# Should show: ✅ ENABLE_PLUGINS is configured
+```
+
+**Manual setup (alternative)**:
+```bash
+# Add to your shell profile
+echo 'export ENABLE_PLUGINS=1' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc
+
+# Verify
+echo $ENABLE_PLUGINS  # Should output: 1
+```
+
+### 3. Create Your First Extension
 
 Create a simple hook that formats code:
 
@@ -48,7 +74,7 @@ cat > format-hook.json << 'EOF'
 EOF
 ```
 
-### 3. Validate and Install
+### 4. Validate and Install
 
 ```bash
 # Validate the hook

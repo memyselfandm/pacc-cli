@@ -10,6 +10,103 @@ The PACC plugin system provides comprehensive management for Claude Code plugins
 - **Agents**: Specialized AI agents with specific tools and prompts
 - **Hooks**: Event-driven extensions that execute on Claude Code events
 
+## Environment Setup
+
+Before using PACC's plugin management system, you need to configure your environment to enable Claude Code's plugin support.
+
+### Automatic Environment Setup (Recommended)
+
+PACC can automatically configure your environment when you install your first plugin:
+
+```bash
+# PACC will detect missing ENABLE_PLUGINS and offer to configure it
+pacc plugin install https://github.com/owner/plugin-repo
+
+# Or explicitly configure the environment
+pacc env setup
+```
+
+When you install a plugin, PACC will:
+1. Detect if `ENABLE_PLUGINS=1` is missing
+2. Prompt you to configure it automatically
+3. Update your shell profile for persistence
+4. Verify the configuration works
+
+### Manual Environment Setup
+
+If you prefer manual configuration, set up the environment variable:
+
+#### macOS/Linux (Bash)
+```bash
+# Add to ~/.bashrc
+echo 'export ENABLE_PLUGINS=1' >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### macOS/Linux (Zsh)
+```bash
+# Add to ~/.zshrc  
+echo 'export ENABLE_PLUGINS=1' >> ~/.zshrc
+source ~/.zshrc
+```
+
+#### Windows (PowerShell)
+```powershell
+# Set user environment variable
+[Environment]::SetEnvironmentVariable("ENABLE_PLUGINS", "1", "User")
+# Restart PowerShell to apply
+```
+
+#### Windows (Command Prompt)
+```cmd
+# Set user environment variable
+setx ENABLE_PLUGINS 1
+# Restart command prompt to apply
+```
+
+### Environment Verification
+
+Check if your environment is correctly configured:
+
+```bash
+# Check environment variable
+pacc env check
+
+# Manual verification
+echo $ENABLE_PLUGINS  # Should output: 1
+```
+
+### Cross-Platform Setup Instructions
+
+#### Windows Subsystem for Linux (WSL)
+```bash
+# In WSL terminal
+echo 'export ENABLE_PLUGINS=1' >> ~/.bashrc
+source ~/.bashrc
+
+# Verify in WSL
+pacc env check
+```
+
+#### Docker/Container Environments
+```dockerfile
+# In Dockerfile
+ENV ENABLE_PLUGINS=1
+
+# Or in docker-compose.yml
+environment:
+  - ENABLE_PLUGINS=1
+```
+
+#### SSH/Remote Development
+```bash
+# Add to remote ~/.bashrc or ~/.zshrc
+ssh user@remote 'echo "export ENABLE_PLUGINS=1" >> ~/.bashrc'
+
+# Or copy local configuration
+scp ~/.bashrc user@remote:~/
+```
+
 ## Quick Start
 
 ### Prerequisites
@@ -17,14 +114,14 @@ The PACC plugin system provides comprehensive management for Claude Code plugins
 1. Claude Code v1.0.81+ with plugin support
 2. Git installed and configured
 3. PACC CLI installed (`pip install pacc-cli`)
+4. Environment configured (see Environment Setup above)
 
 ### Basic Workflow
 
-1. **Enable plugins** (first time only):
+1. **Verify environment** (first time):
    ```bash
-   export ENABLE_PLUGINS=1
-   # Add to your shell profile for persistence
-   echo 'export ENABLE_PLUGINS=1' >> ~/.bashrc  # or ~/.zshrc
+   pacc env check
+   # Should show: ✅ ENABLE_PLUGINS is configured
    ```
 
 2. **Install a plugin repository**:
@@ -760,13 +857,389 @@ Plugin components use namespaced identifiers to avoid conflicts:
 
 ## Troubleshooting
 
-### Common Issues
+### Environment Issues
 
 #### "ENABLE_PLUGINS not set"
+
+**Problem**: Claude Code cannot load plugins because the environment variable is missing.
+
+**Solutions**:
 ```bash
+# Quick fix (temporary)
 export ENABLE_PLUGINS=1
-# Add to shell profile for persistence
+
+# Permanent fix (run PACC setup)
+pacc env setup
+
+# Manual permanent fix
+echo 'export ENABLE_PLUGINS=1' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc
 ```
+
+**Verification**:
+```bash
+pacc env check
+echo $ENABLE_PLUGINS  # Should output: 1
+```
+
+#### "Environment variable not persisting"
+
+**Problem**: `ENABLE_PLUGINS=1` works in current session but disappears after restart.
+
+**Cause**: Variable not added to shell profile
+
+**Solutions**:
+```bash
+# Identify your shell
+echo $SHELL
+
+# For Bash users
+echo 'export ENABLE_PLUGINS=1' >> ~/.bashrc
+echo 'export ENABLE_PLUGINS=1' >> ~/.bash_profile
+
+# For Zsh users
+echo 'export ENABLE_PLUGINS=1' >> ~/.zshrc
+
+# For Fish users
+echo 'set -gx ENABLE_PLUGINS 1' >> ~/.config/fish/config.fish
+
+# Test persistence
+# Close terminal, reopen, then:
+echo $ENABLE_PLUGINS
+```
+
+#### "Shell profile conflicts"
+
+**Problem**: Multiple shell profiles causing conflicts or overrides.
+
+**Symptoms**: Variable sometimes works, sometimes doesn't.
+
+**Solution**:
+```bash
+# Check which profiles exist
+ls -la ~/.*rc ~/.*profile
+
+# Check which profiles are sourced
+echo "Checking shell startup files..."
+grep -r "ENABLE_PLUGINS" ~/.bashrc ~/.zshrc ~/.bash_profile ~/.profile 2>/dev/null
+
+# Clean up duplicates - remove from all but one primary file
+# For Bash: use ~/.bashrc
+# For Zsh: use ~/.zshrc
+
+# Verify single source
+pacc env check --verbose
+```
+
+#### "Permission denied when updating shell profile"
+
+**Problem**: Cannot write to shell profile files.
+
+**Cause**: File permissions or ownership issues.
+
+**Solution**:
+```bash
+# Check file ownership
+ls -la ~/.bashrc ~/.zshrc
+
+# Fix ownership if needed
+chown $USER:$USER ~/.bashrc ~/.zshrc
+
+# Fix permissions
+chmod 644 ~/.bashrc ~/.zshrc
+
+# Retry setup
+pacc env setup
+```
+
+#### "Windows environment variable not working"
+
+**Problem**: Set `ENABLE_PLUGINS=1` on Windows but Claude Code doesn't see it.
+
+**Solutions**:
+
+**For PowerShell**:
+```powershell
+# Set user environment variable
+[Environment]::SetEnvironmentVariable("ENABLE_PLUGINS", "1", "User")
+
+# Verify it's set
+[Environment]::GetEnvironmentVariable("ENABLE_PLUGINS", "User")
+
+# Restart PowerShell and verify
+$env:ENABLE_PLUGINS
+```
+
+**For Command Prompt**:
+```cmd
+setx ENABLE_PLUGINS 1
+# Restart cmd and verify
+echo %ENABLE_PLUGINS%
+```
+
+**For WSL**:
+```bash
+# WSL needs its own configuration
+echo 'export ENABLE_PLUGINS=1' >> ~/.bashrc
+source ~/.bashrc
+echo $ENABLE_PLUGINS
+```
+
+#### "Docker/Container environment issues"
+
+**Problem**: Plugins not working in containerized development.
+
+**Solution**:
+```dockerfile
+# In Dockerfile
+ENV ENABLE_PLUGINS=1
+
+# In docker-compose.yml
+services:
+  app:
+    environment:
+      - ENABLE_PLUGINS=1
+    # or
+    env_file:
+      - .env  # where .env contains ENABLE_PLUGINS=1
+```
+
+**Verification in container**:
+```bash
+docker exec -it container_name bash
+echo $ENABLE_PLUGINS
+pacc env check
+```
+
+#### "SSH/Remote development environment issues"
+
+**Problem**: Local environment works but remote doesn't have plugins enabled.
+
+**Solution**:
+```bash
+# Configure remote environment
+ssh user@remote 'echo "export ENABLE_PLUGINS=1" >> ~/.bashrc'
+
+# Or copy your configuration
+scp ~/.bashrc user@remote:~/
+
+# Verify on remote
+ssh user@remote 'echo $ENABLE_PLUGINS'
+
+# Use SSH config for automatic setup
+echo "SendEnv ENABLE_PLUGINS" >> ~/.ssh/config
+```
+
+#### "IDE/Editor terminal environment issues"
+
+**Problem**: Plugins work in regular terminal but not in IDE terminal.
+
+**Cause**: IDE may not inherit shell environment variables.
+
+**Solutions**:
+
+**VS Code**:
+```json
+// In settings.json
+{
+  "terminal.integrated.env.osx": {
+    "ENABLE_PLUGINS": "1"
+  },
+  "terminal.integrated.env.linux": {
+    "ENABLE_PLUGINS": "1"
+  },
+  "terminal.integrated.env.windows": {
+    "ENABLE_PLUGINS": "1"
+  }
+}
+```
+
+**IntelliJ/PyCharm**:
+- Settings → Build, Execution, Deployment → Console → Environment Variables
+- Add: `ENABLE_PLUGINS=1`
+
+**General solution**:
+```bash
+# Restart IDE after setting environment variable
+# Or launch IDE from terminal with environment
+ENABLE_PLUGINS=1 code .
+ENABLE_PLUGINS=1 pycharm .
+```
+
+### Plugin Loading Issues
+
+#### "Plugin verification failed"
+
+**Problem**: Plugins fail to load with verification errors.
+
+**Diagnosis**:
+```bash
+# Check plugin configuration
+pacc plugin list --verbose
+
+# Verify plugin structure
+pacc plugin info plugin-name --repo owner/repo --verbose
+
+# Check Claude Code plugin directory
+ls -la ~/.claude/plugins/repos/
+
+# Verify configuration files
+cat ~/.claude/plugins/config.json
+cat ~/.claude/settings.json | grep -A 10 "enabledPlugins"
+```
+
+**Solutions**:
+```bash
+# Reinstall problematic plugin
+pacc plugin remove plugin-name --repo owner/repo
+pacc plugin install https://github.com/owner/repo --enable
+
+# Reset plugin configuration
+pacc env reset  # If this command exists
+# Or manually:
+mv ~/.claude/plugins/config.json ~/.claude/plugins/config.json.backup
+pacc plugin install https://github.com/owner/repo
+```
+
+#### "Plugin directory permissions"
+
+**Problem**: Cannot write to plugin directory.
+
+**Solution**:
+```bash
+# Check permissions
+ls -la ~/.claude/plugins/
+
+# Fix permissions
+chmod -R 755 ~/.claude/plugins/
+chown -R $USER:$USER ~/.claude/plugins/
+
+# Recreate if needed
+rm -rf ~/.claude/plugins/
+mkdir -p ~/.claude/plugins/repos/
+```
+
+### Team Environment Issues
+
+#### "Inconsistent environment across team members"
+
+**Problem**: Some team members have plugins working, others don't.
+
+**Solution**: Create team setup script:
+
+```bash
+#!/bin/bash
+# team-setup.sh
+
+echo "Setting up PACC environment for team..."
+
+# Check if PACC is installed
+if ! command -v pacc &> /dev/null; then
+    echo "Installing PACC CLI..."
+    pip install pacc-cli
+fi
+
+# Setup environment
+echo "Configuring environment..."
+pacc env setup
+
+# Install team plugins
+echo "Installing team plugins..."
+if [ -f "pacc.json" ]; then
+    pacc plugin sync
+else
+    echo "No pacc.json found. Please create one with team plugin requirements."
+fi
+
+# Verify setup
+echo "Verifying setup..."
+pacc env check
+pacc plugin list
+
+echo "Team setup complete!"
+```
+
+#### "Environment variable conflicts in CI/CD"
+
+**Problem**: CI/CD pipeline can't access or set `ENABLE_PLUGINS`.
+
+**Solution**:
+```yaml
+# GitHub Actions
+env:
+  ENABLE_PLUGINS: 1
+
+# GitLab CI
+variables:
+  ENABLE_PLUGINS: 1
+
+# Jenkins
+environment {
+  ENABLE_PLUGINS = '1'
+}
+
+# Docker-based CI
+docker run -e ENABLE_PLUGINS=1 ...
+```
+
+### Advanced Troubleshooting
+
+#### "Environment check shows conflicting information"
+
+**Problem**: `pacc env check` shows different results than manual checks.
+
+**Diagnosis**:
+```bash
+# Compare different methods
+echo "Manual check: $ENABLE_PLUGINS"
+pacc env check --verbose
+env | grep ENABLE_PLUGINS
+printenv ENABLE_PLUGINS
+
+# Check shell initialization
+bash -c 'echo $ENABLE_PLUGINS'
+zsh -c 'echo $ENABLE_PLUGINS'
+```
+
+#### "Multiple shell environments causing issues"
+
+**Problem**: Different behavior in different shells or terminals.
+
+**Solution**:
+```bash
+# Standardize across shells
+# Create ~/.profile with common settings
+echo 'export ENABLE_PLUGINS=1' >> ~/.profile
+
+# Ensure shells source ~/.profile
+echo 'source ~/.profile' >> ~/.bashrc
+echo 'source ~/.profile' >> ~/.zshrc
+
+# Test all shells
+bash -c 'echo "Bash: $ENABLE_PLUGINS"'
+zsh -c 'echo "Zsh: $ENABLE_PLUGINS"'
+```
+
+### Environment Diagnostic Commands
+
+```bash
+# Comprehensive environment diagnosis
+pacc env check --verbose --debug
+
+# Manual diagnostic checklist
+echo "=== Environment Diagnostic ==="
+echo "Shell: $SHELL"
+echo "User: $USER"
+echo "Home: $HOME"
+echo "ENABLE_PLUGINS: $ENABLE_PLUGINS"
+echo "Claude plugins dir: ~/.claude/plugins/"
+ls -la ~/.claude/plugins/ 2>/dev/null || echo "No plugins directory"
+echo "PACC version:"
+pacc --version
+echo "=== End Diagnostic ==="
+```
+
+### Common Issues
 
 #### "No plugins found in repository"
 - Verify repository has proper plugin structure
@@ -867,6 +1340,59 @@ pacc plugin install https://github.com/owner/repo --dry-run
 
 ## Best Practices
 
+### Environment Management
+
+1. **Standardize team environment setup**:
+   ```bash
+   # Create team-setup.sh script
+   #!/bin/bash
+   echo "Setting up team environment..."
+   pacc env setup
+   pacc plugin sync
+   pacc env check
+   ```
+
+2. **Document environment requirements**:
+   ```markdown
+   # Team Environment Setup
+   
+   ## Prerequisites
+   - Claude Code v1.0.81+
+   - PACC CLI installed
+   - Git configured
+   
+   ## Setup
+   ```bash
+   ./team-setup.sh
+   pacc env check
+   ```
+   ```
+
+3. **Use consistent shell configuration**:
+   - Standardize on Bash or Zsh across team
+   - Document which shell profile to use (.bashrc vs .zshrc)
+   - Include environment setup in onboarding checklist
+
+4. **CI/CD environment consistency**:
+   ```yaml
+   # .github/workflows/main.yml
+   env:
+     ENABLE_PLUGINS: 1
+   
+   jobs:
+     test:
+       steps:
+         - name: Setup PACC
+           run: |
+             pip install pacc-cli
+             pacc env check
+   ```
+
+5. **Cross-platform considerations**:
+   - Test setup scripts on Windows, macOS, and Linux
+   - Document platform-specific requirements
+   - Use Docker for consistent environments when possible
+
 ### Plugin Development
 
 1. **Use semantic versioning** in plugin.json
@@ -891,6 +1417,41 @@ pacc plugin install https://github.com/owner/repo --dry-run
 3. **Use version pinning** for stable environments
 4. **Regular sync** to keep plugins updated
 5. **Review plugin changes** before team adoption
+
+### Development vs Production Environment Management
+
+1. **Separate environment configurations**:
+   ```json
+   {
+     "environments": {
+       "development": {
+         "plugins": {
+           "repositories": ["team/dev-tools@latest"]
+         }
+       },
+       "production": {
+         "plugins": {
+           "repositories": ["team/stable-tools@v2.0.0"]
+         }
+       }
+     }
+   }
+   ```
+
+2. **Environment-specific setup**:
+   ```bash
+   # Development environment
+   pacc plugin sync --environment development
+   
+   # Production environment  
+   pacc plugin sync --environment production
+   ```
+
+3. **Security considerations for shared environments**:
+   - Use private repositories for internal plugins
+   - Review plugin code before installation
+   - Monitor plugin activity in production
+   - Use specific version pins for production stability
 
 **Example Team Workflow:**
 ```bash

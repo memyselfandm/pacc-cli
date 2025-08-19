@@ -31,6 +31,14 @@ from .converter import (
     ExtensionInfo,
     convert_extensions_to_plugin
 )
+from .environment import (
+    EnvironmentManager,
+    EnvironmentStatus,
+    Platform,
+    Shell,
+    ProfileUpdate,
+    get_environment_manager
+)
 
 # Create aliases for CLI compatibility
 RepositoryManager = PluginRepositoryManager
@@ -70,6 +78,13 @@ __all__ = [
     "PluginMetadata",
     "ExtensionInfo",
     "convert_extensions_to_plugin",
+    # Environment management
+    "EnvironmentManager",
+    "EnvironmentStatus",
+    "Platform",
+    "Shell", 
+    "ProfileUpdate",
+    "get_environment_manager",
     # Backward compatibility
     "PluginDiscovery",
     "RepositoryPlugins", 
