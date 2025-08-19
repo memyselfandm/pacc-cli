@@ -639,3 +639,634 @@ class PluginRepositoryManager:
         except Exception as e:
             logger.error(f"Failed to discover plugins in {repo_path}: {e}")
             return []
+    
+    def create_plugin_repository(
+        self, 
+        plugin_dir: Path, 
+        plugin_metadata: Dict[str, Any],
+        init_git: bool = True
+    ) -> bool:
+        """Create a new Git repository for a plugin directory.
+        
+        This method initializes a Git repository in the given plugin directory,
+        generates appropriate README.md and .gitignore files, and creates an
+        initial commit. This is typically used when converting existing
+        extensions to shareable plugins.
+        
+        Args:
+            plugin_dir: Path to plugin directory to initialize
+            plugin_metadata: Plugin metadata from plugin.json
+            init_git: Whether to initialize Git repository (default: True)
+            
+        Returns:
+            True if repository was created successfully, False otherwise
+            
+        Raises:
+            GitError: If Git operations fail
+            ValidationError: If plugin directory structure is invalid
+        """
+        with self._lock:
+            try:
+                if not plugin_dir.exists():
+                    raise ValidationError(f"Plugin directory does not exist: {plugin_dir}")
+                
+                # Validate plugin structure before creating repository
+                if not self._validate_plugin_structure(plugin_dir):
+                    raise ValidationError(f"Invalid plugin structure in {plugin_dir}")
+                
+                if init_git:
+                    # Initialize Git repository
+                    logger.info(f"Initializing Git repository in {plugin_dir}")
+                    cmd = ["git", "init"]
+                    result = subprocess.run(
+                        cmd,
+                        cwd=plugin_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    if result.returncode != 0:
+                        raise GitError(f"Failed to initialize Git repository: {result.stderr}")
+                
+                # Generate README.md
+                readme_path = plugin_dir / "README.md"
+                if not readme_path.exists():
+                    readme_content = self.generate_readme(plugin_metadata, plugin_dir)
+                    with open(readme_path, 'w', encoding='utf-8') as f:
+                        f.write(readme_content)
+                    logger.info(f"Generated README.md for plugin {plugin_metadata.get('name', 'unknown')}")
+                
+                # Create .gitignore
+                gitignore_path = plugin_dir / ".gitignore"
+                if not gitignore_path.exists():
+                    gitignore_content = self.create_gitignore()
+                    with open(gitignore_path, 'w', encoding='utf-8') as f:
+                        f.write(gitignore_content)
+                    logger.info(f"Created .gitignore for plugin")
+                
+                logger.info(f"Successfully set up plugin repository structure in {plugin_dir}")
+                return True
+                
+            except subprocess.TimeoutExpired:
+                raise GitError("Git init timed out")
+            except Exception as e:
+                if isinstance(e, (GitError, ValidationError)):
+                    raise
+                logger.error(f"Failed to create plugin repository: {e}")
+                raise GitError(f"Repository creation failed: {e}")
+    
+    def generate_readme(self, plugin_metadata: Dict[str, Any], plugin_dir: Path) -> str:
+        """Generate comprehensive README.md content from plugin metadata.
+        
+        Creates a well-formatted README that includes plugin description,
+        component inventory, installation instructions, and usage examples.
+        
+        Args:
+            plugin_metadata: Plugin metadata from plugin.json
+            plugin_dir: Path to plugin directory for component analysis
+            
+        Returns:
+            README.md content as string
+        """
+        plugin_name = plugin_metadata.get('name', 'Unnamed Plugin')
+        description = plugin_metadata.get('description', 'A Claude Code plugin')
+        version = plugin_metadata.get('version', '1.0.0')
+        author = plugin_metadata.get('author', {})
+        
+        # Analyze plugin components
+        components = self._analyze_plugin_components(plugin_dir)
+        
+        readme_content = f"""# {plugin_name}
+
+{description}
+
+**Version:** {version}
+"""
+        
+        # Add author information if available
+        if author:
+            author_name = author.get('name', '')
+            author_email = author.get('email', '')
+            author_url = author.get('url', '')
+            
+            if author_name or author_email:
+                readme_content += f"\n**Author:** "
+                if author_name:
+                    readme_content += author_name
+                if author_email:
+                    readme_content += f" <{author_email}>"
+                if author_url:
+                    readme_content += f" ([Website]({author_url}))"
+                readme_content += "\n"
+        
+        # Add components section
+        readme_content += "\n## Components\n\n"
+        
+        if components['commands']:
+            readme_content += f"**Commands:** {len(components['commands'])} custom commands\n"
+            for cmd in components['commands'][:5]:  # Show first 5
+                readme_content += f"- `{cmd}`\n"
+            if len(components['commands']) > 5:
+                readme_content += f"- ... and {len(components['commands']) - 5} more\n"
+            readme_content += "\n"
+        
+        if components['agents']:
+            readme_content += f"**Agents:** {len(components['agents'])} specialized agents\n"
+            for agent in components['agents'][:5]:  # Show first 5
+                readme_content += f"- `{agent}`\n"
+            if len(components['agents']) > 5:
+                readme_content += f"- ... and {len(components['agents']) - 5} more\n"
+            readme_content += "\n"
+        
+        if components['hooks']:
+            readme_content += f"**Hooks:** {len(components['hooks'])} event hooks\n"
+            for hook in components['hooks'][:5]:  # Show first 5
+                readme_content += f"- `{hook}`\n"
+            if len(components['hooks']) > 5:
+                readme_content += f"- ... and {len(components['hooks']) - 5} more\n"
+            readme_content += "\n"
+        
+        if not any([components['commands'], components['agents'], components['hooks']]):
+            readme_content += "No components detected in this plugin.\n\n"
+        
+        # Add installation section
+        readme_content += """## Installation
+
+This plugin can be installed using PACC (Package manager for Claude Code):
+
+```bash
+pacc plugin install <owner>/<repo>
+```
+
+Or manually by cloning this repository to your Claude Code plugins directory:
+
+```bash
+git clone <repo-url> ~/.claude/plugins/repos/<owner>/<repo>
+```
+
+After installation, enable the plugin in your Claude Code settings.
+
+## Usage
+
+"""
+        
+        # Add usage examples based on components
+        if components['commands']:
+            readme_content += "### Commands\n\n"
+            readme_content += "This plugin provides the following custom commands:\n\n"
+            for cmd in components['commands'][:3]:  # Show examples for first 3
+                readme_content += f"- `/{cmd}` - Custom command functionality\n"
+            readme_content += "\n"
+        
+        if components['agents']:
+            readme_content += "### Agents\n\n"
+            readme_content += "This plugin includes specialized agents for enhanced AI assistance:\n\n"
+            for agent in components['agents'][:3]:  # Show examples for first 3
+                readme_content += f"- **{agent}** - Specialized agent functionality\n"
+            readme_content += "\n"
+        
+        if components['hooks']:
+            readme_content += "### Hooks\n\n"
+            readme_content += "This plugin provides event-driven functionality through hooks:\n\n"
+            for hook in components['hooks'][:3]:  # Show examples for first 3
+                readme_content += f"- **{hook}** - Automated event handling\n"
+            readme_content += "\n"
+        
+        # Add requirements section
+        readme_content += """## Requirements
+
+- Claude Code v1.0.81 or later with plugin support
+- `ENABLE_PLUGINS=1` environment variable set
+- Git for installation and updates
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## License
+
+This plugin is provided as-is for use with Claude Code.
+"""
+        
+        return readme_content
+    
+    def create_gitignore(self) -> str:
+        """Create appropriate .gitignore content for Claude Code plugins.
+        
+        Returns:
+            .gitignore content as string
+        """
+        return """\
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Node.js (if any JavaScript tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Claude Code specific
+.claude/local/
+"""
+    
+    def commit_plugin(self, plugin_dir: Path, message: Optional[str] = None) -> bool:
+        """Create initial commit for plugin repository.
+        
+        Args:
+            plugin_dir: Path to plugin directory
+            message: Optional commit message (auto-generated if None)
+            
+        Returns:
+            True if commit succeeded, False otherwise
+        """
+        with self._lock:
+            try:
+                if not plugin_dir.exists():
+                    logger.error(f"Plugin directory does not exist: {plugin_dir}")
+                    return False
+                
+                # Check if this is a Git repository
+                git_dir = plugin_dir / ".git"
+                if not git_dir.exists():
+                    logger.error(f"Not a Git repository: {plugin_dir}")
+                    return False
+                
+                # Add all files
+                cmd = ["git", "add", "."]
+                result = subprocess.run(
+                    cmd,
+                    cwd=plugin_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if result.returncode != 0:
+                    logger.error(f"Git add failed: {result.stderr}")
+                    return False
+                
+                # Generate commit message if not provided
+                if message is None:
+                    # Try to get plugin name from plugin.json
+                    plugin_json_path = plugin_dir / "plugin.json"
+                    plugin_name = "plugin"
+                    if plugin_json_path.exists():
+                        try:
+                            with open(plugin_json_path, 'r', encoding='utf-8') as f:
+                                plugin_data = json.load(f)
+                                plugin_name = plugin_data.get('name', 'plugin')
+                        except (json.JSONDecodeError, IOError):
+                            pass
+                    
+                    message = f"Initial commit for {plugin_name}\n\nGenerated by PACC plugin converter"
+                
+                # Create commit
+                cmd = ["git", "commit", "-m", message]
+                result = subprocess.run(
+                    cmd,
+                    cwd=plugin_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if result.returncode != 0:
+                    # Check if there were no changes to commit
+                    if "nothing to commit" in result.stdout.lower():
+                        logger.info("No changes to commit")
+                        return True
+                    else:
+                        logger.error(f"Git commit failed: {result.stderr}")
+                        return False
+                
+                logger.info(f"Successfully created initial commit for plugin in {plugin_dir}")
+                return True
+                
+            except subprocess.TimeoutExpired:
+                logger.error("Git commit timed out")
+                return False
+            except Exception as e:
+                logger.error(f"Commit failed for {plugin_dir}: {e}")
+                return False
+    
+    def push_plugin(
+        self, 
+        plugin_dir: Path, 
+        repo_url: str, 
+        auth: Optional[Dict[str, str]] = None,
+        branch: str = "main"
+    ) -> bool:
+        """Push plugin repository to remote Git repository.
+        
+        Supports authentication via SSH keys (default) or HTTPS with tokens.
+        Handles GitHub, GitLab, and Bitbucket repositories.
+        
+        Args:
+            plugin_dir: Path to plugin directory
+            repo_url: Remote repository URL (HTTPS or SSH)
+            auth: Optional authentication dict with 'token' or 'username'/'password'
+            branch: Branch to push to (default: 'main')
+            
+        Returns:
+            True if push succeeded, False otherwise
+        """
+        with self._lock:
+            try:
+                if not plugin_dir.exists():
+                    logger.error(f"Plugin directory does not exist: {plugin_dir}")
+                    return False
+                
+                # Check if this is a Git repository
+                git_dir = plugin_dir / ".git"
+                if not git_dir.exists():
+                    logger.error(f"Not a Git repository: {plugin_dir}")
+                    return False
+                
+                # Prepare remote URL with authentication if needed
+                push_url = self._prepare_authenticated_url(repo_url, auth)
+                
+                # Add remote origin if it doesn't exist
+                cmd = ["git", "remote", "get-url", "origin"]
+                result = subprocess.run(
+                    cmd,
+                    cwd=plugin_dir,
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode != 0:
+                    # Add remote origin
+                    cmd = ["git", "remote", "add", "origin", push_url]
+                    result = subprocess.run(
+                        cmd,
+                        cwd=plugin_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    if result.returncode != 0:
+                        logger.error(f"Failed to add remote origin: {result.stderr}")
+                        return False
+                else:
+                    # Update existing remote URL
+                    cmd = ["git", "remote", "set-url", "origin", push_url]
+                    result = subprocess.run(
+                        cmd,
+                        cwd=plugin_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    if result.returncode != 0:
+                        logger.error(f"Failed to update remote URL: {result.stderr}")
+                        return False
+                
+                # Push to remote
+                logger.info(f"Pushing plugin to {repo_url} (branch: {branch})")
+                cmd = ["git", "push", "-u", "origin", branch]
+                result = subprocess.run(
+                    cmd,
+                    cwd=plugin_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minute timeout for push
+                )
+                
+                if result.returncode != 0:
+                    error_message = result.stderr.lower()
+                    
+                    # Provide specific error messages for common issues
+                    if "authentication failed" in error_message or "access denied" in error_message:
+                        logger.error("Authentication failed. Please check your credentials or SSH keys.")
+                        return False
+                    elif "repository not found" in error_message:
+                        logger.error("Repository not found. Please check the repository URL and permissions.")
+                        return False
+                    elif "permission denied" in error_message:
+                        logger.error("Permission denied. Please check repository permissions.")
+                        return False
+                    else:
+                        logger.error(f"Git push failed: {result.stderr}")
+                        return False
+                
+                logger.info(f"Successfully pushed plugin to {repo_url}")
+                return True
+                
+            except subprocess.TimeoutExpired:
+                logger.error("Git push timed out")
+                return False
+            except Exception as e:
+                logger.error(f"Push failed for {plugin_dir}: {e}")
+                return False
+    
+    def _validate_plugin_structure(self, plugin_dir: Path) -> bool:
+        """Validate that plugin directory has required structure.
+        
+        Args:
+            plugin_dir: Path to plugin directory
+            
+        Returns:
+            True if structure is valid, False otherwise
+        """
+        try:
+            # Check for plugin.json
+            plugin_json_path = plugin_dir / "plugin.json"
+            if not plugin_json_path.exists():
+                logger.warning(f"No plugin.json found in {plugin_dir}")
+                return False
+            
+            # Validate plugin.json content
+            with open(plugin_json_path, 'r', encoding='utf-8') as f:
+                plugin_data = json.load(f)
+            
+            if "name" not in plugin_data:
+                logger.warning(f"Plugin manifest missing required 'name' field")
+                return False
+            
+            # Check for at least one component type
+            has_components = any([
+                (plugin_dir / "commands").exists(),
+                (plugin_dir / "agents").exists(),
+                (plugin_dir / "hooks").exists()
+            ])
+            
+            if not has_components:
+                logger.warning(f"Plugin has no commands, agents, or hooks directories")
+            
+            return True
+            
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning(f"Invalid plugin.json in {plugin_dir}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Plugin validation failed for {plugin_dir}: {e}")
+            return False
+    
+    def _analyze_plugin_components(self, plugin_dir: Path) -> Dict[str, List[str]]:
+        """Analyze plugin directory to identify components.
+        
+        Args:
+            plugin_dir: Path to plugin directory
+            
+        Returns:
+            Dict with lists of commands, agents, and hooks
+        """
+        components = {
+            'commands': [],
+            'agents': [],
+            'hooks': []
+        }
+        
+        try:
+            # Analyze commands
+            commands_dir = plugin_dir / "commands"
+            if commands_dir.exists():
+                for cmd_file in commands_dir.rglob("*.md"):
+                    # Get command name from filename (without .md extension)
+                    cmd_name = cmd_file.stem
+                    # Add namespace if in subdirectory
+                    relative_path = cmd_file.relative_to(commands_dir)
+                    if len(relative_path.parts) > 1:
+                        namespace = "/".join(relative_path.parts[:-1])
+                        cmd_name = f"{namespace}/{cmd_name}"
+                    components['commands'].append(cmd_name)
+            
+            # Analyze agents
+            agents_dir = plugin_dir / "agents"
+            if agents_dir.exists():
+                for agent_file in agents_dir.rglob("*.md"):
+                    # Get agent name from filename (without .md extension)
+                    agent_name = agent_file.stem
+                    # Add namespace if in subdirectory
+                    relative_path = agent_file.relative_to(agents_dir)
+                    if len(relative_path.parts) > 1:
+                        namespace = "/".join(relative_path.parts[:-1])
+                        agent_name = f"{namespace}/{agent_name}"
+                    components['agents'].append(agent_name)
+            
+            # Analyze hooks
+            hooks_file = plugin_dir / "hooks" / "hooks.json"
+            if hooks_file.exists():
+                try:
+                    with open(hooks_file, 'r', encoding='utf-8') as f:
+                        hooks_data = json.load(f)
+                    
+                    if isinstance(hooks_data, dict):
+                        components['hooks'] = list(hooks_data.keys())
+                    elif isinstance(hooks_data, list):
+                        # If hooks.json is a list, extract hook names
+                        for hook in hooks_data:
+                            if isinstance(hook, dict) and 'name' in hook:
+                                components['hooks'].append(hook['name'])
+                            
+                except (json.JSONDecodeError, IOError) as e:
+                    logger.warning(f"Could not parse hooks.json: {e}")
+            
+        except Exception as e:
+            logger.error(f"Failed to analyze plugin components: {e}")
+        
+        return components
+    
+    def _prepare_authenticated_url(self, repo_url: str, auth: Optional[Dict[str, str]]) -> str:
+        """Prepare repository URL with authentication if needed.
+        
+        Args:
+            repo_url: Repository URL
+            auth: Authentication dictionary
+            
+        Returns:
+            URL prepared for authenticated access
+        """
+        if not auth:
+            return repo_url
+        
+        # For SSH URLs, return as-is (assume SSH keys are configured)
+        if repo_url.startswith("git@"):
+            return repo_url
+        
+        # For HTTPS URLs, inject token if provided
+        if repo_url.startswith("https://") and "token" in auth:
+            token = auth["token"]
+            
+            # Handle GitHub URLs
+            if "github.com" in repo_url:
+                return repo_url.replace("https://", f"https://{token}@")
+            
+            # Handle GitLab URLs
+            elif "gitlab.com" in repo_url:
+                return repo_url.replace("https://", f"https://oauth2:{token}@")
+            
+            # Handle Bitbucket URLs
+            elif "bitbucket.org" in repo_url:
+                return repo_url.replace("https://", f"https://x-token-auth:{token}@")
+            
+            # Generic token auth
+            else:
+                return repo_url.replace("https://", f"https://{token}@")
+        
+        # Handle username/password auth
+        elif repo_url.startswith("https://") and "username" in auth and "password" in auth:
+            username = auth["username"]
+            password = auth["password"]
+            return repo_url.replace("https://", f"https://{username}:{password}@")
+        
+        return repo_url
