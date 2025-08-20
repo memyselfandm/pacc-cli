@@ -420,6 +420,12 @@ class PluginConfigManager:
         self.json_validator = JSONValidator()
         self._lock = threading.RLock()
         
+        # Configuration caching for performance
+        self._config_cache = {}
+        self._config_mtime = {}
+        self._settings_cache = None
+        self._settings_mtime = 0
+        
         # Ensure directories exist
         self.plugins_dir.mkdir(parents=True, exist_ok=True)
         self.repos_dir.mkdir(parents=True, exist_ok=True)
@@ -886,15 +892,25 @@ class PluginConfigManager:
             raise
     
     def _load_plugin_config(self) -> Dict[str, Any]:
-        """Load plugin configuration from config.json.
+        """Load plugin configuration from config.json with caching.
         
         Returns:
             Plugin configuration dictionary
         """
+        config_key = str(self.config_path)
+        
         if not self.config_path.exists():
             return {"repositories": {}}
         
         try:
+            # Check cache first
+            current_mtime = self.config_path.stat().st_mtime
+            if (config_key in self._config_cache and 
+                self._config_mtime.get(config_key, 0) >= current_mtime):
+                logger.debug(f"Using cached config for {self.config_path}")
+                return deepcopy(self._config_cache[config_key])
+            
+            # Load from file
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
@@ -908,6 +924,11 @@ class PluginConfigManager:
             # Ensure basic structure
             if "repositories" not in config:
                 config["repositories"] = {}
+            
+            # Update cache
+            self._config_cache[config_key] = deepcopy(config)
+            self._config_mtime[config_key] = current_mtime
+            logger.debug(f"Cached config for {self.config_path}")
             
             return config
             
@@ -936,6 +957,12 @@ class PluginConfigManager:
             writer = AtomicFileWriter(self.config_path, create_backup=True)
             writer.write_json(config, indent=2)
             
+            # Invalidate cache
+            config_key = str(self.config_path)
+            if config_key in self._config_cache:
+                del self._config_cache[config_key]
+                del self._config_mtime[config_key]
+            
             logger.debug(f"Saved plugin configuration to {self.config_path}")
             return True
             
@@ -944,7 +971,7 @@ class PluginConfigManager:
             return False
     
     def _load_settings(self) -> Dict[str, Any]:
-        """Load Claude settings from settings.json.
+        """Load Claude settings from settings.json with caching.
         
         Returns:
             Settings dictionary
@@ -953,6 +980,14 @@ class PluginConfigManager:
             return {}
         
         try:
+            # Check cache first
+            current_mtime = self.settings_path.stat().st_mtime
+            if (self._settings_cache is not None and 
+                self._settings_mtime >= current_mtime):
+                logger.debug(f"Using cached settings for {self.settings_path}")
+                return deepcopy(self._settings_cache)
+            
+            # Load from file
             with open(self.settings_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
@@ -961,7 +996,14 @@ class PluginConfigManager:
             if not validation_result.is_valid:
                 raise ConfigurationError(f"Invalid JSON in {self.settings_path}")
             
-            return json.loads(content)
+            settings = json.loads(content)
+            
+            # Update cache
+            self._settings_cache = deepcopy(settings)
+            self._settings_mtime = current_mtime
+            logger.debug(f"Cached settings for {self.settings_path}")
+            
+            return settings
             
         except json.JSONDecodeError as e:
             raise ConfigurationError(f"Invalid JSON in {self.settings_path}: {e}")
@@ -981,6 +1023,10 @@ class PluginConfigManager:
             # Write atomically
             writer = AtomicFileWriter(self.settings_path, create_backup=True)
             writer.write_json(settings, indent=2)
+            
+            # Invalidate cache
+            self._settings_cache = None
+            self._settings_mtime = 0
             
             logger.debug(f"Saved settings to {self.settings_path}")
             return True

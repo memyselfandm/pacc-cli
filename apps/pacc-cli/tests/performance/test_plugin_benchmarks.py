@@ -174,7 +174,7 @@ This plugin is designed for performance benchmarking of the PACC plugin system.
 
 ## Usage Examples
 
-{'```bash\\n# Example command {j}\\nplugin-action --option value\\n```\\n\\n' * content_multiplier for j in range(content_multiplier)}
+{''.join([f'```bash\\n# Example command {j}\\nplugin-action --option value\\n```\\n\\n' for j in range(content_multiplier)])}
 
 ## Configuration
 

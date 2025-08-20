@@ -6,6 +6,7 @@ repositories following Claude Code plugin conventions.
 
 import json
 import logging
+import time
 import yaml
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -539,16 +540,35 @@ class PluginScanner:
         self.manifest_parser = PluginManifestParser()
         self.metadata_extractor = PluginMetadataExtractor()
         self.path_validator = FilePathValidator()
+        self._scan_cache = {}  # Cache for repository scans
+        self._cache_timestamp = {}  # Track cache freshness
         
-    def scan_repository(self, repo_path: Path) -> RepositoryInfo:
+    def scan_repository(self, repo_path: Path, use_cache: bool = True) -> RepositoryInfo:
         """Scan repository for plugins.
         
         Args:
             repo_path: Path to plugin repository
+            use_cache: Whether to use cached results
             
         Returns:
             RepositoryInfo with discovered plugins
         """
+        repo_key = str(repo_path.resolve())
+        
+        # Check cache first
+        if use_cache and repo_key in self._scan_cache:
+            try:
+                # Check if repository has been modified since cache
+                repo_mtime = repo_path.stat().st_mtime
+                cache_time = self._cache_timestamp.get(repo_key, 0)
+                
+                if repo_mtime <= cache_time:
+                    logger.debug(f"Using cached scan results for {repo_path}")
+                    return self._scan_cache[repo_key]
+            except OSError:
+                # If we can't stat the repo, invalidate cache
+                pass
+        
         repo_info = RepositoryInfo(path=repo_path)
         
         try:
@@ -572,7 +592,7 @@ class PluginScanner:
                         repo_info.plugins.append(plugin_info)
                         logger.debug(f"Successfully scanned plugin: {plugin_info.name}")
                 except Exception as e:
-                    error_msg = f"Failed to scan plugin directory {plugin_dir}: {e}"
+                    error_msg = f"Failed to scan plugin directory {plugin_dir}: {e}. Check if the directory is accessible and contains valid plugin files."
                     repo_info.scan_errors.append(error_msg)
                     logger.error(error_msg)
             
@@ -589,10 +609,18 @@ class PluginScanner:
             repo_info.scan_errors.append(error_msg)
             logger.error(error_msg)
         
+        # Cache the results if scan was successful
+        if use_cache and not repo_info.scan_errors:
+            self._scan_cache[repo_key] = repo_info
+            self._cache_timestamp[repo_key] = time.time()
+            logger.debug(f"Cached scan results for {repo_path}")
+        
         return repo_info
     
     def _find_plugin_directories(self, repo_path: Path) -> List[Path]:
         """Find directories containing plugin.json files.
+        
+        Optimized to avoid deep recursion and use limited depth search.
         
         Args:
             repo_path: Repository root path
@@ -601,16 +629,50 @@ class PluginScanner:
             List of plugin directory paths
         """
         plugin_dirs = []
+        MAX_DEPTH = 3  # Limit search depth for performance
         
-        # Search for plugin.json files recursively
+        # Search for plugin.json files with limited recursion
         try:
-            for manifest_path in repo_path.rglob("plugin.json"):
-                plugin_dir = manifest_path.parent
-                if self.path_validator.is_valid_path(plugin_dir):
-                    plugin_dirs.append(plugin_dir)
-                    logger.debug(f"Found plugin manifest: {manifest_path}")
+            # First check common plugin locations
+            common_locations = [
+                repo_path,  # Root level
+                repo_path / "plugins",  # Common plugins dir
+                repo_path / "src" / "plugins",  # Src structure
+            ]
+            
+            for location in common_locations:
+                if location.exists() and location.is_dir():
+                    manifest_path = location / "plugin.json"
+                    if manifest_path.exists():
+                        if self.path_validator.is_valid_path(location):
+                            plugin_dirs.append(location)
+                            logger.debug(f"Found plugin manifest: {manifest_path}")
+            
+            # Then do limited recursive search if no plugins found in common locations
+            if not plugin_dirs:
+                def _search_with_depth(path: Path, current_depth: int = 0):
+                    if current_depth >= MAX_DEPTH:
+                        return
+                    
+                    try:
+                        for item in path.iterdir():
+                            if item.is_dir() and not item.name.startswith('.'):
+                                manifest_path = item / "plugin.json"
+                                if manifest_path.exists():
+                                    if self.path_validator.is_valid_path(item):
+                                        plugin_dirs.append(item)
+                                        logger.debug(f"Found plugin manifest: {manifest_path}")
+                                else:
+                                    # Recurse into subdirectory
+                                    _search_with_depth(item, current_depth + 1)
+                    except (OSError, PermissionError):
+                        # Skip directories we can't access
+                        pass
+                
+                _search_with_depth(repo_path)
+                
         except OSError as e:
-            logger.error(f"Error searching for plugin directories in {repo_path}: {e}")
+            logger.error(f"Error searching for plugin directories in {repo_path}: {e}. Check repository permissions and disk space.")
         
         return plugin_dirs
     
@@ -656,87 +718,97 @@ class PluginScanner:
                 if issue.severity == 'warning'
             ])
         
-        # Discover components
-        self._discover_plugin_components(plugin_info)
+        # Discover components with metadata extraction
+        self._discover_plugin_components(plugin_info, extract_metadata=True)
         
         return plugin_info
     
-    def _discover_plugin_components(self, plugin_info: PluginInfo) -> None:
+    def _discover_plugin_components(self, plugin_info: PluginInfo, extract_metadata: bool = False) -> None:
         """Discover plugin components (commands, agents, hooks).
+        
+        Optimized to only extract metadata when needed and batch file operations.
         
         Args:
             plugin_info: PluginInfo to update with component information
+            extract_metadata: Whether to extract detailed metadata (slower)
         """
         plugin_path = plugin_info.path
         
-        # Discover commands
-        commands_dir = plugin_path / "commands"
-        if commands_dir.exists() and commands_dir.is_dir():
-            command_files = list(commands_dir.rglob("*.md"))
-            plugin_info.components["commands"] = command_files
-            
-            # Extract metadata for each command
-            for cmd_file in command_files:
-                try:
-                    cmd_metadata = self.metadata_extractor.extract_command_metadata(cmd_file)
-                    if cmd_metadata["errors"]:
-                        plugin_info.errors.extend(cmd_metadata["errors"])
-                    
-                    # Store metadata
-                    if "commands_metadata" not in plugin_info.metadata:
-                        plugin_info.metadata["commands_metadata"] = []
-                    plugin_info.metadata["commands_metadata"].append(cmd_metadata)
-                    
-                except Exception as e:
-                    error_msg = f"Failed to extract command metadata from {cmd_file}: {e}"
-                    plugin_info.errors.append(error_msg)
-                    logger.error(error_msg)
+        # Define component types and their extensions
+        component_types = {
+            "commands": ("commands", "*.md"),
+            "agents": ("agents", "*.md"), 
+            "hooks": ("hooks", "*.json"),
+            "mcp": ("mcp", "*.json")
+        }
         
-        # Discover agents
-        agents_dir = plugin_path / "agents"
-        if agents_dir.exists() and agents_dir.is_dir():
-            agent_files = list(agents_dir.rglob("*.md"))
-            plugin_info.components["agents"] = agent_files
-            
-            # Extract metadata for each agent
-            for agent_file in agent_files:
+        # Batch discover all components
+        for comp_type, (dirname, pattern) in component_types.items():
+            comp_dir = plugin_path / dirname
+            if comp_dir.exists() and comp_dir.is_dir():
                 try:
-                    agent_metadata = self.metadata_extractor.extract_agent_metadata(agent_file)
-                    if agent_metadata["errors"]:
-                        plugin_info.errors.extend(agent_metadata["errors"])
+                    # Use glob instead of rglob for better performance (limit to immediate children)
+                    component_files = []
                     
-                    # Store metadata
-                    if "agents_metadata" not in plugin_info.metadata:
-                        plugin_info.metadata["agents_metadata"] = []
-                    plugin_info.metadata["agents_metadata"].append(agent_metadata)
+                    # Check immediate directory
+                    direct_files = list(comp_dir.glob(pattern))
+                    component_files.extend(direct_files)
                     
-                except Exception as e:
-                    error_msg = f"Failed to extract agent metadata from {agent_file}: {e}"
-                    plugin_info.errors.append(error_msg)
-                    logger.error(error_msg)
+                    # Only check one level deep for performance
+                    for subdir in comp_dir.iterdir():
+                        if subdir.is_dir() and not subdir.name.startswith('.'):
+                            try:
+                                subdir_files = list(subdir.glob(pattern))
+                                component_files.extend(subdir_files)
+                            except (OSError, PermissionError):
+                                # Skip inaccessible subdirectories
+                                continue
+                    
+                    if component_files:
+                        plugin_info.components[comp_type] = component_files
+                        logger.debug(f"Found {len(component_files)} {comp_type} in {comp_dir}")
+                        
+                        # Only extract metadata if specifically requested
+                        if extract_metadata:
+                            self._extract_component_metadata(plugin_info, comp_type, component_files)
+                
+                except (OSError, PermissionError) as e:
+                    error_msg = f"Error accessing {comp_type} directory {comp_dir}: {e}"
+                    plugin_info.warnings.append(error_msg)
+                    logger.warning(error_msg)
+    
+    def _extract_component_metadata(self, plugin_info: PluginInfo, comp_type: str, files: List[Path]) -> None:
+        """Extract metadata for component files (called separately for performance).
         
-        # Discover hooks
-        hooks_dir = plugin_path / "hooks"
-        if hooks_dir.exists() and hooks_dir.is_dir():
-            hooks_files = list(hooks_dir.glob("hooks.json"))
-            plugin_info.components["hooks"] = hooks_files
-            
-            # Extract metadata for each hooks file
-            for hooks_file in hooks_files:
-                try:
-                    hooks_metadata = self.metadata_extractor.extract_hooks_metadata(hooks_file)
-                    if hooks_metadata["errors"]:
-                        plugin_info.errors.extend(hooks_metadata["errors"])
-                    
-                    # Store metadata
-                    if "hooks_metadata" not in plugin_info.metadata:
-                        plugin_info.metadata["hooks_metadata"] = []
-                    plugin_info.metadata["hooks_metadata"].append(hooks_metadata)
-                    
-                except Exception as e:
-                    error_msg = f"Failed to extract hooks metadata from {hooks_file}: {e}"
-                    plugin_info.errors.append(error_msg)
-                    logger.error(error_msg)
+        Args:
+            plugin_info: Plugin info to update
+            comp_type: Component type (commands, agents, etc.)
+            files: List of component files
+        """
+        metadata_key = f"{comp_type}_metadata"
+        if metadata_key not in plugin_info.metadata:
+            plugin_info.metadata[metadata_key] = []
+        
+        for file_path in files:
+            try:
+                if comp_type == "commands":
+                    metadata = self.metadata_extractor.extract_command_metadata(file_path)
+                elif comp_type == "agents":
+                    metadata = self.metadata_extractor.extract_agent_metadata(file_path)
+                elif comp_type in ["hooks", "mcp"]:
+                    metadata = self.metadata_extractor.extract_hooks_metadata(file_path)
+                else:
+                    continue
+                
+                if metadata.get("errors"):
+                    plugin_info.errors.extend(metadata["errors"])
+                
+                plugin_info.metadata[metadata_key].append(metadata)
+                
+            except Exception as e:
+                error_msg = f"Failed to extract {comp_type} metadata from {file_path}: {e}. Check if the file format is valid and readable."
+                plugin_info.errors.append(error_msg)
+                logger.error(error_msg)
 
 
 # Template variable resolution functions

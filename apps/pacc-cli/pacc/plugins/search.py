@@ -67,7 +67,7 @@ class SearchResult:
             query_lower in self.name.lower() or
             query_lower in self.description.lower() or
             query_lower in self.author.lower() or
-            any(query_lower in tag.lower() for tag in self.tags)
+            any(query_lower in tag.lower() for tag in self.tags if tag)
         )
     
     def to_dict(self) -> Dict[str, Any]:
