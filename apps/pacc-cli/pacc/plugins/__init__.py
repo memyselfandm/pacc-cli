@@ -50,6 +50,49 @@ from .creator import (
     MetadataCollector
 )
 
+# Sprint 7 features - Security & Marketplace
+from .security import (
+    PluginSecurityManager,
+    PluginSecurityLevel,
+    AdvancedCommandScanner,
+    PluginManifestValidator,
+    PermissionAnalyzer,
+    SecurityAuditLogger,
+    PluginManifest,
+    SecurityAuditEntry
+)
+from .sandbox import (
+    PluginSandbox,
+    SandboxManager,
+    SandboxConfig,
+    SandboxLevel,
+    SandboxResult
+)
+from .marketplace import (
+    MarketplaceClient,
+    PluginMetadata as MarketplaceMetadata,
+    PluginVersion,
+    PluginDependency,
+    SemanticVersion,
+    RegistryConfig,
+    RegistryType,
+    PluginStatus,
+    DependencyConstraint,
+    MetadataCache,
+    DependencyResolver,
+    create_marketplace_client,
+    get_plugin_info,
+    search_marketplace,
+    resolve_plugin_dependencies
+)
+from .security_integration import (
+    convert_security_issues_to_validation_errors,
+    enhance_validation_with_security,
+    validate_plugin_in_sandbox,
+    SecurityValidatorMixin,
+    create_security_enhanced_validator
+)
+
 # Create aliases for CLI compatibility
 RepositoryManager = PluginRepositoryManager
 GitRepository = PluginRepo
@@ -128,5 +171,41 @@ __all__ = [
     "CreationResult",
     "TemplateEngine",
     "GitInitializer",
-    "MetadataCollector"
+    "MetadataCollector",
+    # Sprint 7 - Security & Sandbox
+    "PluginSecurityManager",
+    "PluginSecurityLevel",
+    "AdvancedCommandScanner",
+    "PluginManifestValidator",
+    "PermissionAnalyzer",
+    "SecurityAuditLogger",
+    "PluginManifest",
+    "SecurityAuditEntry",
+    "PluginSandbox",
+    "SandboxManager",
+    "SandboxConfig",
+    "SandboxLevel",
+    "SandboxResult",
+    # Sprint 7 - Marketplace
+    "MarketplaceClient",
+    "MarketplaceMetadata",
+    "PluginVersion",
+    "PluginDependency",
+    "SemanticVersion",
+    "RegistryConfig",
+    "RegistryType",
+    "PluginStatus",
+    "DependencyConstraint",
+    "MetadataCache",
+    "DependencyResolver",
+    "create_marketplace_client",
+    "get_plugin_info",
+    "search_marketplace",
+    "resolve_plugin_dependencies",
+    # Sprint 7 - Security Integration
+    "convert_security_issues_to_validation_errors",
+    "enhance_validation_with_security",
+    "validate_plugin_in_sandbox",
+    "SecurityValidatorMixin",
+    "create_security_enhanced_validator"
 ]
