@@ -16,7 +16,7 @@ from pacc.plugins import (
     PluginConverter,
     EnvironmentManager
 )
-from pacc.cli import PaccCLI
+from pacc.cli import PACCCli
 
 
 class PerformanceTimer:

@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import psutil
 
-from pacc.cli import PaccCLI
+from pacc.cli import PACCCli
 from pacc.plugins import (
     PluginRepositoryManager,
     PluginConfigManager,
@@ -231,7 +231,7 @@ class TestPluginCLIPerformance:
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # Test single plugin install performance
                 with CLIPerformanceProfiler("Plugin Install Single") as profiler:
@@ -279,7 +279,7 @@ class TestPluginCLIPerformance:
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # First install some plugins
                 install_args = ['plugin', 'install', str(repo_dir), '--all', '--no-interactive']
@@ -322,7 +322,7 @@ class TestPluginCLIPerformance:
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # First install plugins
                 install_args = ['plugin', 'install', str(repo_dir), '--all', '--no-interactive']
@@ -368,7 +368,7 @@ class TestPluginCLIPerformance:
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # First install plugins
                 install_args = ['plugin', 'install', str(repo_dir), '--all', '--no-interactive']
@@ -402,7 +402,7 @@ class TestPluginCLIPerformance:
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # First install some plugins
                 install_args = ['plugin', 'install', str(repo_dir), '--plugin', 'perf-agents-00', '--no-interactive']
@@ -436,7 +436,7 @@ class TestPluginCLIPerformance:
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # First install some plugins
                 install_args = ['plugin', 'install', str(repo_dir), '--all', '--no-interactive']
@@ -535,7 +535,7 @@ Minimal plugin for large repository stress testing.
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # Test discovery performance with large repo
                 with CLIPerformanceProfiler("Large Repo List") as profiler:
@@ -575,7 +575,7 @@ Minimal plugin for large repository stress testing.
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # Rapid command sequence
                 command_sequence = [
@@ -632,7 +632,7 @@ Minimal plugin for large repository stress testing.
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 process = psutil.Process(os.getpid())
                 
                 # Get baseline memory
@@ -708,7 +708,7 @@ class TestPluginCLIIntegration:
         with patch('os.getcwd', return_value=str(test_env)):
             with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                 
-                cli = PaccCLI()
+                cli = PACCCli()
                 
                 # Test various error scenarios
                 error_scenarios = [
@@ -752,7 +752,7 @@ class TestPluginCLIIntegration:
             with patch('os.getcwd', return_value=str(test_env)):
                 with patch('pacc.core.project_config.ProjectConfigValidator._find_claude_dir', return_value=claude_dir):
                     
-                    cli = PaccCLI()
+                    cli = PACCCli()
                     results = []
                     
                     try:
