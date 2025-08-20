@@ -113,3 +113,4 @@ tmp/worklog/
 uv.lock
 .ruff_cache/
 test/
+ai_docs/prds/
