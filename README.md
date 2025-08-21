@@ -29,8 +29,8 @@ at the global level (~/.claude) or project level (`<project-root>/.claude`).
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pacc.git
-cd pacc/apps/pacc-cli
+git clone https://github.com/memyselfandm/pacc-cli.git
+cd pacc-cli/apps/pacc-cli
 
 # Install with uv (recommended)
 uv pip install -e .

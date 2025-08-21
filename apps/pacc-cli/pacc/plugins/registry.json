@@ -2,6 +2,7 @@
   "version": "1.0",
   "last_updated": "2025-08-19T00:00:00Z",
   "description": "Community plugin registry for PACC - Claude Code plugins",
+  "_notice": "NOTE: Repository URLs in this file are example/placeholder entries for demonstration purposes. Replace with actual repository URLs when implementing.",
   "plugins": [
     {
       "name": "git-hooks",

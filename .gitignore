@@ -1,4 +1,5 @@
 #Claude Code
+.claude/
 .claude/settings.local.json
 CLAUDE.local.md
 
@@ -109,8 +110,8 @@ outputs/
 tmp/worklog/
 .claude/commands/sprint.md
 .claude/pacc/
-~/.claude/plugins/
+.claude/plugins/
 uv.lock
 .ruff_cache/
-test/
-ai_docs/prds/
+/test_temp/
+ai_docs/
