@@ -6,6 +6,13 @@ from typing import Any, Dict, List, Optional, Set, Union
 
 from .base import BaseValidator, ValidationResult
 
+# Import advanced security scanning capabilities
+try:
+    from pacc.plugins.security import AdvancedCommandScanner, ThreatLevel
+    ADVANCED_SECURITY_AVAILABLE = True
+except ImportError:
+    ADVANCED_SECURITY_AVAILABLE = False
+
 
 class HooksValidator(BaseValidator):
     """Validator for Claude Code hook extensions."""
@@ -31,7 +38,13 @@ class HooksValidator(BaseValidator):
         """Initialize hooks validator."""
         super().__init__(max_file_size)
         
-        # Pre-compile regex patterns for performance
+        # Initialize advanced security scanner if available
+        if ADVANCED_SECURITY_AVAILABLE:
+            self._security_scanner = AdvancedCommandScanner()
+        else:
+            self._security_scanner = None
+        
+        # Pre-compile regex patterns for performance (fallback)
         self._command_validation_patterns = {
             "shell_injection": re.compile(r'[;&|`$(){}[\]\\]'),
             "path_traversal": re.compile(r'\.\./|\.\.\\'),
@@ -340,7 +353,57 @@ class HooksValidator(BaseValidator):
                 )
     
     def _validate_command_security(self, command: str, prefix: str, result: ValidationResult) -> None:
-        """Validate command for basic security issues."""
+        """Validate command for comprehensive security issues."""
+        # Use advanced security scanner if available
+        if self._security_scanner:
+            try:
+                security_issues = self._security_scanner.scan_command(command, context=prefix)
+                
+                for issue in security_issues:
+                    # Convert security issue to validation result format
+                    if issue.threat_level == ThreatLevel.CRITICAL:
+                        result.add_error(
+                            f"CRITICAL_SECURITY_RISK",
+                            f"{prefix}: {issue.description}",
+                            suggestion=issue.recommendation
+                        )
+                    elif issue.threat_level == ThreatLevel.HIGH:
+                        result.add_error(
+                            f"HIGH_SECURITY_RISK",
+                            f"{prefix}: {issue.description}",
+                            suggestion=issue.recommendation
+                        )
+                    elif issue.threat_level == ThreatLevel.MEDIUM:
+                        result.add_warning(
+                            f"MEDIUM_SECURITY_RISK",
+                            f"{prefix}: {issue.description}",
+                            suggestion=issue.recommendation
+                        )
+                    else:  # LOW
+                        result.add_warning(
+                            f"LOW_SECURITY_RISK",
+                            f"{prefix}: {issue.description}",
+                            suggestion=issue.recommendation
+                        )
+                
+                # If we found critical or high-risk issues, we're done
+                if any(issue.threat_level in [ThreatLevel.CRITICAL, ThreatLevel.HIGH] 
+                       for issue in security_issues):
+                    return
+                
+            except Exception as e:
+                # Fall back to basic validation if advanced scanning fails
+                result.add_warning(
+                    "SECURITY_SCAN_ERROR",
+                    f"{prefix}: Advanced security scan failed: {e}",
+                    suggestion="Manual security review recommended"
+                )
+        
+        # Fallback to basic security validation
+        self._validate_command_security_basic(command, prefix, result)
+    
+    def _validate_command_security_basic(self, command: str, prefix: str, result: ValidationResult) -> None:
+        """Basic security validation fallback."""
         # Check for shell injection patterns
         if self._command_validation_patterns["shell_injection"].search(command):
             result.add_warning(

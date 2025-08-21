@@ -1,4 +1,5 @@
 #Claude Code
+.claude/
 .claude/settings.local.json
 CLAUDE.local.md
 
@@ -91,7 +92,8 @@ yarn-error.log*
 lerna-debug.log*
 
 # Testing
-
+*_results.json
+*_report.json
 
 # Temporary files
 *.tmp
@@ -105,4 +107,11 @@ temp/
 .mcp.json
 output
 outputs/
-extras/tmp/worklog
+tmp/worklog/
+.claude/commands/sprint.md
+.claude/pacc/
+.claude/plugins/
+uv.lock
+.ruff_cache/
+/test_temp/
+ai_docs/
