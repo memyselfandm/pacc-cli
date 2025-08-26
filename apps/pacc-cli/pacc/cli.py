@@ -150,6 +150,9 @@ class PACCCli:
         # Sync command
         self._add_sync_parser(subparsers)
         
+        # This command (export current config)
+        self._add_this_parser(subparsers)
+        
         # Plugin command
         self._add_plugin_parser(subparsers)
         
@@ -537,6 +540,61 @@ class PACCCli:
         )
         
         sync_parser.set_defaults(func=self.sync_command)
+
+    def _add_this_parser(self, subparsers) -> None:
+        """Add the 'this' command parser for exporting current config."""
+        this_parser = subparsers.add_parser(
+            "this",
+            help="Export current project's extension configuration",
+            description="Export the current project's Claude Code extension configuration to pacc.json format"
+        )
+        
+        this_parser.add_argument(
+            "--output", "-o",
+            default="pacc.json",
+            help="Output destination: file path or 'stdout' (default: pacc.json)"
+        )
+        
+        this_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Overwrite existing pacc.json without prompting"
+        )
+        
+        this_parser.add_argument(
+            "--types", "-t",
+            help="Comma-separated list of extension types to include (hooks,mcps,agents,commands)"
+        )
+        
+        this_parser.add_argument(
+            "--no-plugins",
+            action="store_true",
+            help="Exclude plugins from export"
+        )
+        
+        this_parser.add_argument(
+            "--name",
+            help="Project name (defaults to current directory name)"
+        )
+        
+        this_parser.add_argument(
+            "--description",
+            help="Project description"
+        )
+        
+        this_parser.add_argument(
+            "--version",
+            default="1.0.0",
+            help="Project version (default: 1.0.0)"
+        )
+        
+        this_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be exported without creating files"
+        )
+        
+        this_parser.set_defaults(func=self.this_command)
 
     def _add_plugin_parser(self, subparsers) -> None:
         """Add the plugin command parser."""

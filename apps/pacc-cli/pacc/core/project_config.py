@@ -827,6 +827,135 @@ class ProjectConfigManager:
                 self._deep_merge(target[key], value)
             else:
                 target[key] = value
+    
+    def export_current_config(
+        self,
+        project_name: str,
+        version: str = "1.0.0",
+        description: Optional[str] = None,
+        include_types: Optional[List[str]] = None,
+        include_plugins: bool = True
+    ) -> Dict[str, Any]:
+        """Export current Claude Code configuration to pacc.json format.
+        
+        Args:
+            project_name: Name for the project
+            version: Version string for the project
+            description: Optional project description
+            include_types: List of extension types to include (None = all)
+            include_plugins: Whether to include plugin configurations
+            
+        Returns:
+            Dictionary in pacc.json format
+        """
+        from pathlib import Path
+        from ..core.config_manager import ClaudeConfigManager
+        from ..plugins.config import PluginConfigManager
+        
+        config = {
+            "name": project_name,
+            "version": version,
+            "extensions": {},
+            "metadata": {
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "pacc_version": pacc_version,
+                "exported_from": "claude_code"
+            }
+        }
+        
+        if description:
+            config["description"] = description
+        
+        # Load Claude Code configuration
+        claude_config = ClaudeConfigManager()
+        
+        # Determine which types to include
+        if include_types is None:
+            extension_types = ["hooks", "mcps", "agents", "commands"]
+        else:
+            extension_types = include_types
+        
+        # Try to load from both user and project level configs
+        for is_user_level in [True, False]:
+            try:
+                config_path = claude_config.get_config_path(user_level=is_user_level)
+                if not config_path.exists():
+                    continue
+                    
+                current_config = claude_config.load_config(config_path)
+                
+                # Extract extensions
+                for ext_type in extension_types:
+                    if ext_type in current_config:
+                        if ext_type not in config["extensions"]:
+                            config["extensions"][ext_type] = []
+                        
+                        for ext in current_config[ext_type]:
+                            # Convert to ExtensionSpec format
+                            ext_spec = {
+                                "name": ext.get("name", "unknown"),
+                                "source": ext.get("source", "local"),
+                                "version": ext.get("version", "1.0.0")
+                            }
+                            
+                            if "description" in ext:
+                                ext_spec["description"] = ext["description"]
+                            
+                            # Check for duplicates
+                            existing_names = {e["name"] for e in config["extensions"][ext_type]}
+                            if ext_spec["name"] not in existing_names:
+                                config["extensions"][ext_type].append(ext_spec)
+                                
+            except Exception as e:
+                logger.warning(f"Failed to load {'user' if is_user_level else 'project'} config: {e}")
+        
+        # Include plugins if requested
+        if include_plugins:
+            try:
+                plugins_dir = Path.home() / ".claude" / "plugins"
+                plugin_config_path = plugins_dir / "config.json"
+                
+                if plugin_config_path.exists():
+                    plugin_manager = PluginConfigManager()
+                    plugin_config = plugin_manager._load_config()
+                    
+                    if plugin_config and "repositories" in plugin_config:
+                        config["plugins"] = {
+                            "repositories": []
+                        }
+                        
+                        for repo_key, repo_data in plugin_config["repositories"].items():
+                            repo_spec = {
+                                "repository": repo_key
+                            }
+                            
+                            # Add version if available
+                            if "commit" in repo_data:
+                                repo_spec["version"] = repo_data["commit"][:8]  # Short commit
+                            elif "ref" in repo_data:
+                                repo_spec["version"] = repo_data["ref"]
+                            
+                            # Add enabled plugins if any
+                            if "plugins" in repo_data:
+                                enabled_plugins = [
+                                    p["name"] for p in repo_data["plugins"]
+                                    if p.get("enabled", False)
+                                ]
+                                if enabled_plugins:
+                                    repo_spec["plugins"] = enabled_plugins
+                            
+                            config["plugins"]["repositories"].append(repo_spec)
+                            
+            except Exception as e:
+                logger.warning(f"Failed to include plugin configuration: {e}")
+        
+        # Clean up empty sections
+        if not config["extensions"]:
+            del config["extensions"]
+        if "plugins" in config and not config["plugins"].get("repositories"):
+            del config["plugins"]
+        
+        return config
 
 
 class ProjectSyncManager:
