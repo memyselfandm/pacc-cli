@@ -26,18 +26,8 @@ class TestCommandFunctionality:
             "name": "test-hook",
             "description": "Test hook for validation",
             "version": "1.0.0",
-            "events": [
-                {
-                    "type": "PreToolUse",
-                    "matcher": {"tool": "Bash"},
-                    "action": {
-                        "type": "Ask",
-                        "config": {
-                            "message": "About to run bash command: {{tool.command}}"
-                        }
-                    }
-                }
-            ]
+            "eventTypes": ["PreToolUse"],
+            "commands": ["echo 'about to run bash command'"]
         }
         
         hook_file = temp_project_dir / "test-hook.json"
@@ -115,6 +105,145 @@ class TestCommandFunctionality:
             
         result = self.run_pacc_command(["validate", str(invalid_file)])
         
+        assert result.returncode == 1
+        assert "error" in result.stdout.lower() or "error" in result.stderr.lower()
+
+    def test_validate_directory_mixed_extensions(self, temp_project_dir):
+        """Test validate command with directory containing mixed extension types."""
+        # Create a directory with multiple extension types
+        ext_dir = temp_project_dir / "extensions"
+        ext_dir.mkdir()
+        
+        # Create a valid hooks file
+        hooks_file = ext_dir / "test.hooks.json"
+        hooks_content = {
+            "name": "test-hook",
+            "description": "Test hook",
+            "version": "1.0.0", 
+            "eventTypes": ["PreToolUse"],
+            "commands": ["echo 'installing'"]
+        }
+        with open(hooks_file, "w") as f:
+            json.dump(hooks_content, f)
+        
+        # Create a valid MCP server config
+        mcp_file = ext_dir / "server.mcp.json"
+        mcp_content = {
+            "mcpServers": {
+                "test-server": {
+                    "command": "python",
+                    "args": ["server.py"]
+                }
+            }
+        }
+        with open(mcp_file, "w") as f:
+            json.dump(mcp_content, f)
+        
+        # Create an agents file
+        agents_file = ext_dir / "agent.agent.md"
+        agents_content = """---
+name: Test Agent
+description: A test agent
+version: 1.0.0
+---
+
+This is a test agent for validation.
+"""
+        agents_file.write_text(agents_content)
+        
+        # Validate the entire directory
+        result = self.run_pacc_command(["validate", str(ext_dir)])
+        
+        assert result.returncode == 0
+        assert "Validation passed" in result.stdout or "✓" in result.stdout
+
+    def test_validate_directory_with_type_filter(self, temp_project_dir):
+        """Test validate command with directory and type filter."""
+        ext_dir = temp_project_dir / "extensions"
+        ext_dir.mkdir()
+        
+        # Create hooks and MCP files
+        hooks_file = ext_dir / "test.hooks.json"
+        hooks_content = {
+            "name": "test-hook",
+            "description": "Test hook",
+            "version": "1.0.0",
+            "eventTypes": ["PreToolUse"],
+            "commands": ["echo 'test command'"]
+        }
+        with open(hooks_file, "w") as f:
+            json.dump(hooks_content, f)
+        
+        mcp_file = ext_dir / "server.mcp.json"
+        mcp_content = {"mcpServers": {"test": {"command": "python", "args": ["test.py"]}}}
+        with open(mcp_file, "w") as f:
+            json.dump(mcp_content, f)
+        
+        # Validate only hooks extensions
+        result = self.run_pacc_command(["validate", str(ext_dir), "--type", "hooks"])
+        
+        assert result.returncode == 0
+        assert "Validation passed" in result.stdout or "✓" in result.stdout
+
+    def test_validate_directory_empty(self, temp_project_dir):
+        """Test validate command with empty directory."""
+        empty_dir = temp_project_dir / "empty"
+        empty_dir.mkdir()
+        
+        result = self.run_pacc_command(["validate", str(empty_dir)])
+        
+        assert result.returncode == 1
+        assert "no valid extensions found" in result.stderr.lower()
+
+    def test_validate_directory_no_matching_type(self, temp_project_dir):
+        """Test validate command with directory but no matching type."""
+        ext_dir = temp_project_dir / "extensions"
+        ext_dir.mkdir()
+        
+        # Create only hooks files
+        hooks_file = ext_dir / "test.hooks.json"
+        hooks_content = {
+            "name": "test-hook",
+            "eventTypes": ["PreToolUse"],
+            "commands": ["echo 'test'"]
+        }
+        with open(hooks_file, "w") as f:
+            json.dump(hooks_content, f)
+        
+        # Filter for agents type (which doesn't exist)
+        result = self.run_pacc_command(["validate", str(ext_dir), "--type", "agents"])
+        
+        assert result.returncode == 1
+        assert "no valid extensions found" in result.stderr.lower()
+
+    def test_validate_directory_invalid_extensions(self, temp_project_dir):
+        """Test validate command with directory containing invalid extensions."""
+        ext_dir = temp_project_dir / "extensions"
+        ext_dir.mkdir()
+        
+        # Create an invalid hooks file (valid JSON but missing required fields)
+        invalid_hooks = ext_dir / "invalid.hooks.json"
+        invalid_content = {
+            "name": "invalid-hook", 
+            "description": "Invalid hook with PreToolUse but missing required fields"
+            # Contains "PreToolUse" keyword to be detected as hooks, but missing eventTypes and commands
+        }
+        with open(invalid_hooks, "w") as f:
+            json.dump(invalid_content, f)
+        
+        # Create a valid hooks file too
+        valid_hooks = ext_dir / "valid.hooks.json"
+        hooks_content = {
+            "name": "valid-hook",
+            "eventTypes": ["PreToolUse"],
+            "commands": ["echo 'valid test'"]
+        }
+        with open(valid_hooks, "w") as f:
+            json.dump(hooks_content, f)
+        
+        result = self.run_pacc_command(["validate", str(ext_dir)])
+        
+        # Should fail due to invalid file, even though one file is valid
         assert result.returncode == 1
         assert "error" in result.stdout.lower() or "error" in result.stderr.lower()
         

@@ -1495,7 +1495,12 @@ class PACCCli:
                 result = validate_extension_file(source_path, args.type)
                 results = [result] if result else []
             else:
-                results = validate_extension_directory(source_path, args.type)
+                # validate_extension_directory returns Dict[str, List[ValidationResult]]
+                # Flatten it into a single list for CLI processing
+                validation_dict = validate_extension_directory(source_path, args.type)
+                results = []
+                for extension_type, validation_results in validation_dict.items():
+                    results.extend(validation_results)
             
             if not results:
                 self._print_error("No valid extensions found to validate")
