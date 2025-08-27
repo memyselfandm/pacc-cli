@@ -53,6 +53,9 @@ class ExtensionSpec:
     environment: Optional[str] = None  # Environment restriction
     dependencies: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    # Folder structure specification (PACC-19, PACC-25)
+    target_dir: Optional[str] = None  # Custom installation directory
+    preserve_structure: bool = False  # Whether to preserve source directory structure
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ExtensionSpec':
@@ -70,7 +73,10 @@ class ExtensionSpec:
             ref=data.get('ref'),
             environment=data.get('environment'),
             dependencies=data.get('dependencies', []),
-            metadata=data.get('metadata', {})
+            metadata=data.get('metadata', {}),
+            # Folder structure specification - support both camelCase and snake_case
+            target_dir=data.get('targetDir') if 'targetDir' in data else data.get('target_dir'),
+            preserve_structure=data.get('preserveStructure', data.get('preserve_structure', False))
         )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -91,6 +97,11 @@ class ExtensionSpec:
             result['dependencies'] = self.dependencies
         if self.metadata:
             result['metadata'] = self.metadata
+        # Folder structure specification - use camelCase for JSON compatibility
+        if self.target_dir:
+            result['targetDir'] = self.target_dir
+        if self.preserve_structure:
+            result['preserveStructure'] = self.preserve_structure
         
         return result
     
@@ -462,6 +473,44 @@ class ProjectConfigSchema:
                     f"Invalid extension version format: {version}",
                     context
                 )
+        
+        # Validate folder structure specification fields (PACC-19, PACC-25)
+        # targetDir validation - check both possible field names
+        target_dir = ext_spec.get('targetDir')
+        if target_dir is None:
+            target_dir = ext_spec.get('target_dir')
+        
+        if target_dir is not None:
+            if not isinstance(target_dir, str):
+                result.add_error(
+                    "INVALID_TARGET_DIR",
+                    "targetDir must be a string",
+                    context
+                )
+            elif not target_dir.strip():
+                result.add_error(
+                    "INVALID_TARGET_DIR",
+                    "targetDir must be a non-empty string",
+                    context
+                )
+            elif '..' in target_dir or target_dir.startswith('/'):
+                result.add_error(
+                    "UNSAFE_TARGET_DIR", 
+                    "targetDir cannot contain '..' or start with '/' for security reasons",
+                    context
+                )
+        
+        # preserveStructure validation - check both possible field names
+        preserve_structure = ext_spec.get('preserveStructure')
+        if preserve_structure is None:
+            preserve_structure = ext_spec.get('preserve_structure')
+        
+        if preserve_structure is not None and not isinstance(preserve_structure, bool):
+            result.add_error(
+                "INVALID_PRESERVE_STRUCTURE",
+                "preserveStructure must be a boolean value",
+                context
+            )
     
     def _validate_plugins_structure(self, config: Dict[str, Any], result: ConfigValidationResult):
         """Validate plugins structure for team collaboration."""
@@ -1815,6 +1864,140 @@ def get_extension_installer():
 
 
 # Exception classes
+class InstallationPathResolver:
+    """Resolves installation paths with folder structure specification support."""
+    
+    def __init__(self):
+        self.path_normalizer = PathNormalizer()
+        self.file_validator = FilePathValidator(allowed_extensions={'.json', '.yaml', '.yml', '.md'})
+    
+    def resolve_target_path(
+        self, 
+        extension_spec: ExtensionSpec, 
+        base_install_dir: Path, 
+        source_file_path: Optional[Path] = None
+    ) -> Path:
+        """
+        Resolve the target installation path for an extension file.
+        
+        Args:
+            extension_spec: Extension specification with folder structure settings
+            base_install_dir: Base Claude Code installation directory
+            source_file_path: Path to the source file being installed (for structure preservation)
+            
+        Returns:
+            Resolved target installation path
+        """
+        # Start with base installation directory
+        target_base = base_install_dir
+        
+        # Apply custom target directory if specified
+        if extension_spec.target_dir:
+            # Validate target directory for security
+            target_dir = self._validate_target_directory(extension_spec.target_dir)
+            target_base = base_install_dir / target_dir
+        
+        # Handle structure preservation
+        if extension_spec.preserve_structure and source_file_path:
+            return self._resolve_with_structure_preservation(
+                extension_spec, target_base, source_file_path
+            )
+        else:
+            return self._resolve_without_structure_preservation(
+                extension_spec, target_base, source_file_path
+            )
+    
+    def _validate_target_directory(self, target_dir: str) -> str:
+        """Validate target directory for security and normalize path."""
+        # Prevent path traversal attacks
+        if '..' in target_dir or target_dir.startswith('/'):
+            raise ValidationError(f"Invalid target directory: {target_dir}. Relative paths with '..' or absolute paths are not allowed.")
+        
+        # Basic normalization - remove trailing slashes and handle empty parts
+        normalized = target_dir.strip().rstrip('/')
+        if not normalized:
+            raise ValidationError("Target directory cannot be empty")
+        
+        # Convert to Path for additional validation without resolving
+        path_obj = Path(normalized)
+        
+        # Ensure it's a relative path
+        if path_obj.is_absolute():
+            raise ValidationError(f"Target directory must be relative: {target_dir}")
+        
+        return normalized
+    
+    def _resolve_with_structure_preservation(
+        self,
+        extension_spec: ExtensionSpec,
+        target_base: Path,
+        source_file_path: Path
+    ) -> Path:
+        """Resolve path preserving source directory structure."""
+        if not source_file_path:
+            return target_base
+        
+        # Extract relative path from source
+        if extension_spec.source.startswith('./') or extension_spec.source.startswith('../'):
+            # Local source - preserve relative structure
+            source_base = Path(extension_spec.source).parent
+            if source_base != Path('.'):
+                # Add source directory structure to target
+                relative_structure = source_file_path.relative_to(source_base) if source_base in source_file_path.parents else source_file_path.name
+                return target_base / relative_structure
+        
+        # For remote sources or when structure can't be determined, use filename only
+        return target_base / source_file_path.name
+    
+    def _resolve_without_structure_preservation(
+        self,
+        extension_spec: ExtensionSpec,
+        target_base: Path,
+        source_file_path: Optional[Path]
+    ) -> Path:
+        """Resolve path without preserving source structure (flat installation)."""
+        if source_file_path:
+            return target_base / source_file_path.name
+        else:
+            # For directory sources, return the base target
+            return target_base
+    
+    def get_extension_install_directory(self, extension_type: str, claude_code_dir: Path) -> Path:
+        """Get the base installation directory for an extension type."""
+        type_directories = {
+            'hooks': claude_code_dir / 'hooks',
+            'mcps': claude_code_dir / 'mcps', 
+            'agents': claude_code_dir / 'agents',
+            'commands': claude_code_dir / 'commands'
+        }
+        
+        if extension_type not in type_directories:
+            raise ValueError(f"Unknown extension type: {extension_type}")
+        
+        return type_directories[extension_type]
+    
+    def create_target_directory(self, target_path: Path) -> None:
+        """Create target directory structure if it doesn't exist."""
+        target_dir = target_path.parent
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Created target directory: {target_dir}")
+        except OSError as e:
+            raise ValidationError(f"Failed to create target directory {target_dir}: {e}")
+    
+    def validate_target_path(self, target_path: Path, claude_code_dir: Path) -> bool:
+        """Validate that target path is within Claude Code directory bounds."""
+        try:
+            # Resolve both paths to handle symlinks and relative components
+            resolved_target = target_path.resolve()
+            resolved_claude_dir = claude_code_dir.resolve()
+            
+            # Check if target is within Claude Code directory
+            return resolved_claude_dir in resolved_target.parents or resolved_target == resolved_claude_dir
+        except (OSError, ValueError):
+            return False
+
+
 class ProjectConfigError(PACCError):
     """Base exception for project configuration errors."""
     pass
