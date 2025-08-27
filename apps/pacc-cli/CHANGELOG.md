@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced build scripts with publishing support
 - Updated pyproject.toml with complete metadata
 
+### Fixed
+- CommandsValidator no longer incorrectly requires `name` field in frontmatter (PR #3)
+- CommandsValidator now correctly treats frontmatter as optional
+- AgentsValidator now expects `tools` as comma-separated string per Claude Code docs
+- AgentsValidator removed invalid optional fields not in Claude Code specification
+- Validators now properly warn about unknown fields instead of failing
+
 ### Security
 - Secure credential storage recommendations
 - Token rotation procedures and best practices

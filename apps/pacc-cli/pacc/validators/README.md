@@ -115,13 +115,13 @@ Validates Model Context Protocol server configurations:
 - Timeouts must be positive numbers
 
 #### `AgentsValidator`
-Validates AI agent definition files:
+Validates AI agent definition files per Claude Code documentation:
 
 **Supported Features:**
 - YAML frontmatter parsing
 - Required field validation (name, description)
-- Tool and permission validation
-- Parameter schema validation
+- Tools validation as comma-separated string
+- Unknown field warnings
 - Markdown content analysis
 
 **Example Agent:**
@@ -129,13 +129,7 @@ Validates AI agent definition files:
 ---
 name: code-reviewer
 description: Reviews code for best practices
-tools: [file_reader, analyzer]
-permissions: [read_files]
-parameters:
-  language:
-    type: choice
-    choices: [python, javascript]
-    required: true
+tools: Read, Grep, Glob, Bash
 ---
 
 # Code Reviewer Agent
@@ -145,32 +139,25 @@ This agent specializes in code review...
 
 **Validation Rules:**
 - YAML frontmatter required with name and description
-- Valid permission types enforced
-- Parameter types must be supported
-- Temperature between 0 and 1
-- Semantic versioning for version field
+- Tools must be comma-separated string (e.g., "Read, Write, Bash")
+- Unknown fields generate warnings (not errors)
+- Tools field is optional (inherits all if omitted)
 
 #### `CommandsValidator`
-Validates slash command definition files:
+Validates slash command definition files per Claude Code documentation:
 
 **Supported Features:**
-- YAML frontmatter or simple markdown formats
-- Command name validation
-- Parameter schema validation
-- Usage pattern validation
-- Alias and permission validation
+- YAML frontmatter is completely optional
+- Command name derived from filename (not frontmatter)
+- Valid frontmatter fields: allowed-tools, argument-hint, description, model
+- Simple markdown format fully supported
 
-**Example Command:**
+**Example Command (with optional frontmatter):**
 ```markdown
 ---
-name: deploy
 description: Deploy to specified environment
-usage: /deploy [environment]
-parameters:
-  environment:
-    type: choice
-    choices: [dev, staging, prod]
-    required: true
+allowed-tools: Bash(git:*), Bash(npm:*)
+argument-hint: [environment]
 ---
 
 # Deploy Command
@@ -179,11 +166,10 @@ Deploy your application...
 ```
 
 **Validation Rules:**
-- Command names must start with letter
-- Reserved names (help, exit, etc.) forbidden
-- Parameter types validated
-- Choice parameters require choices array
-- Usage patterns should start with /
+- Frontmatter is completely optional
+- No required fields (name comes from filename)
+- Unknown frontmatter fields generate warnings
+- Both YAML frontmatter and simple markdown supported
 
 ## Utility Classes
 

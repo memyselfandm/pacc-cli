@@ -11,34 +11,22 @@ from .base import BaseValidator, ValidationResult
 class AgentsValidator(BaseValidator):
     """Validator for Claude Code agent extensions."""
     
-    # Required fields in agent YAML frontmatter
+    # Required fields in agent YAML frontmatter per Claude Code documentation
     REQUIRED_FRONTMATTER_FIELDS = ["name", "description"]
     
-    # Optional fields with their expected types
+    # Optional fields per Claude Code documentation
+    # tools is a comma-separated string, not a list
     OPTIONAL_FRONTMATTER_FIELDS = {
-        "version": str,
-        "author": str,
-        "tags": list,
-        "tools": list,
-        "permissions": list,
-        "parameters": dict,
-        "examples": list,
-        "model": str,
-        "temperature": (int, float),
-        "max_tokens": int,
-        "timeout": (int, float),
-        "enabled": bool
+        "tools": str  # Comma-separated string like "Read, Write, Bash"
     }
     
-    # Valid permission types for agents
-    VALID_PERMISSIONS = {
-        "read_files",
-        "write_files",
-        "execute_commands",
-        "network_access",
-        "filesystem_access",
-        "tool_use",
-        "user_confirmation_required"
+    # Known Claude Code tools for validation
+    # This is not exhaustive as MCP tools can be added dynamically
+    COMMON_TOOLS = {
+        "Read", "Write", "Edit", "MultiEdit", "Bash", "Grep", 
+        "Glob", "WebFetch", "WebSearch", "TodoWrite", "Task",
+        "NotebookEdit", "BashOutput", "KillBash", "ExitPlanMode",
+        "LS"
     }
     
     def __init__(self, max_file_size: int = 10 * 1024 * 1024):
@@ -107,19 +95,16 @@ class AgentsValidator(BaseValidator):
         
         # Extract metadata for successful validations
         if result.is_valid and frontmatter:
+            # Parse tools if present
+            tools_str = frontmatter.get("tools", "")
+            tools_list = [t.strip() for t in tools_str.split(",")] if tools_str else []
+            
             result.metadata = {
                 "name": frontmatter.get("name", ""),
                 "description": frontmatter.get("description", ""),
-                "version": frontmatter.get("version", "1.0.0"),
-                "author": frontmatter.get("author", ""),
-                "model": frontmatter.get("model", ""),
-                "tools": frontmatter.get("tools", []),
-                "permissions": frontmatter.get("permissions", []),
-                "has_examples": bool(frontmatter.get("examples", [])),
-                "markdown_length": len(markdown_content.strip()),
-                "has_parameters": bool(frontmatter.get("parameters", {})),
-                "temperature": frontmatter.get("temperature"),
-                "max_tokens": frontmatter.get("max_tokens")
+                "tools": tools_list,
+                "tools_raw": tools_str,
+                "markdown_length": len(markdown_content.strip())
             }
         
         return result
@@ -241,32 +226,18 @@ class AgentsValidator(BaseValidator):
         self._validate_agent_name(frontmatter.get("name"), result)
         self._validate_agent_description(frontmatter.get("description"), result)
         
-        if "version" in frontmatter:
-            self._validate_version(frontmatter["version"], result)
-        
-        if "tags" in frontmatter:
-            self._validate_tags(frontmatter["tags"], result)
-        
         if "tools" in frontmatter:
             self._validate_tools(frontmatter["tools"], result)
         
-        if "permissions" in frontmatter:
-            self._validate_permissions(frontmatter["permissions"], result)
-        
-        if "parameters" in frontmatter:
-            self._validate_parameters(frontmatter["parameters"], result)
-        
-        if "examples" in frontmatter:
-            self._validate_examples(frontmatter["examples"], result)
-        
-        if "temperature" in frontmatter:
-            self._validate_temperature(frontmatter["temperature"], result)
-        
-        if "max_tokens" in frontmatter:
-            self._validate_max_tokens(frontmatter["max_tokens"], result)
-        
-        if "timeout" in frontmatter:
-            self._validate_timeout(frontmatter["timeout"], result)
+        # Check for unknown fields and warn about them
+        known_fields = set(self.REQUIRED_FRONTMATTER_FIELDS) | set(self.OPTIONAL_FRONTMATTER_FIELDS.keys())
+        for field in frontmatter:
+            if field not in known_fields:
+                result.add_warning(
+                    "UNKNOWN_FRONTMATTER_FIELD",
+                    f"Unknown field '{field}' in agent frontmatter",
+                    suggestion=f"Valid fields are: {', '.join(sorted(known_fields))}"
+                )
     
     def _validate_agent_name(self, name: str, result: ValidationResult) -> None:
         """Validate agent name format."""
@@ -343,287 +314,42 @@ class AgentsValidator(BaseValidator):
                 suggestion="Provide a more detailed description of the agent's purpose"
             )
     
-    def _validate_version(self, version: str, result: ValidationResult) -> None:
-        """Validate version format (semantic versioning)."""
-        if not isinstance(version, str):
-            result.add_error(
-                "INVALID_VERSION_TYPE",
-                "Version must be a string",
-                suggestion="Set version to a string value like '1.0.0'"
-            )
-            return
+    def _validate_tools(self, tools: Any, result: ValidationResult) -> None:
+        """Validate agent tools configuration.
         
-        # Basic semantic versioning check
-        semver_pattern = r'^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?$'
-        if not re.match(semver_pattern, version):
-            result.add_warning(
-                "INVALID_VERSION_FORMAT",
-                f"Version '{version}' does not follow semantic versioning",
-                suggestion="Use semantic versioning format like '1.0.0'"
-            )
-    
-    def _validate_tags(self, tags: List[Any], result: ValidationResult) -> None:
-        """Validate agent tags."""
-        if not isinstance(tags, list):
-            result.add_error(
-                "INVALID_TAGS_TYPE",
-                "Tags must be an array",
-                suggestion="Change tags to an array of strings"
-            )
-            return
-        
-        for i, tag in enumerate(tags):
-            if not isinstance(tag, str):
-                result.add_error(
-                    "INVALID_TAG_TYPE",
-                    f"Tag {i + 1} must be a string",
-                    suggestion="Ensure all tags are strings"
-                )
-            elif not tag.strip():
-                result.add_error(
-                    "EMPTY_TAG",
-                    f"Tag {i + 1} cannot be empty",
-                    suggestion="Remove empty tags or provide meaningful tag names"
-                )
-        
-        # Check for duplicates
-        if len(tags) != len(set(tags)):
-            result.add_warning(
-                "DUPLICATE_TAGS",
-                "Duplicate tags found",
-                suggestion="Remove duplicate tags"
-            )
-    
-    def _validate_tools(self, tools: List[Any], result: ValidationResult) -> None:
-        """Validate agent tools configuration."""
-        if not isinstance(tools, list):
+        Per Claude Code docs, tools should be a comma-separated string.
+        """
+        if not isinstance(tools, str):
             result.add_error(
                 "INVALID_TOOLS_TYPE",
-                "Tools must be an array",
-                suggestion="Change tools to an array of tool names or configurations"
+                f"Tools must be a comma-separated string, got {type(tools).__name__}",
+                suggestion='Use format like: "Read, Write, Bash"'
             )
             return
         
-        for i, tool in enumerate(tools):
-            if isinstance(tool, str):
-                # Simple tool name
-                if not tool.strip():
-                    result.add_error(
-                        "EMPTY_TOOL_NAME",
-                        f"Tool {i + 1} name cannot be empty",
-                        suggestion="Provide a valid tool name"
-                    )
-            elif isinstance(tool, dict):
-                # Tool configuration object
-                if "name" not in tool:
-                    result.add_error(
-                        "MISSING_TOOL_NAME",
-                        f"Tool {i + 1} configuration must have 'name' field",
-                        suggestion="Add a 'name' field to the tool configuration"
-                    )
-                elif not isinstance(tool["name"], str) or not tool["name"].strip():
-                    result.add_error(
-                        "INVALID_TOOL_NAME",
-                        f"Tool {i + 1} name must be a non-empty string",
-                        suggestion="Provide a valid tool name"
-                    )
-            else:
-                result.add_error(
-                    "INVALID_TOOL_FORMAT",
-                    f"Tool {i + 1} must be a string name or configuration object",
-                    suggestion="Use either a tool name string or a tool configuration object"
+        if not tools.strip():
+            # Empty tools string is valid - inherits all tools
+            return
+        
+        # Parse and validate individual tools
+        tool_list = [t.strip() for t in tools.split(",")]
+        
+        for tool in tool_list:
+            if not tool:
+                result.add_warning(
+                    "EMPTY_TOOL_NAME",
+                    "Empty tool name in tools list",
+                    suggestion="Remove extra commas from tools list"
+                )
+            elif tool not in self.COMMON_TOOLS and not tool.startswith("mcp__"):
+                # Only warn for unknown tools since MCP and custom tools exist
+                result.add_info(
+                    "UNKNOWN_TOOL",
+                    f"Tool '{tool}' is not a known Claude Code tool",
+                    suggestion="Verify this tool name is correct (could be an MCP tool)"
                 )
     
-    def _validate_permissions(self, permissions: List[Any], result: ValidationResult) -> None:
-        """Validate agent permissions."""
-        if not isinstance(permissions, list):
-            result.add_error(
-                "INVALID_PERMISSIONS_TYPE",
-                "Permissions must be an array",
-                suggestion="Change permissions to an array of permission strings"
-            )
-            return
-        
-        invalid_permissions = []
-        for i, permission in enumerate(permissions):
-            if not isinstance(permission, str):
-                result.add_error(
-                    "INVALID_PERMISSION_TYPE",
-                    f"Permission {i + 1} must be a string",
-                    suggestion="Ensure all permissions are strings"
-                )
-            elif permission not in self.VALID_PERMISSIONS:
-                invalid_permissions.append(permission)
-        
-        if invalid_permissions:
-            result.add_error(
-                "INVALID_PERMISSIONS",
-                f"Invalid permissions: {', '.join(invalid_permissions)}",
-                suggestion=f"Valid permissions are: {', '.join(self.VALID_PERMISSIONS)}"
-            )
-        
-        # Check for duplicates
-        if len(permissions) != len(set(permissions)):
-            result.add_warning(
-                "DUPLICATE_PERMISSIONS",
-                "Duplicate permissions found",
-                suggestion="Remove duplicate permissions"
-            )
-    
-    def _validate_parameters(self, parameters: Dict[str, Any], result: ValidationResult) -> None:
-        """Validate agent parameters configuration."""
-        if not isinstance(parameters, dict):
-            result.add_error(
-                "INVALID_PARAMETERS_TYPE",
-                "Parameters must be an object",
-                suggestion="Change parameters to an object with parameter definitions"
-            )
-            return
-        
-        for param_name, param_config in parameters.items():
-            self._validate_single_parameter(param_name, param_config, result)
-    
-    def _validate_single_parameter(self, param_name: str, param_config: Any, 
-                                   result: ValidationResult) -> None:
-        """Validate a single parameter configuration."""
-        param_prefix = f"Parameter '{param_name}'"
-        
-        if not isinstance(param_config, dict):
-            result.add_error(
-                "INVALID_PARAMETER_CONFIG_TYPE",
-                f"{param_prefix}: Parameter configuration must be an object",
-                suggestion="Use an object with type, description, and other fields"
-            )
-            return
-        
-        # Check required fields
-        if "type" not in param_config:
-            result.add_error(
-                "MISSING_PARAMETER_TYPE",
-                f"{param_prefix}: Missing required 'type' field",
-                suggestion="Add a 'type' field to specify the parameter type"
-            )
-        
-        if "description" not in param_config:
-            result.add_warning(
-                "MISSING_PARAMETER_DESCRIPTION",
-                f"{param_prefix}: Missing 'description' field",
-                suggestion="Add a 'description' field to document the parameter"
-            )
-        
-        # Validate type field
-        if "type" in param_config:
-            param_type = param_config["type"]
-            valid_types = ["string", "number", "integer", "boolean", "array", "object"]
-            if param_type not in valid_types:
-                result.add_error(
-                    "INVALID_PARAMETER_TYPE",
-                    f"{param_prefix}: Invalid type '{param_type}'",
-                    suggestion=f"Valid types are: {', '.join(valid_types)}"
-                )
-    
-    def _validate_examples(self, examples: List[Any], result: ValidationResult) -> None:
-        """Validate agent examples."""
-        if not isinstance(examples, list):
-            result.add_error(
-                "INVALID_EXAMPLES_TYPE",
-                "Examples must be an array",
-                suggestion="Change examples to an array of example objects"
-            )
-            return
-        
-        for i, example in enumerate(examples):
-            if isinstance(example, str):
-                # Simple example string
-                if not example.strip():
-                    result.add_error(
-                        "EMPTY_EXAMPLE",
-                        f"Example {i + 1} cannot be empty",
-                        suggestion="Provide a meaningful example"
-                    )
-            elif isinstance(example, dict):
-                # Example object
-                if "input" not in example:
-                    result.add_warning(
-                        "MISSING_EXAMPLE_INPUT",
-                        f"Example {i + 1} should have 'input' field",
-                        suggestion="Add an 'input' field to show example usage"
-                    )
-                if "output" not in example:
-                    result.add_warning(
-                        "MISSING_EXAMPLE_OUTPUT",
-                        f"Example {i + 1} should have 'output' field",
-                        suggestion="Add an 'output' field to show expected result"
-                    )
-            else:
-                result.add_error(
-                    "INVALID_EXAMPLE_FORMAT",
-                    f"Example {i + 1} must be a string or object",
-                    suggestion="Use either an example string or an example object with input/output"
-                )
-    
-    def _validate_temperature(self, temperature: Union[int, float], result: ValidationResult) -> None:
-        """Validate temperature parameter."""
-        if not isinstance(temperature, (int, float)):
-            result.add_error(
-                "INVALID_TEMPERATURE_TYPE",
-                "Temperature must be a number",
-                suggestion="Set temperature to a number between 0 and 1"
-            )
-            return
-        
-        if temperature < 0 or temperature > 1:
-            result.add_error(
-                "INVALID_TEMPERATURE_RANGE",
-                f"Temperature must be between 0 and 1, got {temperature}",
-                suggestion="Set temperature to a value between 0 and 1"
-            )
-    
-    def _validate_max_tokens(self, max_tokens: int, result: ValidationResult) -> None:
-        """Validate max_tokens parameter."""
-        if not isinstance(max_tokens, int):
-            result.add_error(
-                "INVALID_MAX_TOKENS_TYPE",
-                "max_tokens must be an integer",
-                suggestion="Set max_tokens to an integer value"
-            )
-            return
-        
-        if max_tokens <= 0:
-            result.add_error(
-                "INVALID_MAX_TOKENS_VALUE",
-                "max_tokens must be positive",
-                suggestion="Set max_tokens to a positive integer"
-            )
-        elif max_tokens > 100000:
-            result.add_warning(
-                "VERY_HIGH_MAX_TOKENS",
-                f"max_tokens is very high ({max_tokens})",
-                suggestion="Consider using a lower value for max_tokens"
-            )
-    
-    def _validate_timeout(self, timeout: Union[int, float], result: ValidationResult) -> None:
-        """Validate timeout parameter."""
-        if not isinstance(timeout, (int, float)):
-            result.add_error(
-                "INVALID_TIMEOUT_TYPE",
-                "Timeout must be a number",
-                suggestion="Set timeout to a number of seconds"
-            )
-            return
-        
-        if timeout <= 0:
-            result.add_error(
-                "INVALID_TIMEOUT_VALUE",
-                "Timeout must be positive",
-                suggestion="Set timeout to a positive number of seconds"
-            )
-        elif timeout > 3600:  # 1 hour
-            result.add_warning(
-                "VERY_LONG_TIMEOUT",
-                f"Timeout is very long ({timeout} seconds)",
-                suggestion="Consider using a shorter timeout"
-            )
+    # Removed invalid validation methods for fields not in Claude Code spec
     
     def _validate_markdown_content(self, markdown_content: str, result: ValidationResult) -> None:
         """Validate the markdown content of the agent."""
