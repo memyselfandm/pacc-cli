@@ -1508,7 +1508,7 @@ class PACCCli:
             
             # Format and display results
             formatter = ValidationResultFormatter()
-            output = formatter.format_batch_results(results, show_summary=True)
+            output = formatter.format_batch_results(results, show_summary=True, verbose=args.verbose)
             print(output)
             
             # Check for errors

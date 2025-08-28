@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from .base import BaseValidator, ValidationResult
+from .utils import parse_claude_frontmatter
 
 
 class AgentsValidator(BaseValidator):
@@ -151,25 +152,28 @@ class AgentsValidator(BaseValidator):
         yaml_content = match.group(1)
         markdown_content = match.group(2)
         
-        # Parse YAML frontmatter
-        try:
-            frontmatter = yaml.safe_load(yaml_content)
-        except yaml.YAMLError as e:
-            result.add_error(
-                "INVALID_YAML",
-                f"Invalid YAML in frontmatter: {e}",
-                suggestion="Fix YAML syntax errors in the frontmatter"
-            )
-            return True, None, ""
-        except Exception as e:
-            result.add_error(
-                "YAML_PARSE_ERROR",
-                f"Error parsing YAML frontmatter: {e}",
-                suggestion="Check YAML formatting and syntax"
-            )
-            return True, None, ""
+        # Parse YAML frontmatter using lenient Claude Code parser
+        frontmatter = parse_claude_frontmatter(yaml_content)
         
         if frontmatter is None:
+            # If lenient parser still failed, try strict YAML for better error message
+            try:
+                yaml.safe_load(yaml_content)
+            except yaml.YAMLError as e:
+                result.add_error(
+                    "INVALID_YAML",
+                    f"Invalid YAML in frontmatter: {e}",
+                    suggestion="Fix YAML syntax errors in the frontmatter"
+                )
+            except Exception as e:
+                result.add_error(
+                    "YAML_PARSE_ERROR",
+                    f"Error parsing YAML frontmatter: {e}",
+                    suggestion="Check YAML formatting and syntax"
+                )
+            return True, None, ""
+        
+        if not frontmatter:
             result.add_error(
                 "EMPTY_FRONTMATTER",
                 "YAML frontmatter is empty",

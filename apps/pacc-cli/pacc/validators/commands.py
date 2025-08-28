@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
 from .base import BaseValidator, ValidationResult
+from .utils import parse_claude_frontmatter
 
 
 class CommandsValidator(BaseValidator):
@@ -190,56 +191,28 @@ class CommandsValidator(BaseValidator):
         yaml_content = match.group(1)
         markdown_content = match.group(2)
         
-        # Parse YAML frontmatter
-        try:
-            frontmatter = yaml.safe_load(yaml_content)
-        except yaml.YAMLError as e:
-            # Check for common square bracket issues in YAML values
-            error_msg = str(e)
-            if "expected <block end>, but found '['" in error_msg or "found unexpected '['" in error_msg:
-                # Find lines with unquoted square brackets
-                problematic_lines = []
-                for line_num, line in enumerate(yaml_content.split('\n'), 1):
-                    if ':' in line and '[' in line and ']' in line:
-                        key, value = line.split(':', 1)
-                        value = value.strip()
-                        # Check if value starts with [ but isn't a proper YAML array
-                        if value.startswith('[') and not (value.startswith('["') or value.startswith("['")) and value.endswith(']'):
-                            problematic_lines.append((line_num, line.strip()))
-                
-                if problematic_lines:
-                    suggestion = "Quote values containing square brackets. "
-                    if len(problematic_lines) == 1:
-                        line_num, line = problematic_lines[0]
-                        key, value = line.split(':', 1)
-                        fixed_value = f'"{value.strip()}"'
-                        suggestion += f"Change line {line_num} from '{line}' to '{key}: {fixed_value}'"
-                    else:
-                        suggestion += "Add quotes around values containing square brackets like: key: \"[value with brackets]\""
-                else:
-                    suggestion = "Fix YAML syntax errors in the frontmatter. Quote values containing special characters like square brackets"
-                
-                result.add_error(
-                    "INVALID_YAML",
-                    f"Invalid YAML in frontmatter: {e}",
-                    suggestion=suggestion
-                )
-            else:
+        # Parse YAML frontmatter using lenient Claude Code parser
+        frontmatter = parse_claude_frontmatter(yaml_content)
+        
+        if frontmatter is None:
+            # If lenient parser still failed, try strict YAML for better error message
+            try:
+                yaml.safe_load(yaml_content)
+            except yaml.YAMLError as e:
                 result.add_error(
                     "INVALID_YAML",
                     f"Invalid YAML in frontmatter: {e}",
                     suggestion="Fix YAML syntax errors in the frontmatter"
                 )
-            return
-        except Exception as e:
-            result.add_error(
-                "YAML_PARSE_ERROR",
-                f"Error parsing YAML frontmatter: {e}",
-                suggestion="Check YAML formatting and syntax"
-            )
+            except Exception as e:
+                result.add_error(
+                    "YAML_PARSE_ERROR",
+                    f"Error parsing YAML frontmatter: {e}",
+                    suggestion="Check YAML formatting and syntax"
+                )
             return
         
-        if frontmatter is None:
+        if not frontmatter:
             result.add_error(
                 "EMPTY_FRONTMATTER",
                 "YAML frontmatter is empty",

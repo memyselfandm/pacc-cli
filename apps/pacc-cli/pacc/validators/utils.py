@@ -1,29 +1,110 @@
 """Utility functions for PACC validators."""
 
 import os
+import re
+import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any
 
 from .base import ValidationResult, BaseValidator
-from .hooks import HooksValidator
-from .mcp import MCPValidator
-from .agents import AgentsValidator
-from .commands import CommandsValidator
+
+
+def parse_claude_frontmatter(yaml_content: str) -> Optional[Dict[str, Any]]:
+    """Parse Claude Code frontmatter with lenient handling for unquoted brackets.
+    
+    Claude Code's frontmatter parser is more lenient than strict YAML.
+    It allows unquoted square brackets in values like:
+    - argument-hint: [--team <name>] [--project <name>]
+    - argument-hint: [message]
+    
+    This function preprocesses the YAML to handle these cases before parsing.
+    
+    Args:
+        yaml_content: The YAML frontmatter content to parse
+        
+    Returns:
+        Parsed frontmatter as a dictionary, or None if parsing fails
+    """
+    if not yaml_content or not yaml_content.strip():
+        return {}
+    
+    # Process line by line to handle problematic patterns
+    lines = yaml_content.split('\n')
+    processed_lines = []
+    
+    for line in lines:
+        # Check if line has a key-value pair
+        if ':' in line:
+            # Split only on first colon to preserve values with colons
+            parts = line.split(':', 1)
+            if len(parts) == 2:
+                key = parts[0].strip()
+                value = parts[1].strip()
+                
+                # Special handling for argument-hint field which should always be a string
+                if key == 'argument-hint' and value.startswith('['):
+                    # Claude Code treats this as a string, not a YAML list
+                    # Always quote it to preserve as string
+                    if not (value.startswith('"[') or value.startswith("'[")):
+                        value = f'"{value}"'
+                        line = f"{parts[0]}: {value}"
+                # Check if value starts with [ and contains spaces (problematic for YAML)
+                elif value and value.startswith('[') and ' ' in value:
+                    # Check if it's not already a valid YAML list
+                    if not (value.startswith('["') or value.startswith("['") or value == '[]'):
+                        # This is likely Claude Code style brackets, auto-quote it
+                        value = f'"{value}"'
+                        line = f"{parts[0]}: {value}"
+        
+        processed_lines.append(line)
+    
+    processed_yaml = '\n'.join(processed_lines)
+    
+    try:
+        result = yaml.safe_load(processed_yaml)
+        
+        # Post-process to ensure argument-hint is always a string
+        if result and 'argument-hint' in result:
+            hint = result['argument-hint']
+            if isinstance(hint, list):
+                # Convert list back to Claude Code format string
+                if len(hint) == 1:
+                    result['argument-hint'] = f"[{hint[0]}]"
+                else:
+                    result['argument-hint'] = str(hint)
+        
+        return result
+    except yaml.YAMLError:
+        # If it still fails, return None to let the validator handle the error
+        return None
 
 
 class ValidatorFactory:
     """Factory class for creating and managing validators."""
     
-    _validators = {
-        "hooks": HooksValidator,
-        "mcp": MCPValidator,
-        "agents": AgentsValidator,
-        "commands": CommandsValidator
-    }
+    _validators = None
+    
+    @classmethod
+    def _initialize_validators(cls):
+        """Initialize validators with late import to avoid circular dependencies."""
+        if cls._validators is None:
+            from .hooks import HooksValidator
+            from .mcp import MCPValidator
+            from .agents import AgentsValidator
+            from .commands import CommandsValidator
+            
+            cls._validators = {
+                "hooks": HooksValidator,
+                "mcp": MCPValidator,
+                "agents": AgentsValidator,
+                "commands": CommandsValidator
+            }
     
     @classmethod
     def get_validator(cls, extension_type: str, **kwargs) -> BaseValidator:
         """Get a validator instance for the specified extension type."""
+        cls._initialize_validators()
+        
         if extension_type not in cls._validators:
             raise ValueError(f"Unknown extension type: {extension_type}. "
                            f"Available types: {', '.join(cls._validators.keys())}")
@@ -34,6 +115,8 @@ class ValidatorFactory:
     @classmethod
     def get_all_validators(cls, **kwargs) -> Dict[str, BaseValidator]:
         """Get all available validators."""
+        cls._initialize_validators()
+        
         return {
             ext_type: validator_class(**kwargs)
             for ext_type, validator_class in cls._validators.items()
@@ -42,6 +125,7 @@ class ValidatorFactory:
     @classmethod
     def get_supported_types(cls) -> List[str]:
         """Get list of supported extension types."""
+        cls._initialize_validators()
         return list(cls._validators.keys())
 
 
@@ -86,7 +170,8 @@ class ValidationResultFormatter:
     
     @staticmethod
     def format_batch_results(results: List[ValidationResult], 
-                           show_summary: bool = True) -> str:
+                           show_summary: bool = True,
+                           verbose: bool = False) -> str:
         """Format multiple validation results."""
         lines = []
         
@@ -106,7 +191,7 @@ class ValidationResultFormatter:
         for i, result in enumerate(results):
             if i > 0:
                 lines.append("")
-            lines.append(ValidationResultFormatter.format_result(result))
+            lines.append(ValidationResultFormatter.format_result(result, verbose=verbose))
         
         return "\n".join(lines)
     
