@@ -107,21 +107,131 @@ class PluginConverter:
             logger.warning(f"Source directory does not exist: {source_path}")
             return []
         
-        # Look for .claude directory
-        claude_dir = source_path / ".claude"
-        if not claude_dir.exists():
-            logger.debug(f"No .claude directory found in {source_path}")
+        extensions = []
+        
+        # First, check if this is a .claude directory itself
+        if source_path.name == ".claude" or (source_path / "hooks").exists() or (source_path / "agents").exists() or (source_path / "commands").exists() or (source_path / "mcp").exists():
+            # Scan directly from this directory
+            extensions.extend(self._scan_hooks(source_path))
+            extensions.extend(self._scan_agents(source_path))
+            extensions.extend(self._scan_commands(source_path))
+            extensions.extend(self._scan_mcp(source_path))
+        else:
+            # Look for .claude directory
+            claude_dir = source_path / ".claude"
+            if claude_dir.exists():
+                extensions.extend(self._scan_hooks(claude_dir))
+                extensions.extend(self._scan_agents(claude_dir))
+                extensions.extend(self._scan_commands(claude_dir))
+                extensions.extend(self._scan_mcp(claude_dir))
+            else:
+                # Check if source_path itself contains extension directories
+                logger.debug(f"No .claude directory found in {source_path}, checking for direct extension directories")
+                extensions.extend(self._scan_hooks(source_path))
+                extensions.extend(self._scan_agents(source_path))
+                extensions.extend(self._scan_commands(source_path))
+                extensions.extend(self._scan_mcp(source_path))
+        
+        logger.info(f"Found {len(extensions)} extensions in {source_path}")
+        return extensions
+    
+    def scan_single_file(self, file_path: Union[str, Path]) -> List[ExtensionInfo]:
+        """Scan a single extension file.
+        
+        Args:
+            file_path: Path to the extension file
+            
+        Returns:
+            List containing the extension info for the file
+        """
+        file_path = Path(file_path)
+        
+        if not file_path.exists():
+            logger.warning(f"File does not exist: {file_path}")
+            return []
+        
+        if not file_path.is_file():
+            logger.warning(f"Path is not a file: {file_path}")
             return []
         
         extensions = []
         
-        # Scan for different extension types
-        extensions.extend(self._scan_hooks(claude_dir))
-        extensions.extend(self._scan_agents(claude_dir))
-        extensions.extend(self._scan_commands(claude_dir))
-        extensions.extend(self._scan_mcp(claude_dir))
+        # Detect extension type based on file path and extension
+        extension_type = None
+        validator = None
         
-        logger.info(f"Found {len(extensions)} extensions in {source_path}")
+        # Check file extension and path components
+        if file_path.suffix == ".json":
+            # Could be hooks or MCP
+            if "hooks" in file_path.parts or "hook" in file_path.stem.lower():
+                extension_type = "hooks"
+                validator = self.hooks_validator
+            elif "mcp" in file_path.parts or "server" in file_path.stem.lower():
+                extension_type = "mcp"
+                validator = self.mcp_validator
+            else:
+                # Try both validators to see which one works
+                try:
+                    result = self.hooks_validator.validate_single(file_path)
+                    if result.is_valid:
+                        extension_type = "hooks"
+                        validator = self.hooks_validator
+                except:
+                    pass
+                
+                if not extension_type:
+                    try:
+                        result = self.mcp_validator.validate_single(file_path)
+                        if result.is_valid:
+                            extension_type = "mcp"
+                            validator = self.mcp_validator
+                    except:
+                        pass
+        elif file_path.suffix == ".md":
+            # Could be agent or command
+            if "agent" in file_path.parts or "agent" in file_path.stem.lower():
+                extension_type = "agents"
+                validator = self.agents_validator
+            elif "command" in file_path.parts or "cmd" in file_path.stem.lower():
+                extension_type = "commands"
+                validator = self.commands_validator
+            else:
+                # Try both validators to see which one works
+                try:
+                    result = self.agents_validator.validate_single(file_path)
+                    if result.is_valid:
+                        extension_type = "agents"
+                        validator = self.agents_validator
+                except:
+                    pass
+                
+                if not extension_type:
+                    try:
+                        result = self.commands_validator.validate_single(file_path)
+                        if result.is_valid:
+                            extension_type = "commands"
+                            validator = self.commands_validator
+                    except:
+                        pass
+        
+        if extension_type and validator:
+            try:
+                validation_result = validator.validate_single(file_path)
+                ext_info = ExtensionInfo(
+                    path=file_path,
+                    extension_type=extension_type,
+                    name=file_path.stem,
+                    metadata=validation_result.metadata,
+                    validation_errors=validation_result.errors,
+                    is_valid=validation_result.is_valid
+                )
+                extensions.append(ext_info)
+                logger.info(f"Detected {extension_type} extension: {file_path.name}")
+            except Exception as e:
+                logger.warning(f"Failed to validate file {file_path}: {e}")
+        else:
+            logger.warning(f"Could not detect extension type for file: {file_path}")
+        
         return extensions
     
     def convert_to_plugin(
@@ -668,26 +778,31 @@ class ExtensionToPluginConverter:
         metadata: Optional[PluginMetadata] = None,
         overwrite: bool = False
     ) -> ConversionResult:
-        """Convert single extension."""
-        # Use the main converter
-        extensions = self.converter.scan_extensions(source_path.parent)
+        """Convert single extension or directory."""
+        extensions = []
+        
+        # Check if source_path is a file or directory
+        if source_path.is_file():
+            # Handle single file conversion
+            extensions = self.converter.scan_single_file(source_path)
+        else:
+            # Handle directory conversion
+            extensions = self.converter.scan_extensions(source_path)
+        
         if not extensions:
             result = ConversionResult(success=False)
             result.errors.append("No extensions found")
             return result
         
-        # Filter for this specific extension
-        target_extensions = [ext for ext in extensions if ext.path == source_path]
-        if not target_extensions:
-            result = ConversionResult(success=False)
-            result.errors.append("Specified extension not found")
-            return result
-        
         if not plugin_name:
-            plugin_name = target_extensions[0].name
+            # Auto-generate plugin name
+            if source_path.is_file():
+                plugin_name = source_path.stem
+            else:
+                plugin_name = source_path.name if source_path.name != ".claude" else source_path.parent.name
         
         return self.converter.convert_to_plugin(
-            extensions=target_extensions,
+            extensions=extensions,
             plugin_name=plugin_name,
             destination=self.output_dir,
             author_name=metadata.author if metadata else None,
