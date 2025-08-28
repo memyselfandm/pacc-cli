@@ -1,4 +1,4 @@
-# Subagents
+# Subagents ([Source])(https://docs.anthropic.com/en/docs/claude-code/sub-agents.md)
 
 > Create and use specialized AI subagents in Claude Code for task-specific workflows and improved context management.
 
@@ -14,60 +14,6 @@ Subagents are pre-configured AI personalities that Claude Code can delegate task
 * Includes a custom system prompt that guides its behavior
 
 When Claude Code encounters a task that matches a subagent's expertise, it can delegate that task to the specialized subagent, which works independently and returns results.
-
-## Key benefits
-
-<CardGroup cols={2}>
-  <Card title="Context preservation" icon="layer-group">
-    Each subagent operates in its own context, preventing pollution of the main conversation and keeping it focused on high-level objectives.
-  </Card>
-
-  <Card title="Specialized expertise" icon="brain">
-    Subagents can be fine-tuned with detailed instructions for specific domains, leading to higher success rates on designated tasks.
-  </Card>
-
-  <Card title="Reusability" icon="rotate">
-    Once created, subagents can be used across different projects and shared with your team for consistent workflows.
-  </Card>
-
-  <Card title="Flexible permissions" icon="shield-check">
-    Each subagent can have different tool access levels, allowing you to limit powerful tools to specific subagent types.
-  </Card>
-</CardGroup>
-
-## Quick start
-
-To create your first subagent:
-
-<Steps>
-  <Step title="Open the subagents interface">
-    Run the following command:
-
-    ```
-    /agents
-    ```
-  </Step>
-
-  <Step title="Select 'Create New Agent'">
-    Choose whether to create a project-level or user-level subagent
-  </Step>
-
-  <Step title="Define the subagent">
-    * **Recommended**: Generate with Claude first, then customize to make it yours
-    * Describe your subagent in detail and when it should be used
-    * Select the tools you want to grant access to (or leave blank to inherit all tools)
-    * The interface shows all available tools, making selection easy
-    * If you're generating with Claude, you can also edit the system prompt in your own editor by pressing `e`
-  </Step>
-
-  <Step title="Save and use">
-    Your subagent is now available! Claude will use it automatically when appropriate, or you can invoke it explicitly:
-
-    ```
-    > Use the code-reviewer subagent to check my recent changes
-    ```
-  </Step>
-</Steps>
 
 ## Subagent configuration
 

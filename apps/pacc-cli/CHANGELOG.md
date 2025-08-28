@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AgentsValidator now expects `tools` as comma-separated string per Claude Code docs
 - AgentsValidator removed invalid optional fields not in Claude Code specification
 - Validators now properly warn about unknown fields instead of failing
+- `pacc info` now handles directories correctly like `pacc validate` does
 
 ### Security
 - Secure credential storage recommendations
