@@ -401,7 +401,7 @@ class TestBaseValidator:
         test_file = temp_dir / "test.txt"
         test_file.write_text("content")
         
-        with patch('pathlib.Path.stat', side_effect=OSError("Test OS error")):
+        with patch.object(test_file, 'stat', side_effect=OSError("Test OS error")):
             error = mock_validator._validate_file_accessibility(test_file)
         
         assert error is not None
@@ -603,11 +603,12 @@ class TestValidationIntegration:
                 )
                 
                 # Add different types of issues based on filename
-                if "error" in file_path.name:
+                filename = file_path.stem  # Get filename without extension
+                if filename.startswith("error_"):
                     result.add_error("CRITICAL_ERROR", "This file has critical errors")
-                if "warning" in file_path.name:
+                elif filename.startswith("warning_"):
                     result.add_warning("MINOR_WARNING", "This file has warnings")
-                if "info" in file_path.name:
+                elif filename.startswith("info_"):
                     result.add_info("INFO_MESSAGE", "This file has info messages")
                 
                 return result
