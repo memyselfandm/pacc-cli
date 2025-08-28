@@ -16,9 +16,10 @@ class AgentsValidator(BaseValidator):
     REQUIRED_FRONTMATTER_FIELDS = ["name", "description"]
     
     # Optional fields per Claude Code documentation
-    # tools is a comma-separated string, not a list
     OPTIONAL_FRONTMATTER_FIELDS = {
-        "tools": str  # Comma-separated string like "Read, Write, Bash"
+        "tools": str,  # Comma-separated string like "Read, Write, Bash"
+        "model": str,  # Optional model string like "claude-3-opus"
+        "color": str   # Optional terminal color like "cyan", "red"
     }
     
     # Known Claude Code tools for validation
