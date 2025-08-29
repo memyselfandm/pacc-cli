@@ -7,17 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-08-22 (Beta 2)
+
+**Major release introducing complete Claude Code plugin ecosystem**
+
 ### Added
-- Comprehensive PyPI publishing documentation and workflow
-- Publishing automation scripts for streamlined releases
-- Test PyPI integration for safe pre-release testing
-- Credential management guide with security best practices
-- GitHub Actions workflow for automated publishing
-- Makefile targets for publishing workflow
+- **Complete Plugin Management System** (Sprints 1-7)
+  - Install plugins from Git repositories (HTTPS and SSH)
+  - List, enable, disable, and remove installed plugins
+  - Update plugins with rollback capability
+  - Plugin information display with metadata
+  
+- **Team Collaboration Features**
+  - `pacc.json` project configuration for plugin requirements
+  - Team synchronization with differential updates
+  - Version locking to prevent conflicts
+  - Cross-platform environment setup (ENABLE_PLUGINS)
+  
+- **Plugin Development Tools**
+  - Interactive plugin creation wizard with templates
+  - Extension-to-plugin converter (95% success rate)
+  - Plugin publishing to Git repositories
+  - Support for all 4 Claude Code extension types
+  
+- **Plugin Discovery & Search**
+  - Community plugin registry with 15+ example plugins
+  - Search by name, type, tags, and popularity
+  - Project-specific plugin recommendations
+  - Marketplace foundation for future expansion
+  
+- **Security Enhancements**
+  - Advanced threat detection (170+ dangerous patterns)
+  - 4-level sandbox isolation system
+  - Command injection and path traversal protection
+  - Comprehensive security audit logging
+  - Permission analysis for file operations
+  
+- **Claude Code Integration**
+  - Native slash commands (/plugin, /pi, /pl, /pe, /pd, /pu)
+  - Automatic environment configuration
+  - Cross-platform shell detection
+  - Settings.json and config.json management
+  
+- **Performance Optimizations**
+  - Plugin discovery at >4,000 files/second
+  - Installation in <30 seconds typical
+  - Validation in <50ms per extension
+  - Memory-efficient operations with profiling
 
 ### Changed
-- Enhanced build scripts with publishing support
-- Updated pyproject.toml with complete metadata
+- Enhanced CLI with 15+ new plugin-specific commands
+- Improved error messages with recovery suggestions
+- Updated documentation with plugin user guide
+- Restructured codebase to support plugin architecture
 
 ### Fixed
 - CommandsValidator no longer incorrectly requires `name` field in frontmatter (PR #3)
@@ -28,8 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pacc info` now handles directories correctly like `pacc validate` does
 
 ### Security
-- Secure credential storage recommendations
-- Token rotation procedures and best practices
+- Comprehensive validation before any file operations
+- Atomic configuration updates with rollback
+- Secure Git operations with SSH key support
+- Protection against malicious plugin code
 
 ## [0.1.0] - 2025-08-16 (Beta)
 
