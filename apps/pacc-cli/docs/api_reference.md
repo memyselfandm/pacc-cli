@@ -873,6 +873,333 @@ filtered_files = file_filter.filter_files(all_files)
 print(f"Found {len(all_files)} files, filtered to {len(filtered_files)}")
 ```
 
+## Project Configuration (NEW in 1.0)
+
+### ExtensionSpec
+
+Data class representing extension specifications in pacc.json files.
+
+#### Constructor
+
+```python
+ExtensionSpec(
+    name: str,
+    source: str, 
+    version: str,
+    description: Optional[str] = None,
+    ref: Optional[str] = None,
+    environment: Optional[str] = None,
+    dependencies: List[str] = field(default_factory=list),
+    metadata: Dict[str, Any] = field(default_factory=dict),
+    target_dir: Optional[str] = None,
+    preserve_structure: bool = False
+)
+```
+
+**Parameters:**
+- `name` (str): Extension name
+- `source` (str): Source path or URL
+- `version` (str): Extension version
+- `description` (Optional[str]): Extension description
+- `ref` (Optional[str]): Git reference for remote sources
+- `environment` (Optional[str]): Environment restriction
+- `dependencies` (List[str]): Extension dependencies
+- `metadata` (Dict[str, Any]): Additional metadata
+- `target_dir` (Optional[str]): Custom installation directory (NEW)
+- `preserve_structure` (bool): Preserve source directory structure (NEW)
+
+#### Methods
+
+##### from_dict (class method)
+
+```python
+@classmethod
+from_dict(cls, data: Dict[str, Any]) -> 'ExtensionSpec'
+```
+
+Create ExtensionSpec from dictionary data.
+
+**Parameters:**
+- `data` (Dict[str, Any]): Extension data from pacc.json
+
+**Returns:**
+- `ExtensionSpec`: Configured extension specification
+
+**Example:**
+```python
+spec = ExtensionSpec.from_dict({
+    "name": "my-extension",
+    "source": "./extensions/my-extension.md",
+    "version": "1.0.0",
+    "targetDir": "custom/tools",
+    "preserveStructure": true
+})
+```
+
+##### to_dict
+
+```python
+to_dict() -> Dict[str, Any]
+```
+
+Convert ExtensionSpec to dictionary format.
+
+**Returns:**
+- `Dict[str, Any]`: Dictionary representation
+
+### ProjectConfigManager
+
+Manages pacc.json project configuration files.
+
+#### Constructor
+
+```python
+ProjectConfigManager()
+```
+
+#### Methods
+
+##### load_project_config
+
+```python
+load_project_config(project_dir: Path) -> Optional[Dict[str, Any]]
+```
+
+Load project configuration from pacc.json file.
+
+**Parameters:**
+- `project_dir` (Path): Project directory containing pacc.json
+
+**Returns:**
+- `Optional[Dict[str, Any]]`: Loaded configuration or None if not found
+
+**Example:**
+```python
+manager = ProjectConfigManager()
+config = manager.load_project_config(Path("./my-project"))
+if config:
+    print(f"Project: {config['name']}")
+```
+
+##### validate_project_config
+
+```python
+validate_project_config(project_dir: Path) -> ConfigValidationResult
+```
+
+Validate project configuration structure and content.
+
+**Parameters:**
+- `project_dir` (Path): Project directory
+
+**Returns:**
+- `ConfigValidationResult`: Validation results
+
+## Extension Type Detection (NEW in 1.0)
+
+### ExtensionDetector
+
+Hierarchical extension type detection system.
+
+#### Methods
+
+##### detect_extension_type (static)
+
+```python
+@staticmethod
+detect_extension_type(
+    file_path: Union[str, Path], 
+    project_dir: Optional[Union[str, Path]] = None
+) -> Optional[str]
+```
+
+Detect extension type using hierarchical approach:
+1. pacc.json declarations (highest priority)
+2. Directory structure (secondary signal)
+3. Content keywords (fallback only)
+
+**Parameters:**
+- `file_path` (Union[str, Path]): Path to file to analyze
+- `project_dir` (Optional[Union[str, Path]]): Project directory to search for pacc.json
+
+**Returns:**
+- `Optional[str]`: Extension type ('hooks', 'mcp', 'agents', 'commands') or None
+
+**Example:**
+```python
+from pacc.validators.utils import ExtensionDetector
+
+detector = ExtensionDetector()
+
+# With pacc.json context (recommended)
+detected_type = detector.detect_extension_type(
+    file_path="./my-extension.md",
+    project_dir="./my-project"
+)
+
+# Legacy detection (without pacc.json)
+detected_type = detector.detect_extension_type("./my-extension.md")
+
+print(f"Detected type: {detected_type}")
+```
+
+### ValidationResultFormatter
+
+Enhanced formatter for validation results with improved output.
+
+#### Methods
+
+##### format_result (static)
+
+```python
+@staticmethod
+format_result(result: ValidationResult, verbose: bool = False) -> str
+```
+
+Format single validation result with enhanced output.
+
+**Parameters:**
+- `result` (ValidationResult): Validation result to format
+- `verbose` (bool): Include detailed information
+
+**Returns:**
+- `str`: Formatted result string
+
+##### format_batch_results (static)
+
+```python
+@staticmethod
+format_batch_results(
+    results: List[ValidationResult], 
+    show_summary: bool = True
+) -> str
+```
+
+Format multiple validation results with summary.
+
+**Parameters:**
+- `results` (List[ValidationResult]): List of validation results
+- `show_summary` (bool): Include summary statistics
+
+**Returns:**
+- `str`: Formatted batch results with summary
+
+**Example:**
+```python
+from pacc.validators.utils import ValidationResultFormatter
+
+formatter = ValidationResultFormatter()
+
+# Format single result
+formatted = formatter.format_result(result, verbose=True)
+print(formatted)
+
+# Format batch results
+batch_formatted = formatter.format_batch_results(results, show_summary=True)
+print(batch_formatted)
+```
+
+## Enhanced Validation Functions (NEW in 1.0)
+
+### validate_extension_file
+
+```python
+def validate_extension_file(
+    file_path: Union[str, Path], 
+    extension_type: Optional[str] = None
+) -> ValidationResult
+```
+
+Validate single extension file with enhanced validation.
+
+**Parameters:**
+- `file_path` (Union[str, Path]): Path to extension file
+- `extension_type` (Optional[str]): Override type detection
+
+**Returns:**
+- `ValidationResult`: Enhanced validation result
+
+**Example:**
+```python
+from pacc.validators.utils import validate_extension_file
+
+# Auto-detect type
+result = validate_extension_file("./my-hook.json")
+
+# Override type detection
+result = validate_extension_file("./my-hook.json", extension_type="hooks")
+
+if result.is_valid:
+    print("✓ Extension is valid")
+else:
+    print(f"✗ Validation failed with {len(result.errors)} errors")
+```
+
+### validate_extension_directory
+
+```python
+def validate_extension_directory(
+    directory_path: Union[str, Path],
+    extension_type: Optional[str] = None
+) -> Dict[str, List[ValidationResult]]
+```
+
+Validate all extensions in directory with type grouping.
+
+**Parameters:**
+- `directory_path` (Union[str, Path]): Directory to validate
+- `extension_type` (Optional[str]): Filter by specific type
+
+**Returns:**
+- `Dict[str, List[ValidationResult]]`: Results grouped by extension type
+
+**Example:**
+```python
+from pacc.validators.utils import validate_extension_directory
+
+# Validate all types
+results = validate_extension_directory("./extensions")
+for ext_type, type_results in results.items():
+    print(f"{ext_type}: {len(type_results)} extensions")
+
+# Validate specific type only
+command_results = validate_extension_directory("./extensions", "commands")
+```
+
+## CLI Command API (NEW in 1.0)
+
+### ValidateCommand
+
+Enhanced validation command implementation.
+
+#### Arguments
+
+- `source` (str): Path to file or directory to validate
+- `--type` / `-t` (str): Override extension type detection
+- `--strict` (bool): Enable strict mode (treat warnings as errors)
+
+#### Exit Codes
+
+- `0`: Validation passed
+- `1`: Validation failed (errors found)
+- `1`: Strict mode and warnings found
+
+#### Example Usage
+
+```bash
+# Auto-detect and validate
+pacc validate ./extension.json
+
+# Override type detection
+pacc validate ./extension.json --type hooks
+
+# Strict validation
+pacc validate ./extensions/ --strict
+
+# Directory validation
+pacc validate ./project/extensions/
+```
+
 ## Extension Points
 
 ### Creating Custom Validators
@@ -954,8 +1281,8 @@ custom_filter = (CustomFileFilter()
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024-08-12  
-**API Compatibility**: PACC v0.1.0+
+**Document Version**: 1.1  
+**Last Updated**: 2024-08-27  
+**API Compatibility**: PACC v1.0.0+
 
 For questions about the API or suggestions for improvements, please open an issue in the PACC repository.

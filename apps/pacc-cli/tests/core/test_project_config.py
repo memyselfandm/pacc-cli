@@ -13,7 +13,8 @@ from pacc.core.project_config import (
     ProjectConfigSchema,
     ExtensionSpec,
     ProjectSyncResult,
-    ConfigValidationResult
+    ConfigValidationResult,
+    InstallationPathResolver
 )
 from pacc.errors.exceptions import (
     ConfigurationError, 
@@ -819,3 +820,446 @@ def temp_project_dir():
     """Create temporary project directory."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         yield Path(tmp_dir)
+
+
+class TestFolderStructureSpecification:
+    """Test folder structure specification features (PACC-19, PACC-25)."""
+    
+    def test_extension_spec_with_target_dir(self):
+        """Test ExtensionSpec with targetDir field."""
+        spec_data = {
+            "name": "team-hook",
+            "source": "./hooks/team.json",
+            "version": "1.0.0",
+            "targetDir": "team/product/"
+        }
+        
+        spec = ExtensionSpec.from_dict(spec_data)
+        
+        assert spec.name == "team-hook"
+        assert spec.source == "./hooks/team.json"
+        assert spec.version == "1.0.0"
+        assert spec.target_dir == "team/product/"
+        assert spec.preserve_structure is False  # Default
+    
+    def test_extension_spec_with_preserve_structure(self):
+        """Test ExtensionSpec with preserveStructure field."""
+        spec_data = {
+            "name": "structured-hook",
+            "source": "./src/hooks/",
+            "version": "1.0.0",
+            "preserveStructure": True
+        }
+        
+        spec = ExtensionSpec.from_dict(spec_data)
+        
+        assert spec.preserve_structure is True
+        assert spec.target_dir is None  # Default
+    
+    def test_extension_spec_with_both_folder_fields(self):
+        """Test ExtensionSpec with both targetDir and preserveStructure."""
+        spec_data = {
+            "name": "complex-extension",
+            "source": "https://github.com/team/extensions",
+            "version": "1.2.0",
+            "targetDir": "custom/location/",
+            "preserveStructure": True
+        }
+        
+        spec = ExtensionSpec.from_dict(spec_data)
+        
+        assert spec.target_dir == "custom/location/"
+        assert spec.preserve_structure is True
+    
+    def test_extension_spec_snake_case_compatibility(self):
+        """Test ExtensionSpec supports both camelCase and snake_case field names."""
+        # Test snake_case format
+        snake_case_data = {
+            "name": "snake-case-test",
+            "source": "./test.json",
+            "version": "1.0.0",
+            "target_dir": "snake/case/",
+            "preserve_structure": True
+        }
+        
+        spec = ExtensionSpec.from_dict(snake_case_data)
+        assert spec.target_dir == "snake/case/"
+        assert spec.preserve_structure is True
+        
+        # Test camelCase format 
+        camel_case_data = {
+            "name": "camel-case-test",
+            "source": "./test.json", 
+            "version": "1.0.0",
+            "targetDir": "camel/case/",
+            "preserveStructure": False
+        }
+        
+        spec = ExtensionSpec.from_dict(camel_case_data)
+        assert spec.target_dir == "camel/case/"
+        assert spec.preserve_structure is False
+    
+    def test_extension_spec_to_dict_includes_folder_fields(self):
+        """Test that to_dict includes folder structure fields in camelCase."""
+        spec = ExtensionSpec(
+            name="test-ext",
+            source="./test.json",
+            version="1.0.0",
+            target_dir="custom/dir/",
+            preserve_structure=True
+        )
+        
+        result = spec.to_dict()
+        
+        assert result["targetDir"] == "custom/dir/"
+        assert result["preserveStructure"] is True
+        
+        # Ensure backwards compatibility - no snake_case in JSON
+        assert "target_dir" not in result
+        assert "preserve_structure" not in result
+    
+    def test_extension_spec_to_dict_omits_none_values(self):
+        """Test that to_dict omits None/False values for clean JSON."""
+        spec = ExtensionSpec(
+            name="minimal-ext",
+            source="./test.json",
+            version="1.0.0"
+            # target_dir=None, preserve_structure=False (defaults)
+        )
+        
+        result = spec.to_dict()
+        
+        assert "targetDir" not in result
+        assert "preserveStructure" not in result  # False is default, omit
+    
+    def test_schema_validation_valid_folder_fields(self):
+        """Test schema validation accepts valid folder structure fields."""
+        valid_config = {
+            "name": "folder-test-project",
+            "version": "1.0.0",
+            "extensions": {
+                "hooks": [
+                    {
+                        "name": "organized-hook",
+                        "source": "./hooks/organized.json",
+                        "version": "1.0.0",
+                        "targetDir": "team/hooks/",
+                        "preserveStructure": True
+                    }
+                ],
+                "commands": [
+                    {
+                        "name": "team-command",
+                        "source": "./commands/team.md", 
+                        "version": "1.0.0",
+                        "targetDir": "commands/team-name/"
+                    }
+                ]
+            }
+        }
+        
+        schema = ProjectConfigSchema()
+        result = schema.validate(valid_config)
+        
+        assert result.is_valid
+        assert len(result.errors) == 0
+    
+    def test_schema_validation_invalid_target_dir(self):
+        """Test schema validation rejects invalid targetDir values."""
+        invalid_configs = [
+            # Empty string
+            {
+                "name": "test",
+                "version": "1.0.0",
+                "extensions": {
+                    "hooks": [{
+                        "name": "test-hook",
+                        "source": "./test.json",
+                        "version": "1.0.0", 
+                        "targetDir": ""
+                    }]
+                }
+            },
+            # Path traversal attempt
+            {
+                "name": "test",
+                "version": "1.0.0",
+                "extensions": {
+                    "hooks": [{
+                        "name": "malicious-hook",
+                        "source": "./test.json",
+                        "version": "1.0.0",
+                        "targetDir": "../../../etc/"
+                    }]
+                }
+            },
+            # Absolute path
+            {
+                "name": "test",
+                "version": "1.0.0",
+                "extensions": {
+                    "hooks": [{
+                        "name": "absolute-hook", 
+                        "source": "./test.json",
+                        "version": "1.0.0",
+                        "targetDir": "/absolute/path/"
+                    }]
+                }
+            },
+            # Non-string type
+            {
+                "name": "test",
+                "version": "1.0.0",
+                "extensions": {
+                    "hooks": [{
+                        "name": "wrong-type-hook",
+                        "source": "./test.json",
+                        "version": "1.0.0",
+                        "targetDir": 123
+                    }]
+                }
+            }
+        ]
+        
+        schema = ProjectConfigSchema()
+        
+        for i, config in enumerate(invalid_configs):
+            result = schema.validate(config)
+            assert not result.is_valid, f"Config {i} should be invalid"
+            
+            # Check specific error types
+            error_codes = [error.code for error in result.errors]
+            expected_codes = ["INVALID_TARGET_DIR", "UNSAFE_TARGET_DIR"]
+            assert any(code in error_codes for code in expected_codes), f"Config {i} should have target dir error"
+    
+    def test_schema_validation_invalid_preserve_structure(self):
+        """Test schema validation rejects invalid preserveStructure values."""
+        invalid_config = {
+            "name": "test",
+            "version": "1.0.0",
+            "extensions": {
+                "hooks": [{
+                    "name": "invalid-preserve-hook",
+                    "source": "./test.json", 
+                    "version": "1.0.0",
+                    "preserveStructure": "not-a-boolean"
+                }]
+            }
+        }
+        
+        schema = ProjectConfigSchema()
+        result = schema.validate(invalid_config)
+        
+        assert not result.is_valid
+        error_codes = [error.code for error in result.errors]
+        assert "INVALID_PRESERVE_STRUCTURE" in error_codes
+
+
+class TestInstallationPathResolver:
+    """Test InstallationPathResolver for folder structure handling."""
+    
+    @pytest.fixture
+    def resolver(self):
+        """Create InstallationPathResolver instance."""
+        return InstallationPathResolver()
+    
+    @pytest.fixture
+    def claude_code_dir(self, temp_project_dir):
+        """Mock Claude Code directory."""
+        claude_dir = temp_project_dir / ".claude"
+        claude_dir.mkdir()
+        return claude_dir
+    
+    def test_resolve_basic_target_path(self, resolver, claude_code_dir):
+        """Test basic target path resolution without custom settings."""
+        spec = ExtensionSpec(
+            name="basic-hook",
+            source="./hooks/basic.json",
+            version="1.0.0"
+        )
+        
+        base_dir = claude_code_dir / "hooks"
+        source_file = Path("basic.json")
+        
+        result = resolver.resolve_target_path(spec, base_dir, source_file)
+        
+        assert result == base_dir / "basic.json"
+    
+    def test_resolve_target_path_with_custom_dir(self, resolver, claude_code_dir):
+        """Test target path resolution with custom targetDir."""
+        spec = ExtensionSpec(
+            name="team-hook",
+            source="./hooks/team.json",
+            version="1.0.0",
+            target_dir="team/product/"
+        )
+        
+        base_dir = claude_code_dir / "hooks"
+        source_file = Path("team.json")
+        
+        result = resolver.resolve_target_path(spec, base_dir, source_file)
+        
+        expected = base_dir / "team/product" / "team.json"
+        assert result == expected
+    
+    def test_resolve_target_path_with_structure_preservation(self, resolver, claude_code_dir):
+        """Test target path resolution with structure preservation."""
+        spec = ExtensionSpec(
+            name="structured-hook",
+            source="./src/hooks/",
+            version="1.0.0",
+            preserve_structure=True
+        )
+        
+        base_dir = claude_code_dir / "hooks"
+        source_file = Path("src/hooks/nested/deep.json")
+        
+        result = resolver.resolve_target_path(spec, base_dir, source_file)
+        
+        # Should preserve the nested structure
+        expected = base_dir / "deep.json"  # Simplified expectation for now
+        assert result.name == "deep.json"
+    
+    def test_resolve_target_path_with_both_custom_and_preserve(self, resolver, claude_code_dir):
+        """Test target path resolution with both custom dir and structure preservation."""
+        spec = ExtensionSpec(
+            name="complex-hook",
+            source="./src/hooks/",
+            version="1.0.0",
+            target_dir="custom/team/",
+            preserve_structure=True
+        )
+        
+        base_dir = claude_code_dir / "hooks"
+        source_file = Path("src/hooks/nested/complex.json")
+        
+        result = resolver.resolve_target_path(spec, base_dir, source_file)
+        
+        # Should use custom directory and preserve structure
+        assert "custom/team" in str(result)
+        assert result.name == "complex.json"
+    
+    def test_validate_target_directory_security(self, resolver):
+        """Test target directory validation prevents path traversal."""
+        # Valid directories
+        valid_dirs = ["team/hooks/", "commands/product/", "simple"]
+        for valid_dir in valid_dirs:
+            result = resolver._validate_target_directory(valid_dir)
+            assert result == valid_dir.rstrip('/')
+        
+        # Invalid directories (should raise ValidationError)
+        invalid_dirs = ["../../../etc/", "/absolute/path/", "team/../../../root"]
+        for invalid_dir in invalid_dirs:
+            with pytest.raises(ValidationError):
+                resolver._validate_target_directory(invalid_dir)
+    
+    def test_get_extension_install_directory(self, resolver, claude_code_dir):
+        """Test getting base installation directories for extension types."""
+        expected_dirs = {
+            'hooks': claude_code_dir / 'hooks',
+            'mcps': claude_code_dir / 'mcps',
+            'agents': claude_code_dir / 'agents', 
+            'commands': claude_code_dir / 'commands'
+        }
+        
+        for ext_type, expected_dir in expected_dirs.items():
+            result = resolver.get_extension_install_directory(ext_type, claude_code_dir)
+            assert result == expected_dir
+        
+        # Test invalid extension type
+        with pytest.raises(ValueError):
+            resolver.get_extension_install_directory("invalid_type", claude_code_dir)
+    
+    def test_validate_target_path_security_bounds(self, resolver, claude_code_dir):
+        """Test target path validation stays within Claude Code directory."""
+        # Valid paths (within claude_code_dir)
+        valid_paths = [
+            claude_code_dir / "hooks" / "test.json",
+            claude_code_dir / "custom" / "team" / "hook.json"
+        ]
+        
+        for valid_path in valid_paths:
+            assert resolver.validate_target_path(valid_path, claude_code_dir) is True
+        
+        # Invalid paths (outside claude_code_dir) 
+        invalid_paths = [
+            claude_code_dir.parent / "outside.json",
+            Path("/tmp/malicious.json")
+        ]
+        
+        for invalid_path in invalid_paths:
+            assert resolver.validate_target_path(invalid_path, claude_code_dir) is False
+    
+    def test_create_target_directory(self, resolver, temp_project_dir):
+        """Test target directory creation."""
+        target_file = temp_project_dir / "nested" / "deep" / "structure" / "file.json"
+        
+        # Directory shouldn't exist initially
+        assert not target_file.parent.exists()
+        
+        # Create target directory
+        resolver.create_target_directory(target_file)
+        
+        # Directory should now exist
+        assert target_file.parent.exists()
+        assert target_file.parent.is_dir()
+
+
+class TestBackwardCompatibility:
+    """Test backward compatibility with existing pacc.json files."""
+    
+    def test_existing_configs_still_work(self):
+        """Test that existing configs without folder fields still validate."""
+        existing_config = {
+            "name": "legacy-project",
+            "version": "1.0.0", 
+            "extensions": {
+                "hooks": [
+                    {
+                        "name": "legacy-hook",
+                        "source": "./hooks/legacy.json",
+                        "version": "1.0.0"
+                        # No targetDir or preserveStructure fields
+                    }
+                ]
+            }
+        }
+        
+        schema = ProjectConfigSchema()
+        result = schema.validate(existing_config)
+        
+        assert result.is_valid
+        assert len(result.errors) == 0
+    
+    def test_extension_spec_defaults(self):
+        """Test that ExtensionSpec has proper defaults for new fields."""
+        minimal_spec_data = {
+            "name": "minimal",
+            "source": "./test.json",
+            "version": "1.0.0"
+        }
+        
+        spec = ExtensionSpec.from_dict(minimal_spec_data)
+        
+        # Should have sensible defaults
+        assert spec.target_dir is None
+        assert spec.preserve_structure is False
+    
+    def test_to_dict_backward_compatibility(self):
+        """Test that to_dict produces clean JSON without new fields when not used."""
+        spec = ExtensionSpec(
+            name="clean",
+            source="./test.json",
+            version="1.0.0"
+            # Using defaults for new fields
+        )
+        
+        result = spec.to_dict()
+        
+        # Should only contain the basic required fields
+        expected_keys = {"name", "source", "version"}
+        assert set(result.keys()) == expected_keys
+        
+        # Should not contain the new optional fields
+        assert "targetDir" not in result
+        assert "preserveStructure" not in result

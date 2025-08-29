@@ -61,6 +61,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated documentation with plugin user guide
 - Restructured codebase to support plugin architecture
 
+### Fixed
+- CommandsValidator no longer incorrectly requires `name` field in frontmatter (PR #3)
+- CommandsValidator now correctly treats frontmatter as optional
+- AgentsValidator now expects `tools` as comma-separated string per Claude Code docs
+- AgentsValidator removed invalid optional fields not in Claude Code specification
+- Validators now properly warn about unknown fields instead of failing
+- `pacc info` now handles directories correctly like `pacc validate` does
+
 ### Security
 - Comprehensive validation before any file operations
 - Atomic configuration updates with rollback

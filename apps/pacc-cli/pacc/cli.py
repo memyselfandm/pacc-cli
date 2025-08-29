@@ -1495,7 +1495,12 @@ class PACCCli:
                 result = validate_extension_file(source_path, args.type)
                 results = [result] if result else []
             else:
-                results = validate_extension_directory(source_path, args.type)
+                # validate_extension_directory returns Dict[str, List[ValidationResult]]
+                # Flatten it into a single list for CLI processing
+                validation_dict = validate_extension_directory(source_path, args.type)
+                results = []
+                for extension_type, validation_results in validation_dict.items():
+                    results.extend(validation_results)
             
             if not results:
                 self._print_error("No valid extensions found to validate")
@@ -1503,7 +1508,7 @@ class PACCCli:
             
             # Format and display results
             formatter = ValidationResultFormatter()
-            output = formatter.format_batch_results(results, show_summary=True)
+            output = formatter.format_batch_results(results, show_summary=True, verbose=args.verbose)
             print(output)
             
             # Check for errors
@@ -2024,8 +2029,13 @@ class PACCCli:
             source_path = Path(source)
             
             if source_path.exists():
-                # Source is a file path - validate and extract info
-                return self._handle_info_for_file(source_path, args)
+                # Check if it's a directory or file
+                if source_path.is_dir():
+                    # Handle directory - find extension files inside
+                    return self._handle_info_for_directory(source_path, args)
+                else:
+                    # Source is a file path - validate and extract info
+                    return self._handle_info_for_file(source_path, args)
             elif source_path.is_absolute() or "/" in source or "\\" in source:
                 # Source looks like a file path but doesn't exist
                 self._print_error(f"File does not exist: {source_path}")
@@ -2077,6 +2087,37 @@ class PACCCli:
             return self._display_info_json(extension_info)
         else:
             return self._display_info_formatted(extension_info, args)
+    
+    def _handle_info_for_directory(self, directory_path: Path, args) -> int:
+        """Handle info command for directory containing extensions."""
+        from .validators import validate_extension_directory
+        
+        # Find all extension files in the directory
+        validation_dict = validate_extension_directory(directory_path, args.type)
+        
+        # Flatten results
+        all_files = []
+        for extension_type, validation_results in validation_dict.items():
+            for result in validation_results:
+                all_files.append(result)
+        
+        if not all_files:
+            self._print_error(f"No extension files found in: {directory_path}")
+            return 1
+        
+        if len(all_files) == 1:
+            # Single file found - show info for it
+            file_path = Path(all_files[0].file_path)
+            return self._handle_info_for_file(file_path, args)
+        else:
+            # Multiple files found - show summary or prompt
+            self._print_info(f"Found {len(all_files)} extension files in {directory_path}:")
+            for result in all_files:
+                file_path = Path(result.file_path)
+                status = "✓" if result.is_valid else "✗"
+                self._print_info(f"  {status} {file_path.relative_to(directory_path.parent)}")
+            self._print_info("\nSpecify a single file to see detailed info.")
+            return 0
     
     def _handle_info_for_installed(self, extension_name: str, args) -> int:
         """Handle info command for installed extension name."""

@@ -170,16 +170,20 @@ class TestURLDownloader:
         """Test download fails when size limit is exceeded."""
         large_size = self.downloader.max_file_size_bytes + 1000000  # 1MB over limit
         
-        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session:
+        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session_class:
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.headers = {'content-length': str(large_size)}
             mock_response.__aenter__ = AsyncMock(return_value=mock_response)
             mock_response.__aexit__ = AsyncMock(return_value=None)
             
-            mock_session.return_value.__aenter__ = AsyncMock()
-            mock_session.return_value.__aexit__ = AsyncMock()
-            mock_session.return_value.get.return_value = mock_response
+            # Setup mock session
+            mock_session = AsyncMock()
+            mock_session.get.return_value = mock_response
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
+            
+            mock_session_class.return_value = mock_session
             
             with tempfile.TemporaryDirectory() as temp_dir:
                 dest_path = Path(temp_dir) / "large_file.zip"
@@ -197,7 +201,7 @@ class TestURLDownloader:
         def progress_callback(progress: DownloadProgress):
             progress_updates.append(progress.percentage)
         
-        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session:
+        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session_class:
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.headers = {'content-length': str(len(mock_response_data))}
@@ -205,14 +209,24 @@ class TestURLDownloader:
             # Simulate chunked reading
             chunk_size = 250
             chunks = [mock_response_data[i:i+chunk_size] for i in range(0, len(mock_response_data), chunk_size)]
-            chunks.append(b'')  # End of stream
-            mock_response.content.read = AsyncMock(side_effect=chunks)
+            
+            # Mock the chunked content iteration
+            async def mock_iter_chunked(chunk_size_arg):
+                for chunk in chunks:
+                    if chunk:  # Only yield non-empty chunks
+                        yield chunk
+            
+            mock_response.content.iter_chunked = mock_iter_chunked
             mock_response.__aenter__ = AsyncMock(return_value=mock_response)
             mock_response.__aexit__ = AsyncMock(return_value=None)
             
-            mock_session.return_value.__aenter__ = AsyncMock()
-            mock_session.return_value.__aexit__ = AsyncMock()
-            mock_session.return_value.get.return_value = mock_response
+            # Setup mock session
+            mock_session = AsyncMock()
+            mock_session.get.return_value = mock_response
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
+            
+            mock_session_class.return_value = mock_session
             
             with tempfile.TemporaryDirectory() as temp_dir:
                 dest_path = Path(temp_dir) / "progress_test.txt"
@@ -328,17 +342,26 @@ class TestURLDownloader:
         
         mock_zip_data = self._create_mock_zip(test_content)
         
-        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session:
+        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session_class:
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.headers = {'content-length': str(len(mock_zip_data))}
-            mock_response.content.read = AsyncMock(side_effect=[mock_zip_data, b''])
+            
+            # Mock the chunked content iteration
+            async def mock_iter_chunked(chunk_size):
+                yield mock_zip_data
+            
+            mock_response.content.iter_chunked = mock_iter_chunked
             mock_response.__aenter__ = AsyncMock(return_value=mock_response)
             mock_response.__aexit__ = AsyncMock(return_value=None)
             
-            mock_session.return_value.__aenter__ = AsyncMock()
-            mock_session.return_value.__aexit__ = AsyncMock()
-            mock_session.return_value.get.return_value = mock_response
+            # Setup mock session
+            mock_session = AsyncMock()
+            mock_session.get.return_value = mock_response
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
+            
+            mock_session_class.return_value = mock_session
             
             with tempfile.TemporaryDirectory() as temp_dir:
                 install_dir = Path(temp_dir) / "installed"
@@ -373,17 +396,26 @@ class TestURLDownloader:
         mock_data = b"cached content"
         url = "https://example.com/cached.zip"
         
-        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session:
+        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session_class:
             mock_response = AsyncMock()
             mock_response.status = 200
             mock_response.headers = {'content-length': str(len(mock_data))}
-            mock_response.content.read = AsyncMock(side_effect=[mock_data, b''])
+            
+            # Mock the chunked content iteration
+            async def mock_iter_chunked(chunk_size):
+                yield mock_data
+            
+            mock_response.content.iter_chunked = mock_iter_chunked
             mock_response.__aenter__ = AsyncMock(return_value=mock_response)
             mock_response.__aexit__ = AsyncMock(return_value=None)
             
-            mock_session.return_value.__aenter__ = AsyncMock()
-            mock_session.return_value.__aexit__ = AsyncMock()
-            mock_session.return_value.get.return_value = mock_response
+            # Setup mock session
+            mock_session = AsyncMock()
+            mock_session.get.return_value = mock_response
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
+            
+            mock_session_class.return_value = mock_session
             
             with tempfile.TemporaryDirectory() as temp_dir:
                 dest_path1 = Path(temp_dir) / "download1.zip"
@@ -407,7 +439,7 @@ class TestURLDownloader:
         """Test downloading with HTTP redirects."""
         final_data = b"final content"
         
-        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session:
+        with patch('pacc.core.url_downloader.aiohttp.ClientSession') as mock_session_class:
             # Setup redirect responses
             redirect_response = AsyncMock()
             redirect_response.status = 302
@@ -418,13 +450,22 @@ class TestURLDownloader:
             final_response = AsyncMock()
             final_response.status = 200
             final_response.headers = {'content-length': str(len(final_data))}
-            final_response.content.read = AsyncMock(side_effect=[final_data, b''])
+            
+            # Mock the chunked content iteration
+            async def mock_iter_chunked(chunk_size):
+                yield final_data
+            
+            final_response.content.iter_chunked = mock_iter_chunked
             final_response.__aenter__ = AsyncMock(return_value=final_response)
             final_response.__aexit__ = AsyncMock(return_value=None)
             
-            mock_session.return_value.__aenter__ = AsyncMock()
-            mock_session.return_value.__aexit__ = AsyncMock()
-            mock_session.return_value.get.side_effect = [redirect_response, final_response]
+            # Setup mock session
+            mock_session = AsyncMock()
+            mock_session.get.side_effect = [redirect_response, final_response]
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
+            
+            mock_session_class.return_value = mock_session
             
             with tempfile.TemporaryDirectory() as temp_dir:
                 dest_path = Path(temp_dir) / "redirected.zip"
