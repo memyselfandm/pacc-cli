@@ -1,0 +1,18 @@
+{
+  "fragments": {
+    "sample_fragment": {
+      "title": "Sample Memory Fragment",
+      "description": "A test fragment for PACC CLI testing",
+      "tags": [
+        "test",
+        "cli",
+        "memory"
+      ],
+      "category": "",
+      "author": "Agent-2",
+      "reference_path": ".claude/pacc/fragments/sample_fragment.md",
+      "storage_type": "project",
+      "installed_at": "2025-08-29T23:19:46.141264"
+    }
+  }
+}

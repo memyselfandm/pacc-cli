@@ -153,6 +153,9 @@ class PACCCli:
         # Plugin command
         self._add_plugin_parser(subparsers)
         
+        # Fragment command
+        self._add_fragment_parser(subparsers)
+        
         return parser
     
     def _add_install_parser(self, subparsers) -> None:
@@ -1074,6 +1077,169 @@ class PACCCli:
         env_plugin_parser.set_defaults(func=self._plugin_env_help)
         
         plugin_parser.set_defaults(func=self._plugin_help)
+    
+    def _add_fragment_parser(self, subparsers) -> None:
+        """Add the fragment command parser."""
+        fragment_parser = subparsers.add_parser(
+            "fragment",
+            help="Manage Claude Code memory fragments",
+            description="Install, list, and manage Claude Code memory fragments"
+        )
+        
+        fragment_subparsers = fragment_parser.add_subparsers(
+            dest="fragment_command",
+            help="Fragment commands",
+            metavar="<fragment_command>"
+        )
+        
+        # Fragment install command
+        install_fragment_parser = fragment_subparsers.add_parser(
+            "install",
+            help="Install fragments from source",
+            description="Install memory fragments from file, directory, or URL"
+        )
+        
+        install_fragment_parser.add_argument(
+            "source",
+            help="Fragment source (file, directory, or URL)"
+        )
+        
+        install_fragment_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            default="project",
+            help="Storage location (default: project)"
+        )
+        
+        install_fragment_parser.add_argument(
+            "--collection", "-c",
+            help="Collection name (subdirectory) for organizing fragments"
+        )
+        
+        install_fragment_parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            help="Overwrite existing fragments"
+        )
+        
+        install_fragment_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be installed without making changes"
+        )
+        
+        install_fragment_parser.set_defaults(func=self.handle_fragment_install)
+        
+        # Fragment list command
+        list_fragment_parser = fragment_subparsers.add_parser(
+            "list",
+            aliases=["ls"],
+            help="List installed fragments",
+            description="List fragments with optional filtering"
+        )
+        
+        list_fragment_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            help="Filter by storage location"
+        )
+        
+        list_fragment_parser.add_argument(
+            "--collection", "-c",
+            help="Filter by collection name"
+        )
+        
+        list_fragment_parser.add_argument(
+            "--pattern", "-p",
+            help="Filter by name pattern (supports wildcards)"
+        )
+        
+        list_fragment_parser.add_argument(
+            "--format",
+            choices=["table", "list", "json"],
+            default="table",
+            help="Output format"
+        )
+        
+        list_fragment_parser.add_argument(
+            "--show-stats",
+            action="store_true",
+            help="Show fragment statistics"
+        )
+        
+        list_fragment_parser.set_defaults(func=self.handle_fragment_list)
+        
+        # Fragment info command
+        info_fragment_parser = fragment_subparsers.add_parser(
+            "info",
+            help="Show fragment details",
+            description="Display detailed information about a fragment"
+        )
+        
+        info_fragment_parser.add_argument(
+            "fragment",
+            help="Fragment name"
+        )
+        
+        info_fragment_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            help="Search in specific storage location"
+        )
+        
+        info_fragment_parser.add_argument(
+            "--collection", "-c",
+            help="Search in specific collection"
+        )
+        
+        info_fragment_parser.add_argument(
+            "--format",
+            choices=["table", "json"],
+            default="table",
+            help="Output format"
+        )
+        
+        info_fragment_parser.set_defaults(func=self.handle_fragment_info)
+        
+        # Fragment remove command
+        remove_fragment_parser = fragment_subparsers.add_parser(
+            "remove",
+            aliases=["rm"],
+            help="Remove fragments",
+            description="Remove fragments from storage"
+        )
+        
+        remove_fragment_parser.add_argument(
+            "fragment",
+            help="Fragment name"
+        )
+        
+        remove_fragment_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            help="Search in specific storage location"
+        )
+        
+        remove_fragment_parser.add_argument(
+            "--collection", "-c",
+            help="Search in specific collection"
+        )
+        
+        remove_fragment_parser.add_argument(
+            "--confirm",
+            action="store_true",
+            help="Skip confirmation prompt"
+        )
+        
+        remove_fragment_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be removed without making changes"
+        )
+        
+        remove_fragment_parser.set_defaults(func=self.handle_fragment_remove)
+        
+        fragment_parser.set_defaults(func=self._fragment_help)
 
     def install_command(self, args) -> int:
         """Handle the install command."""
@@ -4404,6 +4570,363 @@ class PACCCli:
         # Print rows
         for row in rows:
             print(" | ".join(str(val).ljust(w) for val, w in zip(row, col_widths)))
+    
+    def _fragment_help(self, args) -> int:
+        """Show fragment command help when no subcommand is specified."""
+        print("Fragment Management Commands:")
+        print("  install <source>      Install fragments from file, directory, or URL")
+        print("  list [options]        List installed fragments")
+        print("  info <fragment>       Show detailed fragment information")
+        print("  remove <fragment>...  Remove fragments from storage")
+        print("")
+        print("Use 'pacc fragment <command> --help' for more information on a command.")
+        return 0
+    
+    def handle_fragment_install(self, args) -> int:
+        """Handle fragment install command."""
+        try:
+            from pacc.fragments.storage_manager import FragmentStorageManager
+            from pacc.validators.fragment_validator import FragmentValidator
+            from pathlib import Path
+            
+            self._print_info(f"Installing fragments from source: {args.source}")
+            
+            if args.dry_run:
+                self._print_info("DRY RUN MODE - No changes will be made")
+            
+            # Initialize managers
+            storage_manager = FragmentStorageManager()
+            validator = FragmentValidator()
+            source_path = Path(args.source)
+            
+            # Determine source type and validate
+            if source_path.is_file():
+                # Single fragment file
+                validation_result = validator.validate_single(source_path)
+                if not validation_result.is_valid and validation_result.errors:
+                    self._print_error(f"Fragment validation failed: {validation_result.errors[0].message}")
+                    return 1
+                
+                # Read fragment content
+                content = source_path.read_text(encoding='utf-8')
+                fragment_name = source_path.stem
+                
+                if not args.dry_run:
+                    try:
+                        fragment_path = storage_manager.store_fragment(
+                            fragment_name=fragment_name,
+                            content=content,
+                            storage_type=args.storage_type,
+                            collection=args.collection,
+                            overwrite=args.overwrite
+                        )
+                        self._print_success(f"Installed fragment: {fragment_name}")
+                        self._print_info(f"  Location: {fragment_path}")
+                        if args.collection:
+                            self._print_info(f"  Collection: {args.collection}")
+                    except Exception as e:
+                        self._print_error(f"Failed to install fragment: {e}")
+                        return 1
+                else:
+                    self._print_info(f"Would install fragment: {fragment_name}")
+                    if args.collection:
+                        self._print_info(f"  Collection: {args.collection}")
+                
+            elif source_path.is_dir():
+                # Directory with multiple fragments
+                fragment_files = validator._find_extension_files(source_path)
+                if not fragment_files:
+                    self._print_warning(f"No fragment files found in: {source_path}")
+                    return 0
+                
+                self._print_info(f"Found {len(fragment_files)} fragment files")
+                
+                installed_count = 0
+                for fragment_file in fragment_files:
+                    validation_result = validator.validate_single(fragment_file)
+                    if not validation_result.is_valid and validation_result.errors:
+                        self._print_warning(f"Skipping invalid fragment {fragment_file.name}: {validation_result.errors[0].message}")
+                        continue
+                    
+                    content = fragment_file.read_text(encoding='utf-8')
+                    fragment_name = fragment_file.stem
+                    
+                    if not args.dry_run:
+                        try:
+                            fragment_path = storage_manager.store_fragment(
+                                fragment_name=fragment_name,
+                                content=content,
+                                storage_type=args.storage_type,
+                                collection=args.collection,
+                                overwrite=args.overwrite
+                            )
+                            self._print_success(f"Installed fragment: {fragment_name}")
+                            installed_count += 1
+                        except Exception as e:
+                            self._print_warning(f"Failed to install {fragment_name}: {e}")
+                    else:
+                        self._print_info(f"Would install fragment: {fragment_name}")
+                        installed_count += 1
+                
+                if not args.dry_run:
+                    self._print_success(f"Successfully installed {installed_count} fragments")
+                else:
+                    self._print_info(f"Would install {installed_count} fragments")
+            
+            elif args.source.startswith(('http://', 'https://')):
+                self._print_error("URL-based fragment installation not yet implemented")
+                return 1
+            
+            else:
+                self._print_error(f"Source not found or invalid: {args.source}")
+                return 1
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Fragment installation failed: {e}")
+            if getattr(args, 'verbose', False):
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def handle_fragment_list(self, args) -> int:
+        """Handle fragment list command."""
+        try:
+            from pacc.fragments.storage_manager import FragmentStorageManager
+            
+            # Initialize storage manager
+            storage_manager = FragmentStorageManager()
+            
+            # List fragments with filters
+            fragments = storage_manager.list_fragments(
+                storage_type=args.storage_type,
+                collection=args.collection,
+                pattern=args.pattern
+            )
+            
+            if not fragments:
+                self._print_info("No fragments found")
+                if args.show_stats:
+                    stats = storage_manager.get_fragment_stats()
+                    self._print_info(f"Total fragments: {stats['total_fragments']}")
+                return 0
+            
+            if args.format == "json":
+                import json
+                fragment_data = []
+                for fragment in fragments:
+                    fragment_data.append({
+                        "name": fragment.name,
+                        "path": str(fragment.path),
+                        "storage_type": fragment.storage_type,
+                        "collection": fragment.collection_name,
+                        "is_collection": fragment.is_collection,
+                        "last_modified": fragment.last_modified.isoformat() if fragment.last_modified else None,
+                        "size": fragment.size
+                    })
+                print(json.dumps(fragment_data, indent=2))
+            
+            elif args.format == "list":
+                for fragment in fragments:
+                    location_info = f"[{fragment.storage_type}]"
+                    if fragment.collection_name:
+                        location_info += f"/{fragment.collection_name}"
+                    print(f"{fragment.name} {location_info}")
+            
+            else:  # table format
+                if not fragments:
+                    self._print_info("No fragments found")
+                    return 0
+                
+                # Prepare table data
+                headers = ["Name", "Storage", "Collection", "Size", "Modified"]
+                rows = []
+                
+                for fragment in fragments:
+                    size_str = f"{fragment.size} bytes" if fragment.size else "N/A"
+                    modified_str = fragment.last_modified.strftime("%Y-%m-%d %H:%M") if fragment.last_modified else "N/A"
+                    collection_str = fragment.collection_name or "-"
+                    
+                    rows.append([
+                        fragment.name,
+                        fragment.storage_type,
+                        collection_str,
+                        size_str,
+                        modified_str
+                    ])
+                
+                self._print_table(headers, rows)
+            
+            # Show statistics if requested
+            if args.show_stats:
+                stats = storage_manager.get_fragment_stats()
+                print(f"\nFragment Statistics:")
+                print(f"  Total fragments: {stats['total_fragments']}")
+                print(f"  Project fragments: {stats['project_fragments']}")
+                print(f"  User fragments: {stats['user_fragments']}")
+                print(f"  Collections: {stats['collections']}")
+                print(f"  Total size: {stats['total_size']} bytes")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to list fragments: {e}")
+            if getattr(args, 'verbose', False):
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def handle_fragment_info(self, args) -> int:
+        """Handle fragment info command."""
+        try:
+            from pacc.fragments.storage_manager import FragmentStorageManager
+            from pacc.validators.fragment_validator import FragmentValidator
+            
+            # Initialize managers
+            storage_manager = FragmentStorageManager()
+            validator = FragmentValidator()
+            
+            # Find the fragment
+            fragment_path = storage_manager.find_fragment(
+                fragment_name=args.fragment,
+                storage_type=args.storage_type,
+                collection=args.collection
+            )
+            
+            if not fragment_path:
+                self._print_error(f"Fragment not found: {args.fragment}")
+                return 1
+            
+            # Validate and get metadata
+            validation_result = validator.validate_single(fragment_path)
+            
+            if args.format == "json":
+                import json
+                info_data = {
+                    "name": args.fragment,
+                    "path": str(fragment_path),
+                    "exists": fragment_path.exists(),
+                    "size": fragment_path.stat().st_size if fragment_path.exists() else 0,
+                    "is_valid": validation_result.is_valid,
+                    "metadata": validation_result.metadata or {},
+                    "errors": [{"code": e.code, "message": e.message} for e in validation_result.errors],
+                    "warnings": [{"code": w.code, "message": w.message} for w in validation_result.warnings]
+                }
+                print(json.dumps(info_data, indent=2, default=str))
+            
+            else:  # table format
+                stat = fragment_path.stat()
+                from datetime import datetime
+                
+                print(f"Fragment Information: {args.fragment}")
+                print("=" * 50)
+                print(f"Path: {fragment_path}")
+                print(f"Size: {stat.st_size} bytes")
+                print(f"Modified: {datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"Valid: {'Yes' if validation_result.is_valid else 'No'}")
+                
+                # Show metadata if available
+                if validation_result.metadata:
+                    metadata = validation_result.metadata
+                    print(f"\nMetadata:")
+                    if metadata.get("title"):
+                        print(f"  Title: {metadata['title']}")
+                    if metadata.get("description"):
+                        print(f"  Description: {metadata['description']}")
+                    if metadata.get("category"):
+                        print(f"  Category: {metadata['category']}")
+                    if metadata.get("author"):
+                        print(f"  Author: {metadata['author']}")
+                    if metadata.get("tags"):
+                        print(f"  Tags: {', '.join(metadata['tags'])}")
+                    print(f"  Has frontmatter: {'Yes' if metadata.get('has_frontmatter') else 'No'}")
+                    print(f"  Markdown length: {metadata.get('markdown_length', 0)} characters")
+                    print(f"  Total lines: {metadata.get('line_count', 0)}")
+                
+                # Show validation issues
+                if validation_result.errors:
+                    print(f"\nErrors ({len(validation_result.errors)}):")
+                    for error in validation_result.errors:
+                        print(f"  - {error.message}")
+                
+                if validation_result.warnings:
+                    print(f"\nWarnings ({len(validation_result.warnings)}):")
+                    for warning in validation_result.warnings:
+                        print(f"  - {warning.message}")
+                
+                # Show first few lines of content
+                try:
+                    content = fragment_path.read_text(encoding='utf-8')
+                    lines = content.split('\n')[:5]
+                    print(f"\nContent Preview:")
+                    for i, line in enumerate(lines, 1):
+                        print(f"{i:2d}: {line[:80]}{'...' if len(line) > 80 else ''}")
+                    if len(content.split('\n')) > 5:
+                        print("    ...")
+                except Exception as e:
+                    print(f"\nCannot preview content: {e}")
+            
+            return 0
+            
+        except Exception as e:
+            self._print_error(f"Failed to get fragment info: {e}")
+            if getattr(args, 'verbose', False):
+                import traceback
+                traceback.print_exc()
+            return 1
+    
+    def handle_fragment_remove(self, args) -> int:
+        """Handle fragment remove command."""
+        try:
+            from pacc.fragments.storage_manager import FragmentStorageManager
+            
+            # Initialize storage manager
+            storage_manager = FragmentStorageManager()
+            
+            # Find the fragment
+            fragment_path = storage_manager.find_fragment(
+                fragment_name=args.fragment,
+                storage_type=args.storage_type,
+                collection=args.collection
+            )
+            
+            if not fragment_path:
+                self._print_error(f"Fragment not found: {args.fragment}")
+                return 1
+            
+            if args.dry_run:
+                self._print_info(f"Would remove fragment: {args.fragment}")
+                self._print_info(f"  Path: {fragment_path}")
+                return 0
+            
+            # Confirm removal unless --confirm is used
+            if not args.confirm:
+                response = input(f"Remove fragment '{args.fragment}'? (y/N): ").lower().strip()
+                if response not in ('y', 'yes'):
+                    self._print_info("Removal cancelled")
+                    return 0
+            
+            # Remove the fragment
+            success = storage_manager.remove_fragment(
+                fragment_name=args.fragment,
+                storage_type=args.storage_type,
+                collection=args.collection
+            )
+            
+            if success:
+                self._print_success(f"Removed fragment: {args.fragment}")
+                return 0
+            else:
+                self._print_error(f"Failed to remove fragment: {args.fragment}")
+                return 1
+            
+        except Exception as e:
+            self._print_error(f"Failed to remove fragment: {e}")
+            if getattr(args, 'verbose', False):
+                import traceback
+                traceback.print_exc()
+            return 1
     
     def _progress_indicator(self, message: str):
         """Simple progress indicator context manager."""

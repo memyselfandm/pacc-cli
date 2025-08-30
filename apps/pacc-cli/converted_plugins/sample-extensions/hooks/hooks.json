@@ -1,0 +1,16 @@
+{
+  "hooks": [
+    {
+      "name": "pacc-celebration",
+      "description": "Celebrates your PACC'd Claude Code session",
+      "eventTypes": [
+        "PostToolUse"
+      ],
+      "commands": [
+        "echo 'Your Claude Code session is PACCd!'"
+      ],
+      "enabled": true,
+      "version": "1.0.0"
+    }
+  ]
+}

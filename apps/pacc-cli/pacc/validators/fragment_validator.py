@@ -138,8 +138,8 @@ class FragmentValidator(BaseValidator):
         # Security scanning
         self._scan_for_security_issues(content, result)
         
-        # Extract metadata for successful validations
-        if result.is_valid or not result.errors:  # Include if only warnings
+        # Extract metadata even if validation has errors - metadata is useful regardless
+        if frontmatter is not None or markdown_content.strip():  # Extract if we have any content
             metadata = {
                 "has_frontmatter": frontmatter is not None and isinstance(frontmatter, dict),
                 "markdown_length": len(markdown_content.strip()),

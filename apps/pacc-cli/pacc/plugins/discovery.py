@@ -98,12 +98,55 @@ class PluginInfo:
         return namespaced
 
 
+@dataclass 
+class FragmentInfo:
+    """Information about a discovered memory fragment."""
+    
+    name: str
+    path: Path
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    validation_result: Optional[ValidationResult] = None
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    
+    @property
+    def is_valid(self) -> bool:
+        """Check if fragment is valid."""
+        return len(self.errors) == 0 and (
+            self.validation_result is None or self.validation_result.is_valid
+        )
+    
+    @property
+    def has_frontmatter(self) -> bool:
+        """Check if fragment has YAML frontmatter."""
+        return self.metadata.get("has_frontmatter", False)
+
+
+@dataclass
+class FragmentCollectionInfo:
+    """Information about a collection of memory fragments."""
+    
+    name: str
+    path: Path
+    fragments: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    errors: List[str] = field(default_factory=list)
+    
+    @property
+    def fragment_count(self) -> int:
+        """Get number of fragments in collection."""
+        return len(self.fragments)
+
+
 @dataclass
 class RepositoryInfo:
     """Information about a plugin repository."""
     
     path: Path
     plugins: List[PluginInfo] = field(default_factory=list)
+    fragments: List[FragmentInfo] = field(default_factory=list)
+    fragment_collections: List[FragmentCollectionInfo] = field(default_factory=list)
+    fragment_config: Optional[Dict[str, Any]] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     scan_errors: List[str] = field(default_factory=list)
     
@@ -126,6 +169,26 @@ class RepositoryInfo:
     def has_plugins(self) -> bool:
         """Check if repository has any plugins."""
         return len(self.plugins) > 0
+    
+    @property
+    def valid_fragments(self) -> List[FragmentInfo]:
+        """Get list of valid fragments in repository."""
+        return [f for f in self.fragments if f.is_valid]
+    
+    @property
+    def invalid_fragments(self) -> List[FragmentInfo]:
+        """Get list of invalid fragments in repository."""
+        return [f for f in self.fragments if not f.is_valid]
+    
+    @property
+    def fragment_count(self) -> int:
+        """Get total number of fragments."""
+        return len(self.fragments)
+    
+    @property
+    def has_fragments(self) -> bool:
+        """Check if repository has any fragments."""
+        return len(self.fragments) > 0
 
 
 class PluginManifestParser:
@@ -533,7 +596,7 @@ class PluginMetadataExtractor:
 
 
 class PluginScanner:
-    """Scans directories to discover Claude Code plugins."""
+    """Scans directories to discover Claude Code plugins and memory fragments."""
     
     def __init__(self):
         """Initialize plugin scanner."""
@@ -542,6 +605,14 @@ class PluginScanner:
         self.path_validator = FilePathValidator()
         self._scan_cache = {}  # Cache for repository scans
         self._cache_timestamp = {}  # Track cache freshness
+        
+        # Initialize fragment validator
+        try:
+            from ..validators.fragment_validator import FragmentValidator
+            self.fragment_validator = FragmentValidator()
+        except ImportError:
+            logger.warning("FragmentValidator not available, fragment validation disabled")
+            self.fragment_validator = None
         
     def scan_repository(self, repo_path: Path, use_cache: bool = True) -> RepositoryInfo:
         """Scan repository for plugins.
@@ -596,12 +667,25 @@ class PluginScanner:
                     repo_info.scan_errors.append(error_msg)
                     logger.error(error_msg)
             
+            # Scan for memory fragments
+            try:
+                self._discover_fragments(repo_info)
+                logger.debug(f"Found {len(repo_info.fragments)} fragments and {len(repo_info.fragment_collections)} collections")
+            except Exception as e:
+                error_msg = f"Failed to scan fragments in {repo_path}: {e}"
+                repo_info.scan_errors.append(error_msg)
+                logger.error(error_msg)
+            
             # Add repository metadata
             repo_info.metadata = {
                 "scanned_at": str(Path.cwd()),
                 "plugin_count": len(repo_info.plugins),
                 "valid_plugins": len(repo_info.valid_plugins),
-                "invalid_plugins": len(repo_info.invalid_plugins)
+                "invalid_plugins": len(repo_info.invalid_plugins),
+                "fragment_count": len(repo_info.fragments),
+                "valid_fragments": len(repo_info.valid_fragments),
+                "invalid_fragments": len(repo_info.invalid_fragments),
+                "fragment_collections": len(repo_info.fragment_collections)
             }
             
         except Exception as e:
@@ -809,6 +893,318 @@ class PluginScanner:
                 error_msg = f"Failed to extract {comp_type} metadata from {file_path}: {e}. Check if the file format is valid and readable."
                 plugin_info.errors.append(error_msg)
                 logger.error(error_msg)
+    
+    def _discover_fragments(self, repo_info: RepositoryInfo) -> None:
+        """Discover memory fragments in repository.
+        
+        Args:
+            repo_info: RepositoryInfo to populate with fragment data
+        """
+        repo_path = repo_info.path
+        
+        # First, check for pacc.json fragment configuration
+        pacc_config_path = repo_path / "pacc.json"
+        if pacc_config_path.exists():
+            try:
+                with open(pacc_config_path, 'r', encoding='utf-8') as f:
+                    pacc_config = json.load(f)
+                    if "fragments" in pacc_config:
+                        repo_info.fragment_config = pacc_config["fragments"]
+                        logger.debug(f"Found fragment configuration in pacc.json")
+            except Exception as e:
+                logger.warning(f"Failed to parse pacc.json: {e}")
+        
+        # Get fragment directories to scan
+        fragment_directories = self._get_fragment_directories(repo_info)
+        
+        # Scan each directory for fragments
+        for fragment_dir in fragment_directories:
+            try:
+                # Scan for individual fragments
+                fragments = self._scan_fragment_directory(fragment_dir, repo_info)
+                repo_info.fragments.extend(fragments)
+                
+                # Scan for collections (subdirectories with multiple fragments)
+                collections = self._scan_fragment_collections(fragment_dir, repo_info)
+                repo_info.fragment_collections.extend(collections)
+                
+            except Exception as e:
+                error_msg = f"Failed to scan fragment directory {fragment_dir}: {e}"
+                repo_info.scan_errors.append(error_msg)
+                logger.error(error_msg)
+    
+    def _get_fragment_directories(self, repo_info: RepositoryInfo) -> List[Path]:
+        """Get directories to scan for fragments.
+        
+        Args:
+            repo_info: Repository information with optional fragment config
+            
+        Returns:
+            List of directories to scan for fragments
+        """
+        repo_path = repo_info.path
+        fragment_dirs = []
+        
+        # Check if pacc.json specifies custom directories
+        if repo_info.fragment_config:
+            config_dirs = repo_info.fragment_config.get("directories", [])
+            for dir_path in config_dirs:
+                full_path = repo_path / dir_path
+                if full_path.exists() and full_path.is_dir():
+                    fragment_dirs.append(full_path)
+                    logger.debug(f"Added configured fragment directory: {full_path}")
+        else:
+            # Use default fragment directory
+            default_fragments_dir = repo_path / "fragments"
+            if default_fragments_dir.exists() and default_fragments_dir.is_dir():
+                fragment_dirs.append(default_fragments_dir)
+                logger.debug(f"Added default fragment directory: {default_fragments_dir}")
+        
+        return fragment_dirs
+    
+    def _scan_fragment_directory(self, fragment_dir: Path, repo_info: RepositoryInfo) -> List[FragmentInfo]:
+        """Scan directory for individual fragment files.
+        
+        Args:
+            fragment_dir: Directory to scan for fragments
+            repo_info: Repository information for context
+            
+        Returns:
+            List of discovered FragmentInfo objects
+        """
+        fragments = []
+        
+        # Get fragment patterns from config or use default
+        patterns = ["*.md"]  # Default pattern
+        if repo_info.fragment_config:
+            patterns = repo_info.fragment_config.get("patterns", patterns)
+        
+        # Scan for fragment files
+        for pattern in patterns:
+            try:
+                # Scan immediate directory
+                for file_path in fragment_dir.glob(pattern):
+                    if file_path.is_file():
+                        fragment_info = self._create_fragment_info(file_path)
+                        if fragment_info:
+                            fragments.append(fragment_info)
+                
+                # Also scan subdirectories recursively for individual fragments
+                def _scan_subdirectories(directory: Path, max_depth: int = 2, current_depth: int = 1):
+                    """Recursively scan subdirectories for fragments up to max_depth."""
+                    if current_depth > max_depth:
+                        return
+                    
+                    for subdir in directory.iterdir():
+                        if subdir.is_dir() and not subdir.name.startswith('.'):
+                            # Scan files in this subdirectory
+                            for file_path in subdir.glob(pattern):
+                                if file_path.is_file():
+                                    fragment_info = self._create_fragment_info(file_path)
+                                    if fragment_info:
+                                        fragments.append(fragment_info)
+                            
+                            # Recursively scan deeper
+                            _scan_subdirectories(subdir, max_depth, current_depth + 1)
+                
+                # Scan subdirectories up to 2 levels deep
+                _scan_subdirectories(fragment_dir)
+            
+            except Exception as e:
+                logger.warning(f"Error scanning pattern {pattern} in {fragment_dir}: {e}")
+        
+        return fragments
+    
+    def _scan_fragment_collections(self, fragment_dir: Path, repo_info: RepositoryInfo) -> List[FragmentCollectionInfo]:
+        """Scan for fragment collections (subdirectories with multiple fragments).
+        
+        Args:
+            fragment_dir: Directory to scan for collections
+            repo_info: Repository information for context
+            
+        Returns:
+            List of discovered FragmentCollectionInfo objects
+        """
+        collections = []
+        
+        # Check configured collections
+        if repo_info.fragment_config and "collections" in repo_info.fragment_config:
+            config_collections = repo_info.fragment_config["collections"]
+            for collection_name, collection_config in config_collections.items():
+                collection_path = repo_info.path / collection_config["path"]
+                if collection_path.exists() and collection_path.is_dir():
+                    collection_info = self._create_collection_info(collection_name, collection_path, collection_config)
+                    if collection_info:
+                        collections.append(collection_info)
+        
+        # Scan for implicit collections (subdirectories with multiple .md files)
+        try:
+            for subdir in fragment_dir.iterdir():
+                if subdir.is_dir() and not subdir.name.startswith('.'):
+                    # Count .md files in subdirectory
+                    md_files = list(subdir.glob("*.md"))
+                    if len(md_files) >= 2:  # Collection must have at least 2 fragments
+                        collection_info = self._create_collection_info(subdir.name, subdir)
+                        if collection_info:
+                            collections.append(collection_info)
+        
+        except Exception as e:
+            logger.warning(f"Error scanning collections in {fragment_dir}: {e}")
+        
+        return collections
+    
+    def _create_fragment_info(self, fragment_path: Path) -> Optional[FragmentInfo]:
+        """Create FragmentInfo from a fragment file.
+        
+        Args:
+            fragment_path: Path to fragment file
+            
+        Returns:
+            FragmentInfo object or None if creation failed
+        """
+        try:
+            fragment_info = FragmentInfo(
+                name=fragment_path.stem,
+                path=fragment_path
+            )
+            
+            # Validate fragment if validator is available
+            if self.fragment_validator:
+                validation_result = self.fragment_validator.validate_single(fragment_path)
+                fragment_info.validation_result = validation_result
+                
+                # Extract metadata from validation result - even if validation fails, we want the metadata
+                if hasattr(validation_result, 'metadata') and validation_result.metadata:
+                    fragment_info.metadata = validation_result.metadata
+                elif not fragment_info.metadata:
+                    # Fallback to basic metadata extraction if no metadata from validator
+                    fragment_info.metadata = self._extract_basic_fragment_metadata(fragment_path)
+                
+                # Collect errors and warnings from issues or direct error/warning lists
+                if hasattr(validation_result, 'issues') and validation_result.issues:
+                    for issue in validation_result.issues:
+                        if hasattr(issue, 'severity'):
+                            if issue.severity == 'error':
+                                fragment_info.errors.append(issue.message)
+                            elif issue.severity == 'warning':
+                                fragment_info.warnings.append(issue.message)
+                elif hasattr(validation_result, 'errors') and validation_result.errors:
+                    # Handle direct errors list
+                    fragment_info.errors.extend([str(error) for error in validation_result.errors])
+                
+                if hasattr(validation_result, 'warnings') and validation_result.warnings:
+                    # Handle direct warnings list
+                    fragment_info.warnings.extend([str(warning) for warning in validation_result.warnings])
+            else:
+                # Basic metadata extraction without validation
+                fragment_info.metadata = self._extract_basic_fragment_metadata(fragment_path)
+            
+            logger.debug(f"Created fragment info: {fragment_info.name}")
+            return fragment_info
+            
+        except Exception as e:
+            logger.error(f"Failed to create fragment info for {fragment_path}: {e}")
+            return None
+    
+    def _create_collection_info(self, collection_name: str, collection_path: Path, config: Optional[Dict[str, Any]] = None) -> Optional[FragmentCollectionInfo]:
+        """Create FragmentCollectionInfo from a collection directory.
+        
+        Args:
+            collection_name: Name of the collection
+            collection_path: Path to collection directory
+            config: Optional configuration from pacc.json
+            
+        Returns:
+            FragmentCollectionInfo object or None if creation failed
+        """
+        try:
+            # Find all .md files in the collection
+            md_files = list(collection_path.glob("*.md"))
+            fragment_names = [f.stem for f in md_files]
+            
+            collection_info = FragmentCollectionInfo(
+                name=collection_name,
+                path=collection_path,
+                fragments=fragment_names
+            )
+            
+            # Add metadata
+            metadata = {
+                "fragment_count": len(fragment_names),
+                "description": config.get("description", "") if config else ""
+            }
+            collection_info.metadata = metadata
+            
+            logger.debug(f"Created collection info: {collection_name} with {len(fragment_names)} fragments")
+            return collection_info
+            
+        except Exception as e:
+            logger.error(f"Failed to create collection info for {collection_path}: {e}")
+            return None
+    
+    def _extract_basic_fragment_metadata(self, fragment_path: Path) -> Dict[str, Any]:
+        """Extract basic metadata when fragment validator is not available.
+        
+        Args:
+            fragment_path: Path to fragment file
+            
+        Returns:
+            Dictionary with basic metadata
+        """
+        metadata = {
+            "title": "",
+            "description": "",
+            "tags": [],
+            "category": "",
+            "author": "",
+            "has_frontmatter": False,
+            "line_count": 0,
+            "markdown_length": 0,
+            "total_length": 0
+        }
+        
+        try:
+            with open(fragment_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            metadata["total_length"] = len(content)
+            metadata["line_count"] = len(content.splitlines())
+            
+            # Check for YAML frontmatter
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                if len(parts) >= 3:
+                    metadata["has_frontmatter"] = True
+                    metadata["markdown_length"] = len(parts[2].strip())
+                    
+                    # Try to parse frontmatter
+                    try:
+                        import yaml
+                        frontmatter = yaml.safe_load(parts[1])
+                        if isinstance(frontmatter, dict):
+                            metadata["title"] = frontmatter.get("title", "")
+                            metadata["description"] = frontmatter.get("description", "")
+                            metadata["category"] = frontmatter.get("category", "")
+                            metadata["author"] = frontmatter.get("author", "")
+                            
+                            # Handle tags
+                            tags = frontmatter.get("tags", [])
+                            if isinstance(tags, str):
+                                tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
+                            elif isinstance(tags, list):
+                                tags = [str(tag).strip() for tag in tags if str(tag).strip()]
+                            metadata["tags"] = tags
+                    except Exception:
+                        pass  # Ignore YAML parsing errors for basic extraction
+                else:
+                    metadata["markdown_length"] = len(content.strip())
+            else:
+                metadata["markdown_length"] = len(content.strip())
+                
+        except Exception as e:
+            logger.warning(f"Failed to extract basic metadata from {fragment_path}: {e}")
+        
+        return metadata
 
 
 # Template variable resolution functions

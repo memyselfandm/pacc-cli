@@ -48,7 +48,9 @@ classifiers = [
 
 # Core dependencies - minimal requirements for PACC functionality
 dependencies = [
-    "PyYAML>=6.0",  # Required for parsing agent and command frontmatter
+    "coverage>=7.6.1",
+    "pytest>=8.3.5",
+    "PyYAML>=6.0", # Required for parsing agent and command frontmatter
 ]
 
 [project.optional-dependencies]

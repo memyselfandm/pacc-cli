@@ -1,0 +1,18 @@
+{
+  "name": "sample-extensions",
+  "version": "1.0.0",
+  "description": "Converted from Claude Code extensions: 1 hooks, 1 agents, 1 commands",
+  "author": {
+    "name": "PACC Team"
+  },
+  "components": {
+    "hooks": 1,
+    "agents": 1,
+    "commands": 1
+  },
+  "metadata": {
+    "converted_from": "claude_extensions",
+    "conversion_tool": "pacc",
+    "total_extensions_converted": 3
+  }
+}
