@@ -28,14 +28,15 @@ at the global level (~/.claude) or project level (`<project-root>/.claude`).
 
 ### Installation
 ```bash
-# Clone the repository
+# Install from PyPI (recommended)
+pip install pacc-cli
+
+# Or install with pipx for isolated environment
+pipx install pacc-cli
+
+# For development (from source)
 git clone https://github.com/memyselfandm/pacc-cli.git
 cd pacc-cli/apps/pacc-cli
-
-# Install with uv (recommended)
-uv pip install -e .
-
-# Or install with pip
 pip install -e .
 ```
 
