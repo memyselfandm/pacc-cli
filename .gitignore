@@ -115,3 +115,6 @@ uv.lock
 .ruff_cache/
 /test_temp/
 ai_docs/
+
+# PACC Fragment Storage
+.claude/pacc/fragments/

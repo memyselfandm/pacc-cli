@@ -1,0 +1,18 @@
+{
+  "fragments": {
+    "test_fragment": {
+      "title": "Test Memory Fragment",
+      "description": "A simple test fragment for the installation workflow",
+      "tags": [
+        "test",
+        "demo",
+        "memory"
+      ],
+      "category": "testing",
+      "author": "Agent-3",
+      "reference_path": ".claude/pacc/fragments/test_fragment.md",
+      "storage_type": "project",
+      "installed_at": "2025-08-29T23:13:13.784362"
+    }
+  }
+}
