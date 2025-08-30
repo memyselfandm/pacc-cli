@@ -5,6 +5,7 @@ from .hooks import HooksValidator
 from .mcp import MCPValidator
 from .agents import AgentsValidator
 from .commands import CommandsValidator
+from .fragment_validator import FragmentValidator
 from .utils import (
     ValidatorFactory, 
     ValidationResultFormatter,
@@ -26,6 +27,7 @@ __all__ = [
     "MCPValidator", 
     "AgentsValidator",
     "CommandsValidator",
+    "FragmentValidator",
     
     # Utilities
     "ValidatorFactory",

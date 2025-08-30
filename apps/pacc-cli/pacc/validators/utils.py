@@ -92,12 +92,14 @@ class ValidatorFactory:
             from .mcp import MCPValidator
             from .agents import AgentsValidator
             from .commands import CommandsValidator
+            from .fragment_validator import FragmentValidator
             
             cls._validators = {
                 "hooks": HooksValidator,
                 "mcp": MCPValidator,
                 "agents": AgentsValidator,
-                "commands": CommandsValidator
+                "commands": CommandsValidator,
+                "fragments": FragmentValidator
             }
     
     @classmethod
