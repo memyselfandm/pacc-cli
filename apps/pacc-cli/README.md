@@ -6,6 +6,21 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 - **Hooks & MCP Servers**: Configuration-based, stored in `settings.json`
 - **Agents & Commands**: File-based, placed in directories and auto-discovered by Claude Code
 
+## Installation
+
+```bash
+# Install from PyPI (recommended)
+pip install pacc-cli
+
+# Or install with pipx for isolated environment
+pipx install pacc-cli
+
+# For development (from source)
+git clone https://github.com/memyselfandm/pacc-cli.git
+cd pacc-cli
+pip install -e .
+```
+
 ## Project Status
 
 **🎯 Production Ready - Version 1.0.0** ✅
