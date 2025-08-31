@@ -231,7 +231,7 @@ class FragmentInstallationManager:
             if dry_run:
                 result = self._perform_dry_run_installation(result, fragments_to_install, target_type)
             else:
-                result = self._perform_actual_installation(result, fragments_to_install, target_type, force)
+                result = self._perform_actual_installation(result, fragments_to_install, target_type, force, source.location)
             
             return result
             
@@ -456,7 +456,8 @@ class FragmentInstallationManager:
         result: InstallationResult, 
         fragments: List[Path], 
         target_type: str,
-        force: bool
+        force: bool,
+        source_url: str = None
     ) -> InstallationResult:
         """Perform actual fragment installation.
         
@@ -477,7 +478,7 @@ class FragmentInstallationManager:
             
             # Install fragments atomically
             for fragment in fragments:
-                fragment_info = self._install_single_fragment(fragment, target_type, force)
+                fragment_info = self._install_single_fragment(fragment, target_type, force, source_url)
                 installed_fragments.append(fragment_info)
                 result.installed_fragments[fragment_info['name']] = fragment_info
                 result.changes_made.append(f"Installed fragment: {fragment_info['name']}")
@@ -511,7 +512,7 @@ class FragmentInstallationManager:
         
         return result
 
-    def _install_single_fragment(self, fragment: Path, target_type: str, force: bool) -> Dict[str, Any]:
+    def _install_single_fragment(self, fragment: Path, target_type: str, force: bool, source_url: str = None) -> Dict[str, Any]:
         """Install a single fragment to storage.
         
         Args:
@@ -557,6 +558,18 @@ class FragmentInstallationManager:
             project_relative = stored_path.relative_to(self.project_root)
             ref_path = str(project_relative).replace('\\', '/')
         
+        # Get version info if Git source
+        version_info = None
+        if source_url:
+            try:
+                from .version_tracker import FragmentVersionTracker
+                tracker = FragmentVersionTracker(self.project_root)
+                source_type = 'git' if (source_url.endswith('.git') or 'github.com' in source_url) else 'url'
+                version = tracker.track_installation(fragment_name, source_url, source_type, fragment)
+                version_info = version.version_id
+            except Exception as e:
+                logger.warning(f"Could not track version: {e}")
+        
         return {
             "name": fragment_name,
             "title": metadata.get('title', ''),
@@ -567,7 +580,9 @@ class FragmentInstallationManager:
             "reference_path": ref_path,
             "storage_type": target_type,
             "storage_path": str(stored_path),
-            "installed_at": datetime.now().isoformat()
+            "installed_at": datetime.now().isoformat(),
+            "source_url": source_url,
+            "version": version_info
         }
 
     def _update_claude_md_with_fragments(self, fragments: List[Dict[str, Any]], target_type: str) -> None:
@@ -647,7 +662,9 @@ class FragmentInstallationManager:
                 "author": fragment.get("author", ""),
                 "reference_path": fragment["reference_path"],
                 "storage_type": fragment["storage_type"],
-                "installed_at": fragment["installed_at"]
+                "installed_at": fragment["installed_at"],
+                "source_url": fragment.get("source_url"),
+                "version": fragment.get("version")
             }
         
         # Write updated config

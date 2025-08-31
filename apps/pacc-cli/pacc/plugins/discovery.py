@@ -132,10 +132,44 @@ class FragmentCollectionInfo:
     metadata: Dict[str, Any] = field(default_factory=dict)
     errors: List[str] = field(default_factory=list)
     
+    # Enhanced collection properties
+    version: Optional[str] = None
+    description: Optional[str] = None
+    author: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
+    dependencies: List[str] = field(default_factory=list)
+    optional_files: List[str] = field(default_factory=list)
+    has_pacc_json: bool = False
+    has_readme: bool = False
+    checksum: Optional[str] = None
+    
     @property
     def fragment_count(self) -> int:
         """Get number of fragments in collection."""
         return len(self.fragments)
+    
+    @property
+    def is_valid_collection(self) -> bool:
+        """Check if this is a valid collection (has metadata or multiple fragments)."""
+        return (self.fragment_count >= 2 or 
+                self.has_pacc_json or 
+                bool(self.metadata.get('collection')))
+    
+    @property
+    def total_files_count(self) -> int:
+        """Get total number of files (required + optional)."""
+        return len(self.fragments) + len(self.optional_files)
+    
+    def get_summary(self) -> str:
+        """Get a summary string for the collection."""
+        summary = f"{self.name} (v{self.version or 'unknown'})"
+        if self.description:
+            summary += f": {self.description}"
+        return summary
+    
+    def has_dependency(self, collection_name: str) -> bool:
+        """Check if this collection depends on another collection."""
+        return collection_name in self.dependencies
 
 
 @dataclass
@@ -1122,16 +1156,45 @@ class PluginScanner:
             md_files = list(collection_path.glob("*.md"))
             fragment_names = [f.stem for f in md_files]
             
+            # Check for special files
+            has_pacc_json = (collection_path / "pacc.json").exists()
+            has_readme = (collection_path / "README.md").exists()
+            
             collection_info = FragmentCollectionInfo(
                 name=collection_name,
                 path=collection_path,
-                fragments=fragment_names
+                fragments=fragment_names,
+                has_pacc_json=has_pacc_json,
+                has_readme=has_readme
             )
             
-            # Add metadata
+            # Parse collection metadata using collection manager
+            try:
+                from ..fragments.collection_manager import CollectionMetadataParser
+                parser = CollectionMetadataParser()
+                collection_metadata = parser.parse_collection_metadata(collection_path)
+                
+                if collection_metadata:
+                    collection_info.version = collection_metadata.version
+                    collection_info.description = collection_metadata.description
+                    collection_info.author = collection_metadata.author
+                    collection_info.tags = collection_metadata.tags
+                    collection_info.dependencies = collection_metadata.dependencies
+                    collection_info.optional_files = collection_metadata.optional_files
+                    collection_info.checksum = collection_metadata.checksum
+                    
+            except ImportError:
+                logger.debug("CollectionManager not available, using basic metadata")
+            except Exception as e:
+                logger.warning(f"Failed to parse collection metadata for {collection_path}: {e}")
+            
+            # Add basic metadata (fallback or supplement)
             metadata = {
                 "fragment_count": len(fragment_names),
-                "description": config.get("description", "") if config else ""
+                "description": collection_info.description or (config.get("description", "") if config else ""),
+                "has_pacc_json": has_pacc_json,
+                "has_readme": has_readme,
+                "is_collection": True
             }
             collection_info.metadata = metadata
             

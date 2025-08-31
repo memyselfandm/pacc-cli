@@ -1239,6 +1239,302 @@ class PACCCli:
         
         remove_fragment_parser.set_defaults(func=self.handle_fragment_remove)
         
+        # Fragment update command
+        update_fragment_parser = fragment_subparsers.add_parser(
+            "update",
+            help="Update installed fragments",
+            description="Check for and apply updates to installed memory fragments"
+        )
+        
+        update_fragment_parser.add_argument(
+            "fragments",
+            nargs="*",
+            help="Specific fragments to update (update all if not specified)"
+        )
+        
+        update_fragment_parser.add_argument(
+            "--check", "-c",
+            action="store_true",
+            help="Only check for updates without applying them"
+        )
+        
+        update_fragment_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Force update even with conflicts"
+        )
+        
+        update_fragment_parser.add_argument(
+            "--merge-strategy", "-m",
+            choices=["safe", "overwrite", "merge"],
+            default="safe",
+            help="Strategy for handling CLAUDE.md updates (default: safe)"
+        )
+        
+        update_fragment_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            help="Update fragments in specific storage location"
+        )
+        
+        update_fragment_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be updated without making changes"
+        )
+        
+        update_fragment_parser.set_defaults(func=self.handle_fragment_update)
+        
+        # Fragment sync command
+        sync_fragment_parser = fragment_subparsers.add_parser(
+            "sync",
+            help="Synchronize fragments with team",
+            description="Synchronize memory fragments based on pacc.json specifications"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--add-missing",
+            action="store_true",
+            default=True,
+            help="Add fragments specified but not installed (default: True)"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--remove-extra",
+            action="store_true",
+            help="Remove installed fragments not in specifications"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--update-existing",
+            action="store_true",
+            default=True,
+            help="Update existing fragments to specification versions (default: True)"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Force sync even with conflicts"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--non-interactive",
+            action="store_true",
+            help="Don't prompt for conflict resolution"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be synced without making changes"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--add-spec",
+            metavar="NAME=SOURCE",
+            help="Add a fragment specification to pacc.json (format: name=source_url)"
+        )
+        
+        sync_fragment_parser.add_argument(
+            "--remove-spec",
+            metavar="NAME",
+            help="Remove a fragment specification from pacc.json"
+        )
+        
+        sync_fragment_parser.set_defaults(func=self.handle_fragment_sync)
+        
+        # Fragment discover command (for collections)
+        discover_fragment_parser = fragment_subparsers.add_parser(
+            "discover",
+            help="Discover fragment collections",
+            description="Discover fragment collections in directories and repositories"
+        )
+        
+        discover_fragment_parser.add_argument(
+            "path",
+            nargs="?",
+            default=".",
+            help="Path to search for collections (default: current directory)"
+        )
+        
+        discover_fragment_parser.add_argument(
+            "--show-metadata",
+            action="store_true",
+            help="Show detailed collection metadata"
+        )
+        
+        discover_fragment_parser.add_argument(
+            "--format",
+            choices=["table", "json", "yaml"],
+            default="table",
+            help="Output format (default: table)"
+        )
+        
+        discover_fragment_parser.set_defaults(func=self.handle_fragment_discover)
+        
+        # Fragment collection install command  
+        collection_install_parser = fragment_subparsers.add_parser(
+            "install-collection",
+            help="Install fragment collection",
+            description="Install a fragment collection with selective file support"
+        )
+        
+        collection_install_parser.add_argument(
+            "source",
+            help="Collection source (directory, Git URL, or archive)"
+        )
+        
+        collection_install_parser.add_argument(
+            "--files",
+            nargs="*",
+            help="Specific files to install from collection"
+        )
+        
+        collection_install_parser.add_argument(
+            "--include-optional",
+            action="store_true",
+            help="Include optional files in installation"
+        )
+        
+        collection_install_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            default="project",
+            help="Storage location (default: project)"
+        )
+        
+        collection_install_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Force overwrite existing fragments"
+        )
+        
+        collection_install_parser.add_argument(
+            "--no-dependencies",
+            action="store_true",
+            help="Skip dependency resolution"
+        )
+        
+        collection_install_parser.add_argument(
+            "--no-verify",
+            action="store_true",
+            help="Skip integrity verification"
+        )
+        
+        collection_install_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be installed without making changes"
+        )
+        
+        collection_install_parser.set_defaults(func=self.handle_fragment_collection_install)
+        
+        # Fragment collection update command
+        collection_update_parser = fragment_subparsers.add_parser(
+            "update-collection",
+            help="Update fragment collection",
+            description="Update an installed fragment collection with partial update support"
+        )
+        
+        collection_update_parser.add_argument(
+            "collection",
+            help="Name of collection to update"
+        )
+        
+        collection_update_parser.add_argument(
+            "source",
+            nargs="?",
+            help="New source for collection (optional, uses tracked source if not provided)"
+        )
+        
+        collection_update_parser.add_argument(
+            "--files",
+            nargs="*",
+            help="Specific files to update from collection"
+        )
+        
+        collection_update_parser.add_argument(
+            "--include-optional",
+            action="store_true",
+            help="Include optional files in update"
+        )
+        
+        collection_update_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            help="Storage location to update"
+        )
+        
+        collection_update_parser.add_argument(
+            "--dry-run", "-n",
+            action="store_true",
+            help="Show what would be updated without making changes"
+        )
+        
+        collection_update_parser.set_defaults(func=self.handle_fragment_collection_update)
+        
+        # Fragment collection status command
+        collection_status_parser = fragment_subparsers.add_parser(
+            "collection-status",
+            help="Show collection status",
+            description="Show status and health of installed collections"
+        )
+        
+        collection_status_parser.add_argument(
+            "collection",
+            nargs="?",
+            help="Name of specific collection to check (check all if not provided)"
+        )
+        
+        collection_status_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            help="Filter by storage location"
+        )
+        
+        collection_status_parser.add_argument(
+            "--format",
+            choices=["table", "json", "yaml"],
+            default="table",
+            help="Output format (default: table)"
+        )
+        
+        collection_status_parser.set_defaults(func=self.handle_fragment_collection_status)
+        
+        # Fragment collection remove command
+        collection_remove_parser = fragment_subparsers.add_parser(
+            "remove-collection",
+            help="Remove fragment collection",
+            description="Remove an installed fragment collection"
+        )
+        
+        collection_remove_parser.add_argument(
+            "collection",
+            help="Name of collection to remove"
+        )
+        
+        collection_remove_parser.add_argument(
+            "--storage-type", "-s",
+            choices=["project", "user"],
+            default="project",
+            help="Storage location (default: project)"
+        )
+        
+        collection_remove_parser.add_argument(
+            "--remove-dependencies",
+            action="store_true",
+            help="Remove unused dependencies"
+        )
+        
+        collection_remove_parser.add_argument(
+            "--force", "-f",
+            action="store_true",
+            help="Force removal without confirmation"
+        )
+        
+        collection_remove_parser.set_defaults(func=self.handle_fragment_collection_remove)
+        
         fragment_parser.set_defaults(func=self._fragment_help)
 
     def install_command(self, args) -> int:
@@ -4574,10 +4870,19 @@ class PACCCli:
     def _fragment_help(self, args) -> int:
         """Show fragment command help when no subcommand is specified."""
         print("Fragment Management Commands:")
-        print("  install <source>      Install fragments from file, directory, or URL")
-        print("  list [options]        List installed fragments")
-        print("  info <fragment>       Show detailed fragment information")
-        print("  remove <fragment>...  Remove fragments from storage")
+        print("  install <source>           Install fragments from file, directory, or URL")
+        print("  list [options]             List installed fragments")
+        print("  info <fragment>            Show detailed fragment information")
+        print("  remove <fragment>...       Remove fragments from storage")
+        print("  sync [options]             Synchronize fragments with team")
+        print("  update [fragment]...       Update installed fragments")
+        print("")
+        print("Collection Management Commands:")
+        print("  discover [path]            Discover fragment collections")
+        print("  install-collection <src>   Install a fragment collection")
+        print("  update-collection <name>   Update an installed collection")
+        print("  collection-status [name]   Show collection status and health")
+        print("  remove-collection <name>   Remove an installed collection")
         print("")
         print("Use 'pacc fragment <command> --help' for more information on a command.")
         return 0
@@ -4943,6 +5248,549 @@ class PACCCli:
                 raise
         
         return indicator()
+    
+    def handle_fragment_sync(self, args) -> int:
+        """Handle fragment sync command."""
+        try:
+            from pacc.fragments.sync_manager import FragmentSyncManager
+            
+            # Initialize sync manager
+            sync_manager = FragmentSyncManager()
+            
+            # Handle spec management operations
+            if args.add_spec:
+                # Parse NAME=SOURCE format
+                if '=' not in args.add_spec:
+                    print("Error: --add-spec requires format NAME=SOURCE")
+                    return 1
+                
+                name, source = args.add_spec.split('=', 1)
+                sync_manager.add_fragment_spec(name.strip(), source.strip())
+                print(f"Added fragment specification: {name}")
+                return 0
+            
+            if args.remove_spec:
+                if sync_manager.remove_fragment_spec(args.remove_spec):
+                    print(f"Removed fragment specification: {args.remove_spec}")
+                else:
+                    print(f"Fragment specification not found: {args.remove_spec}")
+                    return 1
+                return 0
+            
+            # Perform sync operation
+            result = sync_manager.sync_fragments(
+                interactive=not args.non_interactive,
+                force=args.force,
+                dry_run=args.dry_run,
+                add_missing=args.add_missing,
+                remove_extra=args.remove_extra,
+                update_existing=args.update_existing
+            )
+            
+            # Display results
+            if args.dry_run:
+                print("DRY RUN - No changes made\n")
+            
+            if result.changes_made:
+                print("Changes:")
+                for change in result.changes_made:
+                    print(f"  - {change}")
+            
+            if result.conflicts:
+                print("\nConflicts:")
+                for conflict in result.conflicts:
+                    print(f"  - {conflict.fragment_name}: {conflict.description}")
+            
+            if result.errors:
+                print("\nErrors:")
+                for error in result.errors:
+                    print(f"  - {error}")
+            
+            # Summary
+            if result.synced_count > 0 or result.removed_count > 0:
+                print(f"\nSummary:")
+                print(f"  Added: {result.added_count}")
+                print(f"  Updated: {result.updated_count}")
+                print(f"  Removed: {result.removed_count}")
+                print(f"  Conflicts: {result.conflict_count}")
+            
+            return 0 if result.success else 1
+            
+        except ImportError as e:
+            print(f"Error: Fragment sync feature not available: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error: {e}")
+            return 1
+    
+    def handle_fragment_update(self, args) -> int:
+        """Handle fragment update command."""
+        try:
+            from pacc.fragments.update_manager import FragmentUpdateManager
+            
+            # Initialize update manager
+            update_manager = FragmentUpdateManager()
+            
+            if args.check:
+                # Only check for updates
+                updates = update_manager.check_for_updates(
+                    fragment_names=args.fragments if args.fragments else None,
+                    storage_type=args.storage_type
+                )
+                
+                if not updates:
+                    print("No fragments installed or tracked for updates")
+                    return 0
+                
+                # Display update information
+                has_updates = False
+                for name, info in updates.items():
+                    if info.error:
+                        print(f"\n{name}:")
+                        print(f"  Error: {info.error}")
+                    elif info.has_update:
+                        has_updates = True
+                        print(f"\n{name}:")
+                        print(f"  Current version: {info.current_version or 'unknown'}")
+                        print(f"  Latest version:  {info.latest_version or 'unknown'}")
+                        print(f"  Update available: Yes")
+                        if info.changes:
+                            print("  Changes:")
+                            for change in info.changes[:5]:  # Show first 5 changes
+                                print(f"    - {change}")
+                            if len(info.changes) > 5:
+                                print(f"    ... and {len(info.changes) - 5} more")
+                    else:
+                        print(f"\n{name}: Up to date")
+                
+                if has_updates:
+                    print("\nRun 'pacc fragment update' to apply updates")
+                else:
+                    print("\nAll fragments are up to date")
+                
+                return 0
+            
+            # Apply updates
+            result = update_manager.update_fragments(
+                fragment_names=args.fragments if args.fragments else None,
+                force=args.force,
+                dry_run=args.dry_run,
+                merge_strategy=args.merge_strategy
+            )
+            
+            # Display results
+            if args.dry_run:
+                print("DRY RUN - No changes made\n")
+            
+            if result.changes_made:
+                print("Changes:")
+                for change in result.changes_made:
+                    print(f"  - {change}")
+            
+            if result.errors:
+                print("\nErrors:")
+                for error in result.errors:
+                    print(f"  - {error}")
+            
+            # Summary
+            print(f"\nSummary:")
+            print(f"  Updated: {result.updated_count}")
+            print(f"  Skipped: {result.skipped_count}")
+            print(f"  Conflicts: {result.conflict_count}")
+            print(f"  Errors: {result.error_count}")
+            
+            return 0 if result.success else 1
+            
+        except ImportError as e:
+            print(f"Error: Fragment update feature not available: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error: {e}")
+            return 1
+    
+    def handle_fragment_discover(self, args) -> int:
+        """Handle fragment discover command."""
+        try:
+            from pacc.fragments.collection_manager import FragmentCollectionManager
+            from pacc.plugins.discovery import PluginScanner
+            import json
+            import yaml
+            from pathlib import Path
+            
+            # Initialize collection manager and scanner
+            collection_manager = FragmentCollectionManager()
+            scanner = PluginScanner()
+            
+            # Discover collections
+            search_path = Path(args.path).resolve()
+            if not search_path.exists():
+                print(f"Error: Path does not exist: {search_path}")
+                return 1
+            
+            # Scan for collections
+            repo_info = scanner.scan_repository(search_path, use_cache=False)
+            collections = repo_info.fragment_collections
+            
+            if not collections:
+                print(f"No fragment collections found in {search_path}")
+                return 0
+            
+            # Format output
+            if args.format == "json":
+                collection_data = []
+                for collection in collections:
+                    data = {
+                        "name": collection.name,
+                        "path": str(collection.path),
+                        "fragments": collection.fragments,
+                        "fragment_count": collection.fragment_count,
+                        "version": collection.version,
+                        "description": collection.description,
+                        "author": collection.author,
+                        "tags": collection.tags,
+                        "dependencies": collection.dependencies,
+                        "has_pacc_json": collection.has_pacc_json,
+                        "has_readme": collection.has_readme
+                    }
+                    if args.show_metadata:
+                        data["metadata"] = collection.metadata
+                    collection_data.append(data)
+                
+                print(json.dumps(collection_data, indent=2))
+                
+            elif args.format == "yaml":
+                collection_data = []
+                for collection in collections:
+                    data = {
+                        "name": collection.name,
+                        "path": str(collection.path),
+                        "fragments": collection.fragments,
+                        "fragment_count": collection.fragment_count,
+                        "version": collection.version,
+                        "description": collection.description,
+                        "author": collection.author,
+                        "tags": collection.tags,
+                        "dependencies": collection.dependencies,
+                        "has_pacc_json": collection.has_pacc_json,
+                        "has_readme": collection.has_readme
+                    }
+                    if args.show_metadata:
+                        data["metadata"] = collection.metadata
+                    collection_data.append(data)
+                
+                print(yaml.dump(collection_data, default_flow_style=False))
+                
+            else:  # table format
+                print(f"\nFound {len(collections)} fragment collection(s) in {search_path}:\n")
+                
+                # Table headers
+                print(f"{'Name':<20} {'Version':<10} {'Files':<6} {'Description':<40}")
+                print("=" * 80)
+                
+                for collection in collections:
+                    version = collection.version or "unknown"
+                    desc = collection.description or ""
+                    if len(desc) > 37:
+                        desc = desc[:37] + "..."
+                    
+                    print(f"{collection.name:<20} {version:<10} {collection.fragment_count:<6} {desc:<40}")
+                    
+                    if args.show_metadata:
+                        print(f"  Path: {collection.path}")
+                        if collection.dependencies:
+                            print(f"  Dependencies: {', '.join(collection.dependencies)}")
+                        if collection.tags:
+                            print(f"  Tags: {', '.join(collection.tags)}")
+                        if collection.author:
+                            print(f"  Author: {collection.author}")
+                        print()
+            
+            return 0
+            
+        except ImportError as e:
+            print(f"Error: Collection discovery feature not available: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error discovering collections: {e}")
+            return 1
+    
+    def handle_fragment_collection_install(self, args) -> int:
+        """Handle fragment collection install command."""
+        try:
+            from pacc.fragments.collection_manager import (
+                FragmentCollectionManager, CollectionInstallOptions
+            )
+            from pathlib import Path
+            
+            # Initialize collection manager
+            collection_manager = FragmentCollectionManager()
+            
+            # Determine source path
+            source_path = Path(args.source)
+            if not source_path.exists():
+                # Try as URL or Git repository (future enhancement)
+                print(f"Error: Source not found: {args.source}")
+                return 1
+            
+            if not source_path.is_dir():
+                print(f"Error: Source must be a directory: {args.source}")
+                return 1
+            
+            # Create install options
+            options = CollectionInstallOptions(
+                selected_files=args.files,
+                include_optional=args.include_optional,
+                force_overwrite=args.force,
+                storage_type=args.storage_type,
+                verify_integrity=not args.no_verify,
+                resolve_dependencies=not args.no_dependencies,
+                dry_run=args.dry_run
+            )
+            
+            # Perform installation
+            result = collection_manager.install_collection(source_path, options)
+            
+            # Display results
+            if result.dry_run:
+                print(f"\nDry run - Collection installation preview:")
+                print(f"Collection: {result.collection_name}")
+                print(f"Would install {len(result.installed_files)} files")
+                if result.skipped_files:
+                    print(f"Would skip {len(result.skipped_files)} existing files")
+                if result.failed_files:
+                    print(f"Would fail on {len(result.failed_files)} files")
+                
+                for change in result.changes_made:
+                    print(f"  {change}")
+            else:
+                if result.success:
+                    print(f"\n✓ Collection '{result.collection_name}' installed successfully")
+                    print(f"Installed {len(result.installed_files)} files")
+                    if result.skipped_files:
+                        print(f"Skipped {len(result.skipped_files)} existing files")
+                    if result.dependencies_resolved:
+                        print(f"Dependencies resolved: {', '.join(result.dependencies_resolved)}")
+                    if result.integrity_verified:
+                        print("✓ Collection integrity verified")
+                else:
+                    print(f"\n✗ Collection installation failed: {result.error_message}")
+                    return 1
+            
+            # Show warnings
+            for warning in result.warnings:
+                print(f"Warning: {warning}")
+            
+            return 0
+            
+        except ImportError as e:
+            print(f"Error: Collection management feature not available: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error installing collection: {e}")
+            return 1
+    
+    def handle_fragment_collection_update(self, args) -> int:
+        """Handle fragment collection update command."""
+        try:
+            from pacc.fragments.collection_manager import (
+                FragmentCollectionManager, CollectionInstallOptions
+            )
+            from pathlib import Path
+            
+            # Initialize collection manager
+            collection_manager = FragmentCollectionManager()
+            
+            # Get collection status
+            status = collection_manager.get_collection_status(args.collection)
+            if not status["installed"]:
+                print(f"Error: Collection '{args.collection}' is not installed")
+                return 1
+            
+            # Determine source path
+            if args.source:
+                source_path = Path(args.source)
+                if not source_path.exists() or not source_path.is_dir():
+                    print(f"Error: Invalid source path: {args.source}")
+                    return 1
+            else:
+                print(f"Error: Source path required for collection update")
+                return 1
+            
+            # Create update options
+            options = CollectionInstallOptions(
+                selected_files=args.files,
+                include_optional=args.include_optional,
+                force_overwrite=True,  # Updates should overwrite
+                storage_type=args.storage_type or status["storage_type"],
+                verify_integrity=True,
+                resolve_dependencies=True,
+                dry_run=args.dry_run
+            )
+            
+            # Perform update
+            result = collection_manager.update_collection(args.collection, source_path, options)
+            
+            # Display results
+            if result.dry_run:
+                print(f"\nDry run - Collection update preview:")
+                print(f"Collection: {result.collection_name}")
+                print(f"Would update {len(result.installed_files)} files")
+                
+                for change in result.changes_made:
+                    print(f"  {change}")
+            else:
+                if result.success:
+                    print(f"\n✓ Collection '{result.collection_name}' updated successfully")
+                    print(f"Updated {len(result.installed_files)} files")
+                    if result.skipped_files:
+                        print(f"Skipped {len(result.skipped_files)} unchanged files")
+                else:
+                    print(f"\n✗ Collection update failed: {result.error_message}")
+                    return 1
+            
+            # Show warnings
+            for warning in result.warnings:
+                print(f"Warning: {warning}")
+            
+            return 0
+            
+        except ImportError as e:
+            print(f"Error: Collection management feature not available: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error updating collection: {e}")
+            return 1
+    
+    def handle_fragment_collection_status(self, args) -> int:
+        """Handle fragment collection status command."""
+        try:
+            from pacc.fragments.collection_manager import FragmentCollectionManager
+            import json
+            import yaml
+            
+            # Initialize collection manager
+            collection_manager = FragmentCollectionManager()
+            
+            if args.collection:
+                # Show status for specific collection
+                status = collection_manager.get_collection_status(args.collection)
+                
+                if args.format == "json":
+                    print(json.dumps(status, indent=2))
+                elif args.format == "yaml":
+                    print(yaml.dump(status, default_flow_style=False))
+                else:
+                    # Table format
+                    print(f"\nCollection Status: {status['name']}")
+                    print("=" * 40)
+                    print(f"Installed: {'✓ Yes' if status['installed'] else '✗ No'}")
+                    
+                    if status["installed"]:
+                        print(f"Storage Type: {status['storage_type']}")
+                        print(f"Version: {status['version'] or 'unknown'}")
+                        print(f"Files Count: {status['files_count']}")
+                        print(f"Integrity: {'✓ Valid' if status['integrity_valid'] else '✗ Issues'}")
+                        print(f"Dependencies: {'✓ Satisfied' if status['dependencies_satisfied'] else '✗ Issues'}")
+                        
+                        if status["missing_files"]:
+                            print(f"Missing Files: {', '.join(status['missing_files'])}")
+                        
+                        if status["extra_files"]:
+                            print(f"Extra Files: {', '.join(status['extra_files'])}")
+                        
+                        if status["last_updated"]:
+                            print(f"Last Updated: {status['last_updated']}")
+                    
+            else:
+                # Show status for all collections
+                collections = collection_manager.list_collections_with_metadata(args.storage_type)
+                
+                if not collections:
+                    print("No collections installed")
+                    return 0
+                
+                if args.format == "json":
+                    collection_data = []
+                    for name, metadata in collections:
+                        status = collection_manager.get_collection_status(name)
+                        collection_data.append(status)
+                    print(json.dumps(collection_data, indent=2))
+                    
+                elif args.format == "yaml":
+                    collection_data = []
+                    for name, metadata in collections:
+                        status = collection_manager.get_collection_status(name)
+                        collection_data.append(status)
+                    print(yaml.dump(collection_data, default_flow_style=False))
+                    
+                else:
+                    # Table format
+                    print(f"\nInstalled Collections ({len(collections)}):\n")
+                    print(f"{'Name':<20} {'Version':<10} {'Files':<6} {'Status':<15} {'Storage':<10}")
+                    print("=" * 70)
+                    
+                    for name, metadata in collections:
+                        status = collection_manager.get_collection_status(name)
+                        version = status["version"] or "unknown"
+                        files_count = status["files_count"]
+                        integrity_status = "✓ Valid" if status["integrity_valid"] else "✗ Issues"
+                        storage = status["storage_type"] or "unknown"
+                        
+                        print(f"{name:<20} {version:<10} {files_count:<6} {integrity_status:<15} {storage:<10}")
+            
+            return 0
+            
+        except ImportError as e:
+            print(f"Error: Collection management feature not available: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error getting collection status: {e}")
+            return 1
+    
+    def handle_fragment_collection_remove(self, args) -> int:
+        """Handle fragment collection remove command."""
+        try:
+            from pacc.fragments.collection_manager import FragmentCollectionManager
+            
+            # Initialize collection manager
+            collection_manager = FragmentCollectionManager()
+            
+            # Check if collection exists
+            status = collection_manager.get_collection_status(args.collection)
+            if not status["installed"]:
+                print(f"Error: Collection '{args.collection}' is not installed")
+                return 1
+            
+            # Confirm removal unless force is used
+            if not args.force:
+                response = input(f"Remove collection '{args.collection}' and all its fragments? [y/N]: ")
+                if response.lower() not in ['y', 'yes']:
+                    print("Collection removal cancelled")
+                    return 0
+            
+            # Perform removal
+            success = collection_manager.remove_collection(
+                collection_name=args.collection,
+                storage_type=args.storage_type,
+                remove_dependencies=args.remove_dependencies
+            )
+            
+            if success:
+                print(f"✓ Collection '{args.collection}' removed successfully")
+                if args.remove_dependencies:
+                    print("✓ Unused dependencies removed")
+            else:
+                print(f"✗ Failed to remove collection '{args.collection}'")
+                return 1
+            
+            return 0
+            
+        except ImportError as e:
+            print(f"Error: Collection management feature not available: {e}")
+            return 1
+        except Exception as e:
+            print(f"Error removing collection: {e}")
+            return 1
     
     def _get_plugin_components_info(self, plugin_details) -> dict:
         """Get information about plugin components.

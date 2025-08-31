@@ -3,10 +3,25 @@
 from .claude_md_manager import CLAUDEmdManager
 from .storage_manager import FragmentStorageManager
 from .installation_manager import FragmentInstallationManager, InstallationResult
+from .update_manager import FragmentUpdateManager, UpdateResult
+from .version_tracker import FragmentVersionTracker, FragmentVersion
+from .sync_manager import FragmentSyncManager, SyncResult, FragmentSyncSpec
+from .team_manager import FragmentTeamManager, TeamConfig, TeamMember, FragmentLock
 
 __all__ = [
     'CLAUDEmdManager',
     'FragmentStorageManager', 
     'FragmentInstallationManager',
-    'InstallationResult'
+    'InstallationResult',
+    'FragmentUpdateManager',
+    'UpdateResult',
+    'FragmentVersionTracker',
+    'FragmentVersion',
+    'FragmentSyncManager',
+    'SyncResult',
+    'FragmentSyncSpec',
+    'FragmentTeamManager',
+    'TeamConfig',
+    'TeamMember',
+    'FragmentLock'
 ]
