@@ -1128,6 +1128,12 @@ class PACCCli:
             help="Show what would be installed without making changes"
         )
         
+        install_fragment_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
+        )
+        
         install_fragment_parser.set_defaults(func=self.handle_fragment_install)
         
         # Fragment list command
@@ -1167,6 +1173,12 @@ class PACCCli:
             help="Show fragment statistics"
         )
         
+        list_fragment_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
+        )
+        
         list_fragment_parser.set_defaults(func=self.handle_fragment_list)
         
         # Fragment info command
@@ -1197,6 +1209,12 @@ class PACCCli:
             choices=["table", "json"],
             default="table",
             help="Output format"
+        )
+        
+        info_fragment_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
         )
         
         info_fragment_parser.set_defaults(func=self.handle_fragment_info)
@@ -1235,6 +1253,12 @@ class PACCCli:
             "--dry-run", "-n",
             action="store_true",
             help="Show what would be removed without making changes"
+        )
+        
+        remove_fragment_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
         )
         
         remove_fragment_parser.set_defaults(func=self.handle_fragment_remove)
@@ -1281,6 +1305,12 @@ class PACCCli:
             "--dry-run", "-n",
             action="store_true",
             help="Show what would be updated without making changes"
+        )
+        
+        update_fragment_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
         )
         
         update_fragment_parser.set_defaults(func=self.handle_fragment_update)
@@ -1342,6 +1372,12 @@ class PACCCli:
             help="Remove a fragment specification from pacc.json"
         )
         
+        sync_fragment_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
+        )
+        
         sync_fragment_parser.set_defaults(func=self.handle_fragment_sync)
         
         # Fragment discover command (for collections)
@@ -1369,6 +1405,12 @@ class PACCCli:
             choices=["table", "json", "yaml"],
             default="table",
             help="Output format (default: table)"
+        )
+        
+        discover_fragment_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
         )
         
         discover_fragment_parser.set_defaults(func=self.handle_fragment_discover)
@@ -1428,6 +1470,12 @@ class PACCCli:
             help="Show what would be installed without making changes"
         )
         
+        collection_install_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
+        )
+        
         collection_install_parser.set_defaults(func=self.handle_fragment_collection_install)
         
         # Fragment collection update command
@@ -1472,6 +1520,12 @@ class PACCCli:
             help="Show what would be updated without making changes"
         )
         
+        collection_update_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
+        )
+        
         collection_update_parser.set_defaults(func=self.handle_fragment_collection_update)
         
         # Fragment collection status command
@@ -1498,6 +1552,12 @@ class PACCCli:
             choices=["table", "json", "yaml"],
             default="table",
             help="Output format (default: table)"
+        )
+        
+        collection_status_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
         )
         
         collection_status_parser.set_defaults(func=self.handle_fragment_collection_status)
@@ -1531,6 +1591,12 @@ class PACCCli:
             "--force", "-f",
             action="store_true",
             help="Force removal without confirmation"
+        )
+        
+        collection_remove_parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose output with detailed debugging information"
         )
         
         collection_remove_parser.set_defaults(func=self.handle_fragment_collection_remove)
@@ -4894,6 +4960,9 @@ class PACCCli:
             from pacc.validators.fragment_validator import FragmentValidator
             from pathlib import Path
             
+            if args.verbose:
+                self._print_info(f"Starting fragment installation with args: source={args.source}, storage_type={args.storage_type}, collection={args.collection}, overwrite={args.overwrite}, dry_run={args.dry_run}")
+            
             self._print_info(f"Installing fragments from source: {args.source}")
             
             if args.dry_run:
@@ -4904,17 +4973,32 @@ class PACCCli:
             validator = FragmentValidator()
             source_path = Path(args.source)
             
+            if args.verbose:
+                self._print_info(f"Initialized storage manager and validator for source path: {source_path}")
+            
             # Determine source type and validate
             if source_path.is_file():
                 # Single fragment file
+                if args.verbose:
+                    self._print_info(f"Processing single fragment file: {source_path}")
+                
                 validation_result = validator.validate_single(source_path)
+                if args.verbose:
+                    self._print_info(f"Validation result: valid={validation_result.is_valid}, errors={len(validation_result.errors)}, warnings={len(validation_result.warnings)}")
+                
                 if not validation_result.is_valid and validation_result.errors:
                     self._print_error(f"Fragment validation failed: {validation_result.errors[0].message}")
+                    if args.verbose:
+                        for error in validation_result.errors:
+                            self._print_error(f"  Validation error: {error.message}")
                     return 1
                 
                 # Read fragment content
                 content = source_path.read_text(encoding='utf-8')
                 fragment_name = source_path.stem
+                
+                if args.verbose:
+                    self._print_info(f"Fragment name: {fragment_name}, content length: {len(content)} characters")
                 
                 if not args.dry_run:
                     try:
@@ -4933,18 +5017,67 @@ class PACCCli:
                         self._print_error(f"Failed to install fragment: {e}")
                         return 1
                 else:
+                    # Enhanced dry-run preview
                     self._print_info(f"Would install fragment: {fragment_name}")
                     if args.collection:
                         self._print_info(f"  Collection: {args.collection}")
+                    self._print_info(f"  Storage type: {args.storage_type}")
+                    self._print_info(f"  Content size: {len(content)} characters")
+                    if args.verbose and validation_result.metadata:
+                        metadata = validation_result.metadata
+                        if metadata.get("title"):
+                            self._print_info(f"  Title: {metadata['title']}")
+                        if metadata.get("description"):
+                            self._print_info(f"  Description: {metadata['description']}")
+                        if metadata.get("category"):
+                            self._print_info(f"  Category: {metadata['category']}")
+                    
+                    # Show where it would be stored
+                    try:
+                        expected_path = storage_manager._get_fragment_path(
+                            fragment_name, args.storage_type, args.collection
+                        )
+                        self._print_info(f"  Would be stored at: {expected_path}")
+                        if expected_path.exists() and not args.overwrite:
+                            self._print_warning(f"  WARNING: File already exists and would not be overwritten (use --overwrite)")
+                    except Exception as e:
+                        if args.verbose:
+                            self._print_warning(f"  Could not determine storage path: {e}")
                 
             elif source_path.is_dir():
                 # Directory with multiple fragments
+                if args.verbose:
+                    self._print_info(f"Processing directory with multiple fragments: {source_path}")
+                
                 fragment_files = validator._find_extension_files(source_path)
                 if not fragment_files:
                     self._print_warning(f"No fragment files found in: {source_path}")
                     return 0
                 
                 self._print_info(f"Found {len(fragment_files)} fragment files")
+                if args.verbose:
+                    for fragment_file in fragment_files:
+                        self._print_info(f"  - {fragment_file.name}")
+                
+                if args.dry_run:
+                    self._print_info("DRY RUN - Would install:")
+                    valid_fragments = 0
+                    total_size = 0
+                    for fragment_file in fragment_files:
+                        validation_result = validator.validate_single(fragment_file)
+                        if not validation_result.errors:
+                            valid_fragments += 1
+                            content_size = len(fragment_file.read_text(encoding='utf-8'))
+                            total_size += content_size
+                            self._print_info(f"  ✓ {fragment_file.stem} ({content_size} chars)")
+                        else:
+                            self._print_warning(f"  ✗ {fragment_file.stem} - validation failed")
+                            if args.verbose:
+                                for error in validation_result.errors:
+                                    self._print_warning(f"    Error: {error.message}")
+                    
+                    self._print_info(f"Summary: {valid_fragments}/{len(fragment_files)} valid fragments, total size: {total_size} characters")
+                    return 0
                 
                 installed_count = 0
                 for fragment_file in fragment_files:
@@ -5000,6 +5133,9 @@ class PACCCli:
         try:
             from pacc.fragments.storage_manager import FragmentStorageManager
             
+            if args.verbose:
+                self._print_info(f"Listing fragments with filters: storage_type={args.storage_type}, collection={args.collection}, pattern={args.pattern}, format={args.format}")
+            
             # Initialize storage manager
             storage_manager = FragmentStorageManager()
             
@@ -5009,6 +5145,9 @@ class PACCCli:
                 collection=args.collection,
                 pattern=args.pattern
             )
+            
+            if args.verbose:
+                self._print_info(f"Found {len(fragments)} fragments matching criteria")
             
             if not fragments:
                 self._print_info("No fragments found")
@@ -5186,6 +5325,9 @@ class PACCCli:
         try:
             from pacc.fragments.storage_manager import FragmentStorageManager
             
+            if args.verbose:
+                self._print_info(f"Starting fragment removal with args: fragment={args.fragment}, storage_type={args.storage_type}, collection={args.collection}, dry_run={args.dry_run}, confirm={args.confirm}")
+            
             # Initialize storage manager
             storage_manager = FragmentStorageManager()
             
@@ -5198,11 +5340,36 @@ class PACCCli:
             
             if not fragment_path:
                 self._print_error(f"Fragment not found: {args.fragment}")
+                if args.verbose:
+                    self._print_info(f"Searched in storage_type: {args.storage_type or 'all'}")
+                    self._print_info(f"Searched in collection: {args.collection or 'all'}")
                 return 1
             
+            if args.verbose:
+                self._print_info(f"Fragment found at: {fragment_path}")
+                if fragment_path.exists():
+                    stat = fragment_path.stat()
+                    self._print_info(f"Fragment size: {stat.st_size} bytes")
+                    from datetime import datetime
+                    self._print_info(f"Fragment modified: {datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}")
+            
             if args.dry_run:
+                # Enhanced dry-run preview
                 self._print_info(f"Would remove fragment: {args.fragment}")
                 self._print_info(f"  Path: {fragment_path}")
+                if fragment_path.exists():
+                    stat = fragment_path.stat()
+                    self._print_info(f"  Size: {stat.st_size} bytes")
+                    from datetime import datetime
+                    self._print_info(f"  Modified: {datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')}")
+                
+                # Check if removing this would leave empty collection directory
+                if args.collection and fragment_path.parent.name == args.collection:
+                    remaining_files = [f for f in fragment_path.parent.iterdir() 
+                                     if f.is_file() and f != fragment_path]
+                    if not remaining_files:
+                        self._print_info(f"  Would also remove empty collection directory: {fragment_path.parent}")
+                
                 return 0
             
             # Confirm removal unless --confirm is used
