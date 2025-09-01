@@ -6,6 +6,7 @@ with support for collection directories and automatic gitignore management.
 
 import os
 import shutil
+import logging
 from pathlib import Path
 from typing import List, Dict, Set, Optional, Union, Iterator, Tuple
 import fnmatch
@@ -14,6 +15,8 @@ from datetime import datetime
 
 from ..core.file_utils import PathNormalizer, FilePathValidator, DirectoryScanner
 from ..errors.exceptions import PACCError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -276,27 +279,58 @@ class FragmentStorageManager:
         Returns:
             Path to fragment if found, None otherwise
         """
+        # SECURITY: Reject identifiers containing path separators to prevent path traversal
+        if '/' in fragment_name or '\\' in fragment_name or '..' in fragment_name:
+            logger.warning(f"Rejected fragment identifier with path separators: {fragment_name}")
+            return None
+        
         # Ensure fragment has .md extension for searching
         if not fragment_name.endswith('.md'):
             fragment_name += '.md'
         
+        # Only search within controlled fragment storage directories
         search_paths = []
         
         if storage_type == 'project' or storage_type is None:
-            if collection:
-                search_paths.append(self.project_storage / collection / fragment_name)
-            else:
-                search_paths.append(self.project_storage / fragment_name)
+            if self.project_storage and self.project_storage.exists():
+                if collection:
+                    potential_path = self.project_storage / collection / fragment_name
+                else:
+                    potential_path = self.project_storage / fragment_name
+                    
+                # SECURITY: Verify path stays within fragment storage boundaries
+                try:
+                    if potential_path.exists() and potential_path.is_relative_to(self.project_storage):
+                        search_paths.append(potential_path)
+                except (ValueError, TypeError):
+                    pass  # Path is not relative to storage, skip it
                 
         if storage_type == 'user' or storage_type is None:
-            if collection:
-                search_paths.append(self.user_storage / collection / fragment_name)
-            else:
-                search_paths.append(self.user_storage / fragment_name)
+            if self.user_storage and self.user_storage.exists():
+                if collection:
+                    potential_path = self.user_storage / collection / fragment_name
+                else:
+                    potential_path = self.user_storage / fragment_name
+                    
+                # SECURITY: Verify path stays within fragment storage boundaries
+                try:
+                    if potential_path.exists() and potential_path.is_relative_to(self.user_storage):
+                        search_paths.append(potential_path)
+                except (ValueError, TypeError):
+                    pass  # Path is not relative to storage, skip it
         
+        # Additional validation for found paths
         for path in search_paths:
-            if path.exists() and self.validator.is_valid_path(path):
-                return path
+            if path.exists():
+                # Double-check the path is actually within our storage directories
+                # We don't use self.validator.is_valid_path here because it rejects absolute paths
+                # But our search_paths are already validated to be within storage directories
+                try:
+                    if (self.project_storage and path.is_relative_to(self.project_storage)) or \
+                       (self.user_storage and path.is_relative_to(self.user_storage)):
+                        return path
+                except (ValueError, TypeError):
+                    pass  # Path is not relative to storage
         
         return None
 

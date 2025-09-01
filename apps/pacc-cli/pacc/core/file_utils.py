@@ -29,24 +29,34 @@ class FilePathValidator:
             True if path is valid and safe
         """
         try:
-            path_obj = Path(path).resolve()
+            path_str = str(path)
             
-            # Check if path exists
-            if not path_obj.exists():
+            # SECURITY: Check for directory traversal attempts and absolute paths
+            if '..' in path_str:
                 return False
             
-            # Check for directory traversal attempts
-            if '..' in str(path):
+            # Reject absolute paths (security risk)
+            if path_str.startswith('/') or path_str.startswith('~'):
                 return False
             
-            # Check if we can read the file/directory
-            if not os.access(path_obj, os.R_OK):
+            # Reject Windows absolute paths
+            if len(path_str) > 1 and path_str[1] == ':':
                 return False
             
-            # Check file extension if restrictions are set
-            if self.allowed_extensions and path_obj.is_file():
-                if path_obj.suffix.lower() not in self.allowed_extensions:
+            path_obj = Path(path)
+            
+            # If path exists, resolve and validate
+            if path_obj.exists():
+                path_obj = path_obj.resolve()
+                
+                # Check if we can read the file/directory
+                if not os.access(path_obj, os.R_OK):
                     return False
+                
+                # Check file extension if restrictions are set
+                if self.allowed_extensions and path_obj.is_file():
+                    if path_obj.suffix.lower() not in self.allowed_extensions:
+                        return False
             
             return True
             

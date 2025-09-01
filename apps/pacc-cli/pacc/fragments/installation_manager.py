@@ -113,8 +113,10 @@ class FragmentInstallationManager:
         
         if source_path.is_file():
             # Single fragment file
-            if not self.path_validator.is_valid_path(source_path):
-                raise PACCError(f"Invalid fragment file: {source_input}")
+            # Note: We don't restrict source paths - users can install from anywhere
+            # Security restrictions only apply to where we STORE fragments
+            if not source_path.suffix == '.md':
+                raise PACCError(f"Fragment file must have .md extension: {source_input}")
             
             return FragmentSource(
                 source_type="local",

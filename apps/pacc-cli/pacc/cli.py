@@ -4956,174 +4956,72 @@ class PACCCli:
     def handle_fragment_install(self, args) -> int:
         """Handle fragment install command."""
         try:
-            from pacc.fragments.storage_manager import FragmentStorageManager
-            from pacc.validators.fragment_validator import FragmentValidator
-            from pathlib import Path
+            from pacc.fragments.installation_manager import FragmentInstallationManager
             
             if args.verbose:
                 self._print_info(f"Starting fragment installation with args: source={args.source}, storage_type={args.storage_type}, collection={args.collection}, overwrite={args.overwrite}, dry_run={args.dry_run}")
             
-            self._print_info(f"Installing fragments from source: {args.source}")
+            # Initialize installation manager
+            installation_manager = FragmentInstallationManager()
             
-            if args.dry_run:
-                self._print_info("DRY RUN MODE - No changes will be made")
+            # Perform installation using the proper manager
+            # Note: collection parameter is handled within install_from_source if needed
+            result = installation_manager.install_from_source(
+                source_input=args.source,
+                target_type=args.storage_type,
+                interactive=False,  # CLI is non-interactive by default
+                install_all=True,   # Install all fragments found
+                force=args.overwrite,
+                dry_run=args.dry_run
+            )
             
-            # Initialize managers
-            storage_manager = FragmentStorageManager()
-            validator = FragmentValidator()
-            source_path = Path(args.source)
-            
-            if args.verbose:
-                self._print_info(f"Initialized storage manager and validator for source path: {source_path}")
-            
-            # Determine source type and validate
-            if source_path.is_file():
-                # Single fragment file
-                if args.verbose:
-                    self._print_info(f"Processing single fragment file: {source_path}")
-                
-                validation_result = validator.validate_single(source_path)
-                if args.verbose:
-                    self._print_info(f"Validation result: valid={validation_result.is_valid}, errors={len(validation_result.errors)}, warnings={len(validation_result.warnings)}")
-                
-                if not validation_result.is_valid and validation_result.errors:
-                    self._print_error(f"Fragment validation failed: {validation_result.errors[0].message}")
-                    if args.verbose:
-                        for error in validation_result.errors:
-                            self._print_error(f"  Validation error: {error.message}")
-                    return 1
-                
-                # Read fragment content
-                content = source_path.read_text(encoding='utf-8')
-                fragment_name = source_path.stem
-                
-                if args.verbose:
-                    self._print_info(f"Fragment name: {fragment_name}, content length: {len(content)} characters")
-                
-                if not args.dry_run:
-                    try:
-                        fragment_path = storage_manager.store_fragment(
-                            fragment_name=fragment_name,
-                            content=content,
-                            storage_type=args.storage_type,
-                            collection=args.collection,
-                            overwrite=args.overwrite
-                        )
-                        self._print_success(f"Installed fragment: {fragment_name}")
-                        self._print_info(f"  Location: {fragment_path}")
-                        if args.collection:
-                            self._print_info(f"  Collection: {args.collection}")
-                    except Exception as e:
-                        self._print_error(f"Failed to install fragment: {e}")
-                        return 1
-                else:
-                    # Enhanced dry-run preview
-                    self._print_info(f"Would install fragment: {fragment_name}")
-                    if args.collection:
-                        self._print_info(f"  Collection: {args.collection}")
-                    self._print_info(f"  Storage type: {args.storage_type}")
-                    self._print_info(f"  Content size: {len(content)} characters")
-                    if args.verbose and validation_result.metadata:
-                        metadata = validation_result.metadata
-                        if metadata.get("title"):
-                            self._print_info(f"  Title: {metadata['title']}")
-                        if metadata.get("description"):
-                            self._print_info(f"  Description: {metadata['description']}")
-                        if metadata.get("category"):
-                            self._print_info(f"  Category: {metadata['category']}")
-                    
-                    # Show where it would be stored
-                    try:
-                        expected_path = storage_manager._get_fragment_path(
-                            fragment_name, args.storage_type, args.collection
-                        )
-                        self._print_info(f"  Would be stored at: {expected_path}")
-                        if expected_path.exists() and not args.overwrite:
-                            self._print_warning(f"  WARNING: File already exists and would not be overwritten (use --overwrite)")
-                    except Exception as e:
-                        if args.verbose:
-                            self._print_warning(f"  Could not determine storage path: {e}")
-                
-            elif source_path.is_dir():
-                # Directory with multiple fragments
-                if args.verbose:
-                    self._print_info(f"Processing directory with multiple fragments: {source_path}")
-                
-                fragment_files = validator._find_extension_files(source_path)
-                if not fragment_files:
-                    self._print_warning(f"No fragment files found in: {source_path}")
-                    return 0
-                
-                self._print_info(f"Found {len(fragment_files)} fragment files")
-                if args.verbose:
-                    for fragment_file in fragment_files:
-                        self._print_info(f"  - {fragment_file.name}")
-                
-                if args.dry_run:
+            # Display results based on success/failure
+            if result.success:
+                if result.dry_run:
+                    # Show what would be installed
                     self._print_info("DRY RUN - Would install:")
-                    valid_fragments = 0
-                    total_size = 0
-                    for fragment_file in fragment_files:
-                        validation_result = validator.validate_single(fragment_file)
-                        if not validation_result.errors:
-                            valid_fragments += 1
-                            content_size = len(fragment_file.read_text(encoding='utf-8'))
-                            total_size += content_size
-                            self._print_info(f"  ✓ {fragment_file.stem} ({content_size} chars)")
-                        else:
-                            self._print_warning(f"  ✗ {fragment_file.stem} - validation failed")
-                            if args.verbose:
-                                for error in validation_result.errors:
-                                    self._print_warning(f"    Error: {error.message}")
-                    
-                    self._print_info(f"Summary: {valid_fragments}/{len(fragment_files)} valid fragments, total size: {total_size} characters")
-                    return 0
-                
-                installed_count = 0
-                for fragment_file in fragment_files:
-                    validation_result = validator.validate_single(fragment_file)
-                    if not validation_result.is_valid and validation_result.errors:
-                        self._print_warning(f"Skipping invalid fragment {fragment_file.name}: {validation_result.errors[0].message}")
-                        continue
-                    
-                    content = fragment_file.read_text(encoding='utf-8')
-                    fragment_name = fragment_file.stem
-                    
-                    if not args.dry_run:
-                        try:
-                            fragment_path = storage_manager.store_fragment(
-                                fragment_name=fragment_name,
-                                content=content,
-                                storage_type=args.storage_type,
-                                collection=args.collection,
-                                overwrite=args.overwrite
-                            )
-                            self._print_success(f"Installed fragment: {fragment_name}")
-                            installed_count += 1
-                        except Exception as e:
-                            self._print_warning(f"Failed to install {fragment_name}: {e}")
-                    else:
-                        self._print_info(f"Would install fragment: {fragment_name}")
-                        installed_count += 1
-                
-                if not args.dry_run:
-                    self._print_success(f"Successfully installed {installed_count} fragments")
+                    for name, info in result.installed_fragments.items():
+                        title = info.get('title', 'No title')
+                        self._print_info(f"  - {name}: {title}")
+                        if args.verbose:
+                            if info.get('description'):
+                                self._print_info(f"    Description: {info['description']}")
+                            if info.get('category'):
+                                self._print_info(f"    Category: {info['category']}")
+                            if info.get('reference_path'):
+                                self._print_info(f"    Reference: @{info['reference_path']}")
+                    if result.changes_made:
+                        self._print_info("\nChanges that would be made:")
+                        for change in result.changes_made:
+                            self._print_info(f"  - {change}")
                 else:
-                    self._print_info(f"Would install {installed_count} fragments")
-            
-            elif args.source.startswith(('http://', 'https://')):
-                self._print_error("URL-based fragment installation not yet implemented")
-                return 1
-            
+                    # Show what was installed
+                    self._print_success(f"Installed {result.installed_count} fragment(s)")
+                    for change in result.changes_made:
+                        self._print_info(f"  {change}")
+                    
+                    # Show installed fragments with their references
+                    if args.verbose and result.installed_fragments:
+                        self._print_info("\nInstalled fragments:")
+                        for name, info in result.installed_fragments.items():
+                            self._print_info(f"  - {name}")
+                            if info.get('reference_path'):
+                                self._print_info(f"    Reference: @{info['reference_path']}")
+                            if info.get('storage_path'):
+                                self._print_info(f"    Location: {info['storage_path']}")
             else:
-                self._print_error(f"Source not found or invalid: {args.source}")
+                self._print_error(f"Installation failed: {result.error_message}")
                 return 1
-            
+                
+            # Show warnings if any
+            for warning in result.validation_warnings:
+                self._print_warning(warning)
+                
             return 0
             
         except Exception as e:
-            self._print_error(f"Fragment installation failed: {e}")
-            if getattr(args, 'verbose', False):
+            self._print_error(f"Fragment installation error: {e}")
+            if args.verbose:
                 import traceback
                 traceback.print_exc()
             return 1

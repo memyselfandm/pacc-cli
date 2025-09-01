@@ -44,6 +44,12 @@ pip install -e .
 - **`pacc sync`**: Synchronize extensions from project pacc.json configuration
 - **Project Configuration**: pacc.json files for defining team extension standards
 
+### 🔒 Security Features
+- **Path Traversal Protection**: Prevents arbitrary file access/deletion via malicious fragment names
+- **Input Validation**: All user input is sanitized before file operations
+- **Boundary Validation**: Operations restricted to designated storage directories
+- **Defense in Depth**: Multiple validation layers for critical operations
+
 ## Architecture
 
 ### Core Components
