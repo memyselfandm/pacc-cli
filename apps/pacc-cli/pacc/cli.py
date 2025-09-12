@@ -4455,7 +4455,8 @@ class PACCCli:
             include_installed = not args.exclude_installed
             installed_only = args.installed_only
             
-            self._print_info(f"Searching plugins{f' for \"{query}\"' if query else ''}...")
+            search_msg = f' for "{query}"' if query else ''
+            self._print_info(f"Searching plugins{search_msg}...")
             
             # Perform search
             results = search_plugins(
