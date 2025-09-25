@@ -9,7 +9,7 @@ PACC uses a hierarchical detection system to identify extension types automatica
 PACC follows a three-tier detection approach:
 
 1. **pacc.json declarations** (Highest Priority)
-2. **Directory structure** (Secondary Signal)  
+2. **Directory structure** (Secondary Signal)
 3. **Content keywords** (Fallback Only)
 
 ### Priority 1: pacc.json Declarations
@@ -42,7 +42,7 @@ When no pacc.json declaration exists, directory structure provides type hints:
 project/
 ├── hooks/          # Files here detected as hooks
 │   └── pre-commit.json
-├── commands/       # Files here detected as commands  
+├── commands/       # Files here detected as commands
 │   └── deploy.md
 ├── agents/         # Files here detected as agents
 │   └── helper.md
@@ -67,7 +67,7 @@ As a final fallback, PACC analyzes file content for type-specific keywords:
 ```markdown
 ---
 name: deployment-helper
-description: Helps with deployments using agent-like assistance  
+description: Helps with deployments using agent-like assistance
 ---
 
 # Deployment Helper
@@ -132,7 +132,7 @@ This agent analyzes files and organizes them...
 **Problem:**
 ```markdown
 ---
-name: pacc-install  
+name: pacc-install
 description: Install extensions using PACC CLI tool
 ---
 
@@ -269,7 +269,7 @@ pacc validate ./my-special-server.conf --type mcp
 ---
 name: example-agent
 tools: ["file-reader"]        // ← Tools array
-permissions: ["read-files"]   // ← Permissions array  
+permissions: ["read-files"]   // ← Permissions array
 ---
 ```
 
@@ -338,7 +338,7 @@ hooks/
 └── post-deploy-hook.json
 
 commands/
-├── build-command.md       # Clear command naming  
+├── build-command.md       # Clear command naming
 └── deploy-command.md
 
 agents/
@@ -414,7 +414,7 @@ detected_type = detector.detect_extension_type("./my-extension.md")
 ```python
 # Possible return values:
 # - "hooks"
-# - "mcp" 
+# - "mcp"
 # - "agents"
 # - "commands"
 # - None (if no type detected)
@@ -447,7 +447,7 @@ detected_type = detector.detect_extension_type("./my-extension.md")
    ```json
    {
      "name": "migrated-project",
-     "version": "1.0.0", 
+     "version": "1.0.0",
      "extensions": {
        "commands": [
          {"name": "cmd1", "source": "./cmd1.md", "version": "1.0.0"}

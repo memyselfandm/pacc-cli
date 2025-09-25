@@ -219,7 +219,7 @@ projects=(
 for project in "${projects[@]}"; do
     echo "Migrating $project"
     cd "$project"
-    
+
     # Reinstall project extensions with global PACC
     if [ -f project-extensions.txt ]; then
         # Parse and reinstall extensions
@@ -413,7 +413,7 @@ import json
 # Old version
 old_version = "0.9.0"  # Example
 
-# New version  
+# New version
 new_version = "1.0.0"
 
 # Check if major version changed

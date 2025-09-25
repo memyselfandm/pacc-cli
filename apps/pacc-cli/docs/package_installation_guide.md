@@ -62,7 +62,7 @@ python scripts/build.py build
 # Build only wheel
 python scripts/build.py build --dist-type wheel
 
-# Build only source distribution  
+# Build only source distribution
 python scripts/build.py build --dist-type sdist
 
 # Check distributions with twine
@@ -99,7 +99,7 @@ make clean
 
 PACC is designed to work across:
 - **Windows** (Python 3.8+)
-- **macOS** (Python 3.8+) 
+- **macOS** (Python 3.8+)
 - **Linux** (Python 3.8+)
 
 The package structure ensures compatibility through:
@@ -135,7 +135,7 @@ After installation, verify PACC is working correctly:
 # Check version
 pacc --version
 
-# View available commands  
+# View available commands
 pacc --help
 
 # Test validation functionality
@@ -242,7 +242,7 @@ pip install tomli
 
 PACC includes comprehensive security measures:
 - Path traversal protection
-- Command injection prevention  
+- Command injection prevention
 - File content scanning
 - Sandboxed validation
 - Input sanitization

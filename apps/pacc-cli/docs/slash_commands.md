@@ -14,7 +14,7 @@ PACC slash commands allow users to manage Claude Code extensions seamlessly with
 .claude/commands/pacc/
 ├── pacc.md              # Main help command (/pacc)
 ├── install.md           # Installation command (/pacc:install)
-├── list.md             # List extensions (/pacc:list)  
+├── list.md             # List extensions (/pacc:list)
 ├── info.md             # Extension information (/pacc:info)
 ├── remove.md           # Remove extensions (/pacc:remove)
 ├── search.md           # Search extensions (/pacc:search)
@@ -53,12 +53,12 @@ List installed extensions with filtering capabilities.
 
 **Usage Examples:**
 - `/pacc:list`: Show all extensions
-- `/pacc:list hooks`: Show only hook extensions  
+- `/pacc:list hooks`: Show only hook extensions
 - `/pacc:list --user`: Show user-level extensions only
 - `/pacc:list --filter "git-*"`: Filter by name pattern
 - `/pacc:list --search "database"`: Search in descriptions
 
-#### `/pacc:info <name-or-path> [options]`  
+#### `/pacc:info <name-or-path> [options]`
 Display detailed extension information.
 
 **Features:**
@@ -91,12 +91,12 @@ Search for extensions (currently searches installed extensions).
 - Filter by extension type
 - Preparation for future package registry integration
 
-#### `/pacc:update [name] [options]`  
+#### `/pacc:update [name] [options]`
 Update extensions (currently provides manual workflows).
 
 **Current Functionality:**
 - Version checking guidance
-- Update workflow instructions  
+- Update workflow instructions
 - Preparation for automatic version management
 
 ### Main Help Command
@@ -177,7 +177,7 @@ model: claude-3-5-sonnet-20241022
 The implementation includes comprehensive testing:
 
 - **Unit Tests**: Individual component testing (18 tests)
-- **Integration Tests**: End-to-end workflow testing  
+- **Integration Tests**: End-to-end workflow testing
 - **JSON Output Tests**: Structured output validation
 - **File Structure Tests**: Command file validation
 - **Error Handling Tests**: Graceful failure scenarios
@@ -188,7 +188,7 @@ The implementation includes comprehensive testing:
 # Quick integration test
 python test_slash_commands.py
 
-# Comprehensive test suite  
+# Comprehensive test suite
 python -m pytest tests/test_slash_commands.py -v
 
 # All PACC tests

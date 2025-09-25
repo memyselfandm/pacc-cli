@@ -38,7 +38,7 @@
 
 **Root Cause**: CLI was using `FragmentStorageManager` directly instead of `FragmentInstallationManager`.
 
-**Fix Applied**: 
+**Fix Applied**:
 - Replaced entire `handle_fragment_install()` method to use `FragmentInstallationManager`
 - Now provides:
   - Automatic CLAUDE.md updates

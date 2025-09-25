@@ -309,19 +309,19 @@ security:
       - .sh
       - .ps1
     max_content_length: 1048576  # 1MB
-    
+
   enforcement:
     low: log
     medium: warn
     high: block
     critical: block
-    
+
   scanning:
     enable_content_scan: true
     enable_binary_detection: true
     enable_path_validation: true
     scan_timeout: 30
-    
+
   audit:
     enable_logging: true
     log_level: info
@@ -387,13 +387,13 @@ def handle_security_event(event):
 def analyze_security_logs(log_file):
     with open(log_file) as f:
         logs = json.load(f)
-    
+
     # Find high-risk events
     high_risk = [log for log in logs if log['risk_score'] > 50]
-    
+
     # Identify patterns
     attack_patterns = group_by_attack_type(high_risk)
-    
+
     # Generate report
     return {
         'total_events': len(logs),
@@ -411,11 +411,11 @@ def analyze_security_logs(log_file):
 ```python
 def test_path_traversal_protection():
     protector = PathTraversalProtector()
-    
+
     # Test dangerous paths
     assert not protector.is_safe_path("../../../etc/passwd")
     assert not protector.is_safe_path("..\\..\\windows\\system32")
-    
+
     # Test safe paths
     assert protector.is_safe_path("./safe/file.json")
     assert protector.is_safe_path("/allowed/path/file.yaml")
@@ -425,13 +425,13 @@ def test_path_traversal_protection():
 ```python
 def test_malicious_content_detection():
     scanner = FileContentScanner()
-    
+
     # Test malicious content
     malicious_content = "import os; os.system('rm -rf /')"
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py') as f:
         f.write(malicious_content)
         f.flush()
-        
+
         issues = scanner.scan_file(Path(f.name))
         assert any(issue.threat_level == ThreatLevel.HIGH for issue in issues)
 ```
@@ -475,13 +475,13 @@ pytest tests/integration/test_security_workflows.py
 def monitor_security_events():
     while True:
         events = get_recent_security_events()
-        
-        critical_events = [e for e in events 
+
+        critical_events = [e for e in events
                           if e.threat_level == ThreatLevel.CRITICAL]
-        
+
         if critical_events:
             send_alert(critical_events)
-            
+
         time.sleep(60)  # Check every minute
 ```
 
@@ -513,8 +513,8 @@ def monitor_security_events():
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024-08-12  
-**Next Review**: 2024-11-12  
+**Document Version**: 1.0
+**Last Updated**: 2024-08-12
+**Next Review**: 2024-11-12
 
 For questions or suggestions regarding this security guide, please contact the PACC security team.

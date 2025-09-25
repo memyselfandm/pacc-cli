@@ -352,7 +352,7 @@ rm test-hook.json
    ```bash
    # Find where pacc is installed
    pip show pacc-cli | grep Location
-   
+
    # Add to PATH if needed
    export PATH="$PATH:/path/to/pacc/bin"
    ```

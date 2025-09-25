@@ -171,7 +171,7 @@ DirectoryScanner(validator: Optional[FilePathValidator] = None)
 
 ```python
 scan_directory(
-    directory: Union[str, Path], 
+    directory: Union[str, Path],
     recursive: bool = True,
     max_depth: Optional[int] = None
 ) -> Iterator[Path]
@@ -198,7 +198,7 @@ for file_path in scanner.scan_directory("/extensions", recursive=True):
 
 ```python
 find_files_by_extension(
-    directory: Union[str, Path], 
+    directory: Union[str, Path],
     extensions: Set[str],
     recursive: bool = True
 ) -> List[Path]
@@ -394,10 +394,10 @@ class ValidationResult:
 
 ```python
 add_error(
-    code: str, 
-    message: str, 
+    code: str,
+    message: str,
     file_path: Optional[str] = None,
-    line_number: Optional[int] = None, 
+    line_number: Optional[int] = None,
     suggestion: Optional[str] = None
 ) -> None
 ```
@@ -415,10 +415,10 @@ Add an error to the validation result.
 
 ```python
 add_warning(
-    code: str, 
-    message: str, 
+    code: str,
+    message: str,
     file_path: Optional[str] = None,
-    line_number: Optional[int] = None, 
+    line_number: Optional[int] = None,
     suggestion: Optional[str] = None
 ) -> None
 ```
@@ -429,10 +429,10 @@ Add a warning to the validation result.
 
 ```python
 add_info(
-    code: str, 
-    message: str, 
+    code: str,
+    message: str,
     file_path: Optional[str] = None,
-    line_number: Optional[int] = None, 
+    line_number: Optional[int] = None,
     suggestion: Optional[str] = None
 ) -> None
 ```
@@ -558,8 +558,8 @@ Validate JSON syntax and return parsed data.
 
 ```python
 _validate_required_fields(
-    data: Dict[str, Any], 
-    required_fields: List[str], 
+    data: Dict[str, Any],
+    required_fields: List[str],
     file_path: str
 ) -> List[ValidationError]
 ```
@@ -570,10 +570,10 @@ Validate that required fields are present in data.
 
 ```python
 _validate_field_type(
-    data: Dict[str, Any], 
-    field: str, 
+    data: Dict[str, Any],
+    field: str,
     expected_type: type,
-    file_path: str, 
+    file_path: str,
     required: bool = True
 ) -> Optional[ValidationError]
 ```
@@ -603,7 +603,7 @@ Base exception for all PACC errors.
 
 ```python
 PACCError(
-    message: str, 
+    message: str,
     error_code: Optional[str] = None,
     context: Optional[Dict[str, Any]] = None
 )
@@ -644,7 +644,7 @@ Error raised when validation fails.
 
 ```python
 ValidationError(
-    message: str, 
+    message: str,
     file_path: Optional[Path] = None,
     line_number: Optional[int] = None,
     validation_type: Optional[str] = None,
@@ -660,7 +660,7 @@ Error raised for file system operations.
 
 ```python
 FileSystemError(
-    message: str, 
+    message: str,
     file_path: Optional[Path] = None,
     operation: Optional[str] = None,
     **kwargs
@@ -675,7 +675,7 @@ Error raised for security violations.
 
 ```python
 SecurityError(
-    message: str, 
+    message: str,
     security_check: Optional[str] = None,
     **kwargs
 )
@@ -784,34 +784,34 @@ from pacc.validators.base import BaseValidator, ValidationResult
 class CustomHookValidator(BaseValidator):
     def get_extension_type(self) -> str:
         return "hooks"
-    
+
     def validate_single(self, file_path) -> ValidationResult:
         result = ValidationResult(
             is_valid=True,
             file_path=str(file_path),
             extension_type=self.get_extension_type()
         )
-        
+
         # Custom validation logic
         error = self._validate_file_accessibility(file_path)
         if error:
             result.add_error(error.code, error.message)
             return result
-        
+
         # Parse and validate JSON
         json_error, data = self._validate_json_syntax(file_path)
         if json_error:
             result.add_error(json_error.code, json_error.message)
             return result
-        
+
         # Validate required fields
         required_fields = ['name', 'version', 'events']
         field_errors = self._validate_required_fields(data, required_fields, str(file_path))
         for error in field_errors:
             result.add_error(error.code, error.message)
-        
+
         return result
-    
+
     def _find_extension_files(self, directory: Path) -> List[Path]:
         return list(directory.glob("**/*.json"))
 
@@ -839,16 +839,16 @@ def secure_process_file(file_path: str, base_dir: Path):
     # Validate path safety
     if not path_protector.is_safe_path(file_path, base_dir):
         raise SecurityError("Unsafe file path detected")
-    
+
     # Perform security audit
     audit_result = auditor.audit_file(Path(file_path))
-    
+
     if not audit_result['is_safe']:
         print(f"Security issues found in {file_path}:")
         for issue in audit_result['issues']:
             print(f"  {issue.threat_level.value}: {issue.description}")
         return False
-    
+
     # Safe to process
     return True
 ```
@@ -884,7 +884,7 @@ Data class representing extension specifications in pacc.json files.
 ```python
 ExtensionSpec(
     name: str,
-    source: str, 
+    source: str,
     version: str,
     description: Optional[str] = None,
     ref: Optional[str] = None,
@@ -1008,7 +1008,7 @@ Hierarchical extension type detection system.
 ```python
 @staticmethod
 detect_extension_type(
-    file_path: Union[str, Path], 
+    file_path: Union[str, Path],
     project_dir: Optional[Union[str, Path]] = None
 ) -> Optional[str]
 ```
@@ -1070,7 +1070,7 @@ Format single validation result with enhanced output.
 ```python
 @staticmethod
 format_batch_results(
-    results: List[ValidationResult], 
+    results: List[ValidationResult],
     show_summary: bool = True
 ) -> str
 ```
@@ -1105,7 +1105,7 @@ print(batch_formatted)
 
 ```python
 def validate_extension_file(
-    file_path: Union[str, Path], 
+    file_path: Union[str, Path],
     extension_type: Optional[str] = None
 ) -> ValidationResult
 ```
@@ -1210,11 +1210,11 @@ To create a custom validator, extend `BaseValidator`:
 class MyCustomValidator(BaseValidator):
     def get_extension_type(self) -> str:
         return "my_extension_type"
-    
+
     def validate_single(self, file_path) -> ValidationResult:
         # Implement validation logic
         pass
-    
+
     def _find_extension_files(self, directory: Path) -> List[Path]:
         # Implement file discovery logic
         pass
@@ -1281,8 +1281,8 @@ custom_filter = (CustomFileFilter()
 
 ---
 
-**Document Version**: 1.1  
-**Last Updated**: 2024-08-27  
+**Document Version**: 1.1
+**Last Updated**: 2024-08-27
 **API Compatibility**: PACC v1.0.0+
 
 For questions about the API or suggestions for improvements, please open an issue in the PACC repository.

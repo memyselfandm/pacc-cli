@@ -67,6 +67,8 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "mypy>=1.0.0",
     "ruff>=0.1.0",
+    "pre-commit>=3.0.0",
+    "bandit[toml]>=1.7.5",
     "build>=1.0.0",
     "twine>=4.0.0",
     "tomli>=2.0.0;python_version<'3.11'",
@@ -201,3 +203,7 @@ markers = [
     "unit: marks tests as unit tests",
 ]
 asyncio_mode = "auto"
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist"]
+skips = ["B101"]  # Skip assert_used test

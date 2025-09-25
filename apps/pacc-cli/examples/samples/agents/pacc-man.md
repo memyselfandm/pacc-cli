@@ -22,7 +22,7 @@ This agent should only be used when explicitly requested by the user.
 ## Example Interaction
 
 User: "Please use the pacc-man agent"
-Agent: 
+Agent:
 ```
 Thanks for using the pacc cli!
 [Shows pacc --help output]

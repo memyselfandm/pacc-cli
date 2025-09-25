@@ -103,7 +103,7 @@ Generate a `pacc.json` file for explicit extension management:
     ],
     "hooks": [
       {
-        "name": "pre-commit", 
+        "name": "pre-commit",
         "source": ".claude/hooks/pre-commit.json",
         "version": "1.0.0"
       }
@@ -111,7 +111,7 @@ Generate a `pacc.json` file for explicit extension management:
     "agents": [
       {
         "name": "helper",
-        "source": ".claude/agents/helper.md", 
+        "source": ".claude/agents/helper.md",
         "version": "1.0.0"
       }
     ]
@@ -283,7 +283,7 @@ Migrate to organized folder structure using new 1.0 features:
         "preserveStructure": true
       },
       {
-        "name": "backend-tools", 
+        "name": "backend-tools",
         "source": ".claude/commands/backend-*.md",
         "version": "1.0.0",
         "targetDir": "backend",
@@ -334,7 +334,7 @@ New validation options:
 # Pre-1.0 validation
 pacc validate ./extension.json
 
-# 1.0 enhanced validation 
+# 1.0 enhanced validation
 pacc validate ./extension.json --strict     # Treat warnings as errors
 pacc validate ./directory/ --type commands  # Override type detection
 ```
@@ -368,14 +368,14 @@ pacc validate ./directory/ --type commands  # Override type detection
     "hooks": [
       {
         "name": "dev-hooks",
-        "source": "./dev-hooks.json", 
+        "source": "./dev-hooks.json",
         "version": "1.0.0",
         "environment": "development"           // Only install in dev
       },
       {
         "name": "prod-hooks",
         "source": "./prod-hooks.json",
-        "version": "1.0.0", 
+        "version": "1.0.0",
         "environment": "production"            // Only install in prod
       }
     ]
@@ -422,7 +422,7 @@ pacc validate ./ --strict
 {
   "extensions": {
     "commands": [
-      {"name": "cmd", "source": "./commands/cmd.md", "version": "1.0.0"}  
+      {"name": "cmd", "source": "./commands/cmd.md", "version": "1.0.0"}
     ]
   }
 }

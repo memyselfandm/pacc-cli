@@ -13,7 +13,7 @@ Specifies a custom installation directory for extensions within the Claude Code 
 ```json
 {
   "name": "custom-project",
-  "version": "1.0.0", 
+  "version": "1.0.0",
   "extensions": {
     "commands": [
       {
@@ -42,7 +42,7 @@ Controls whether the source directory structure is preserved during installation
       {
         "name": "build-tools",
         "source": "./src/commands/build/",
-        "version": "1.0.0", 
+        "version": "1.0.0",
         "preserveStructure": true
       }
     ]
@@ -83,7 +83,7 @@ src/commands/build/
   "extensions": {
     "commands": [
       {
-        "name": "frontend-tools", 
+        "name": "frontend-tools",
         "source": "./commands/frontend/",
         "version": "1.0.0",
         "targetDir": "development/frontend"
@@ -91,7 +91,7 @@ src/commands/build/
       {
         "name": "backend-tools",
         "source": "./commands/backend/",
-        "version": "1.0.0", 
+        "version": "1.0.0",
         "targetDir": "development/backend"
       }
     ],
@@ -132,7 +132,7 @@ src/commands/build/
     "agents": [
       {
         "name": "devops-agent",
-        "source": "./agents/devops.md", 
+        "source": "./agents/devops.md",
         "version": "1.0.0",
         "targetDir": "teams/devops"
       },
@@ -164,7 +164,7 @@ src/commands/build/
         "environment": "staging"
       },
       {
-        "name": "production-commands", 
+        "name": "production-commands",
         "source": "./commands/production/",
         "version": "1.0.0",
         "targetDir": "environments/production",
@@ -212,7 +212,7 @@ pacc install ./my-command.md --project
 
 ```json
 {
-  "targetDir": "tools", 
+  "targetDir": "tools",
   "preserveStructure": true
 }
 ```
@@ -245,7 +245,7 @@ Before PACC 1.0, extensions were installed directly:
    ```bash
    # List current extensions
    pacc list --all
-   
+
    # Check installation paths
    ls -la .claude/commands/
    ls -la .claude/hooks/
@@ -279,8 +279,8 @@ Before PACC 1.0, extensions were installed directly:
    ```bash
    # Remove old installations
    pacc remove deploy build test --force
-   
-   # Install with new configuration  
+
+   # Install with new configuration
    pacc sync
    ```
 
@@ -350,7 +350,7 @@ Before PACC 1.0, extensions were installed directly:
         "name": "dev-tools"
       },
       {
-        "targetDir": "deployment", 
+        "targetDir": "deployment",
         "name": "deploy-tools"
       },
       {
@@ -391,7 +391,7 @@ Before PACC 1.0, extensions were installed directly:
         "environment": "development"
       },
       {
-        "name": "prod-hooks", 
+        "name": "prod-hooks",
         "targetDir": "environments/production",
         "environment": "production"
       }
@@ -449,7 +449,7 @@ PACC validates `targetDir` paths to prevent security issues:
 # Install with default structure
 pacc install ./commands/ --project
 
-# Install preserving source structure  
+# Install preserving source structure
 pacc install ./commands/ --project --preserve-structure
 
 # Install to custom directory
@@ -510,5 +510,5 @@ pacc info <extension-name>
 ## See Also
 
 - [Extension Type Detection Guide](./extension_detection_guide.md)
-- [Migration Guide](./migration_guide.md) 
+- [Migration Guide](./migration_guide.md)
 - [Project Configuration Reference](./api_reference.md#project-configuration)

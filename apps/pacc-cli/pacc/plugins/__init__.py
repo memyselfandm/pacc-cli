@@ -1,96 +1,90 @@
 """Plugin configuration management for Claude Code integration."""
 
-from .config import PluginConfigManager, ConfigBackup, AtomicFileWriter
-from .repository import (
-    PluginRepositoryManager,
-    PluginRepo,
-    UpdateResult,
-    PluginInfo as RepoPluginInfo,
-    RepositoryValidationResult,
-    GitError,
-    RepositoryStructureError
-)
-from .discovery import (
-    PluginInfo as DiscoveryPluginInfo, 
-    RepositoryInfo, 
-    PluginScanner, 
-    PluginManifestParser, 
-    PluginMetadataExtractor,
-    discover_plugins,
-    validate_plugin_manifest,
-    extract_plugin_metadata,
-    resolve_template_variables,
-    extract_template_variables
-)
+from .config import AtomicFileWriter, ConfigBackup, PluginConfigManager
 from .converter import (
-    PluginConverter,
-    ExtensionToPluginConverter,
-    PluginPusher,
     ConversionResult,
-    PluginMetadata,
     ExtensionInfo,
-    convert_extensions_to_plugin
+    ExtensionToPluginConverter,
+    PluginConverter,
+    PluginMetadata,
+    PluginPusher,
+    convert_extensions_to_plugin,
+)
+from .creator import (
+    CreationMode,
+    CreationPluginType,
+    CreationResult,
+    GitInitializer,
+    MetadataCollector,
+    PluginCreator,
+    PluginTemplate,
+    TemplateEngine,
+)
+from .discovery import PluginInfo as DiscoveryPluginInfo
+from .discovery import (
+    PluginManifestParser,
+    PluginMetadataExtractor,
+    PluginScanner,
+    RepositoryInfo,
+    discover_plugins,
+    extract_plugin_metadata,
+    extract_template_variables,
+    resolve_template_variables,
+    validate_plugin_manifest,
 )
 from .environment import (
     EnvironmentManager,
     EnvironmentStatus,
     Platform,
-    Shell,
     ProfileUpdate,
-    get_environment_manager
+    Shell,
+    get_environment_manager,
 )
-from .creator import (
-    PluginCreator,
-    PluginTemplate,
-    CreationPluginType,
-    CreationMode,
-    CreationResult,
-    TemplateEngine,
-    GitInitializer,
-    MetadataCollector
+from .marketplace import (
+    DependencyConstraint,
+    DependencyResolver,
+    MarketplaceClient,
+    MetadataCache,
+    PluginDependency,
+    PluginStatus,
+    PluginVersion,
+    RegistryConfig,
+    RegistryType,
+    SemanticVersion,
+    create_marketplace_client,
+    get_plugin_info,
+    resolve_plugin_dependencies,
+    search_marketplace,
 )
+from .marketplace import PluginMetadata as MarketplaceMetadata
+from .repository import (
+    GitError,
+    PluginRepo,
+    PluginRepositoryManager,
+    RepositoryStructureError,
+    RepositoryValidationResult,
+    UpdateResult,
+)
+from .repository import PluginInfo as RepoPluginInfo
+from .sandbox import PluginSandbox, SandboxConfig, SandboxLevel, SandboxManager, SandboxResult
 
 # Sprint 7 features - Security & Marketplace
 from .security import (
-    PluginSecurityManager,
-    PluginSecurityLevel,
     AdvancedCommandScanner,
-    PluginManifestValidator,
     PermissionAnalyzer,
-    SecurityAuditLogger,
     PluginManifest,
-    SecurityAuditEntry
-)
-from .sandbox import (
-    PluginSandbox,
-    SandboxManager,
-    SandboxConfig,
-    SandboxLevel,
-    SandboxResult
-)
-from .marketplace import (
-    MarketplaceClient,
-    PluginMetadata as MarketplaceMetadata,
-    PluginVersion,
-    PluginDependency,
-    SemanticVersion,
-    RegistryConfig,
-    RegistryType,
-    PluginStatus,
-    DependencyConstraint,
-    MetadataCache,
-    DependencyResolver,
-    create_marketplace_client,
-    get_plugin_info,
-    search_marketplace,
-    resolve_plugin_dependencies
+    PluginManifestValidator,
+    PluginSecurityLevel,
+    PluginSecurityManager,
+    SecurityAuditEntry,
+    SecurityAuditLogger,
 )
 from .security_integration import (
+    SecurityValidatorMixin,
     convert_security_issues_to_validation_errors,
+    create_security_enhanced_validator,
     enhance_validation_with_security,
     validate_plugin_in_sandbox,
-    SecurityValidatorMixin,
-    create_security_enhanced_validator
 )
 
 # Create aliases for CLI compatibility
@@ -98,27 +92,27 @@ RepositoryManager = PluginRepositoryManager
 GitRepository = PluginRepo
 
 # For backward compatibility, import old classes as stubs
-from .discovery_old import PluginDiscovery, RepositoryPlugins, PluginSelector
+from .discovery_old import PluginDiscovery, PluginSelector, RepositoryPlugins
 
 # Search functionality
 from .search import (
-    PluginSearchEngine,
-    PluginRegistry,
     LocalPluginIndex,
-    SearchResult,
+    PluginRegistry,
+    PluginSearchEngine,
     SearchPluginType,
+    SearchResult,
     SortBy,
+    get_plugin_recommendations,
     search_plugins,
-    get_plugin_recommendations
 )
 
 __all__ = [
     "PluginConfigManager",
-    "ConfigBackup", 
+    "ConfigBackup",
     "AtomicFileWriter",
     "PluginRepositoryManager",
     "RepositoryManager",  # Alias
-    "GitRepository",      # Alias
+    "GitRepository",  # Alias
     "PluginRepo",
     "UpdateResult",
     "RepoPluginInfo",
@@ -131,7 +125,7 @@ __all__ = [
     "PluginManifestParser",
     "PluginMetadataExtractor",
     "discover_plugins",
-    "validate_plugin_manifest", 
+    "validate_plugin_manifest",
     "extract_plugin_metadata",
     "resolve_template_variables",
     "extract_template_variables",
@@ -147,17 +141,17 @@ __all__ = [
     "EnvironmentManager",
     "EnvironmentStatus",
     "Platform",
-    "Shell", 
+    "Shell",
     "ProfileUpdate",
     "get_environment_manager",
     # Backward compatibility
     "PluginDiscovery",
-    "RepositoryPlugins", 
+    "RepositoryPlugins",
     "PluginSelector",
     # Search functionality
     "PluginSearchEngine",
     "PluginRegistry",
-    "LocalPluginIndex", 
+    "LocalPluginIndex",
     "SearchResult",
     "SearchPluginType",
     "SortBy",
@@ -207,5 +201,5 @@ __all__ = [
     "enhance_validation_with_security",
     "validate_plugin_in_sandbox",
     "SecurityValidatorMixin",
-    "create_security_enhanced_validator"
+    "create_security_enhanced_validator",
 ]

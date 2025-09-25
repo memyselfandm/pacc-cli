@@ -45,7 +45,7 @@ source ~/.bashrc
 
 #### macOS/Linux (Zsh)
 ```bash
-# Add to ~/.zshrc  
+# Add to ~/.zshrc
 echo 'export ENABLE_PLUGINS=1' >> ~/.zshrc
 source ~/.zshrc
 ```
@@ -230,7 +230,7 @@ Disable a plugin without uninstalling it.
 # Disable using full identifier
 pacc plugin disable owner/repo/plugin-name
 
-# Disable using separate repo argument  
+# Disable using separate repo argument
 pacc plugin disable plugin-name --repo owner/repo
 ```
 
@@ -1355,12 +1355,12 @@ pacc plugin install https://github.com/owner/repo --dry-run
 2. **Document environment requirements**:
    ```markdown
    # Team Environment Setup
-   
+
    ## Prerequisites
    - Claude Code v1.0.81+
    - PACC CLI installed
    - Git configured
-   
+
    ## Setup
    ```bash
    ./team-setup.sh
@@ -1378,7 +1378,7 @@ pacc plugin install https://github.com/owner/repo --dry-run
    # .github/workflows/main.yml
    env:
      ENABLE_PLUGINS: 1
-   
+
    jobs:
      test:
        steps:
@@ -1442,8 +1442,8 @@ pacc plugin install https://github.com/owner/repo --dry-run
    ```bash
    # Development environment
    pacc plugin sync --environment development
-   
-   # Production environment  
+
+   # Production environment
    pacc plugin sync --environment production
    ```
 

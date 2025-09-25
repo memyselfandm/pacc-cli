@@ -6,7 +6,7 @@ This guide documents the comprehensive fragment testing infrastructure created f
 
 The fragment testing system consists of:
 - **Deterministic Sample Fragments**: Consistent test fragments that install the same way every time
-- **Comprehensive Test Fixtures**: Reliable mocks and fixtures for isolated testing  
+- **Comprehensive Test Fixtures**: Reliable mocks and fixtures for isolated testing
 - **Integration Test Patterns**: Complete workflow testing using real fragment operations
 - **Performance Benchmarks**: Consistent measurement and documentation of performance
 - **Enhanced Unit Tests**: Thorough component testing with sample fragments
@@ -21,8 +21,8 @@ tests/fixtures/sample_fragments.py
 ### Available Collections
 
 #### 1. Deterministic Collection
-**Purpose**: Basic deterministic installation testing  
-**Fragment Count**: 6  
+**Purpose**: Basic deterministic installation testing
+**Fragment Count**: 6
 **Contents**:
 - `test-simple-agent.md` - Simple agent with minimal complexity
 - `test-medium-agent.md` - Medium complexity agent with structured content
@@ -38,8 +38,8 @@ tests/fixtures/sample_fragments.py
 - Predictable installation order
 
 #### 2. Edge Case Collection
-**Purpose**: Edge case and boundary testing  
-**Fragment Count**: 4  
+**Purpose**: Edge case and boundary testing
+**Fragment Count**: 4
 **Contents**:
 - `minimal-test-agent.md` - Minimal valid agent
 - `special-chars-agent.md` - Agent with special characters
@@ -53,8 +53,8 @@ tests/fixtures/sample_fragments.py
 - Edge case validation patterns
 
 #### 3. Versioned Collection
-**Purpose**: Version management and upgrade testing  
-**Fragment Count**: 3 versions of same fragment  
+**Purpose**: Version management and upgrade testing
+**Fragment Count**: 3 versions of same fragment
 **Contents**:
 - `versioned-test-agent-v1.md` - Version 1.0.0
 - `versioned-test-agent-v11.md` - Version 1.1.0 (compatible)
@@ -67,8 +67,8 @@ tests/fixtures/sample_fragments.py
 - Version metadata preservation
 
 #### 4. Dependency Collection
-**Purpose**: Dependency resolution and ordering testing  
-**Fragment Count**: 3  
+**Purpose**: Dependency resolution and ordering testing
+**Fragment Count**: 3
 **Contents**:
 - `base-agent.md` - No dependencies (level 0)
 - `dependent-agent.md` - Depends on base-agent (level 1)
@@ -99,20 +99,20 @@ deterministic_collection = SampleFragmentFactory.create_deterministic_collection
 ```python
 def test_fragment_installation_consistency(self):
     collection_path = self.sample_collections["deterministic"]
-    
+
     # Test multiple installations for consistency
     results = []
     for run in range(3):
         if run > 0:
             self._reset_environment()
-        
+
         result = self.installation_manager.install_from_source(
             str(collection_path),
             target_type="project",
             install_all=True
         )
         results.append(result)
-    
+
     # Verify consistency across runs
     first_result = results[0]
     for result in results[1:]:
@@ -186,10 +186,10 @@ def test_deterministic_collection_install_consistency(self):
     for i in range(3):
         if i > 0:
             self._reset_test_environment()
-        
+
         result = self.installation_manager.install_from_source(...)
         results.append(result)
-    
+
     # Compare all results for consistency
     # Assert identical success, counts, fragments, metadata
 ```
@@ -202,13 +202,13 @@ def test_install_update_remove_workflow(self):
     """Test complete install -> update -> remove workflow with sample fragments."""
     # 1. Install fragments
     install_result = self.installation_manager.install_from_source(...)
-    
+
     # 2. Update fragments
     update_result = self.update_manager.update_fragment(...)
-    
+
     # 3. Remove fragments
     remove_result = self.storage_manager.remove_fragment(...)
-    
+
     # Verify each step and final state
 ```
 
@@ -222,7 +222,7 @@ def test_error_handling_consistency(self):
     for run in range(3):
         result = self.installation_manager.install_from_source(invalid_path)
         results.append(result)
-    
+
     # All runs should handle errors the same way
 ```
 
@@ -234,10 +234,10 @@ def test_cross_component_data_integrity(self):
     """Test data integrity across all fragment components."""
     # Install fragments
     install_result = self.installation_manager.install_from_source(...)
-    
+
     # Verify consistency between:
     # - Installation manager results
-    # - Storage manager data  
+    # - Storage manager data
     # - Validator behavior
     # - CLAUDE.md integration
 ```
@@ -260,7 +260,7 @@ def test_validate_deterministic_fragments_consistency(self):
         for run in range(3):
             result = self.validator.validate_single(fragment_path)
             results.append(result)
-        
+
         # All results should be identical
         first_result = results[0]
         for result in results[1:]:
@@ -275,7 +275,7 @@ def test_store_and_retrieve_deterministic_fragments(self):
     for run in range(3):
         location = self.storage_manager.store_fragment(...)
         retrieved = self.storage_manager.get_fragment(name)
-        
+
         # Results should be consistent across runs
 ```
 
@@ -285,10 +285,10 @@ def test_full_workflow_reliability(self):
     """Test full validate -> install -> store -> retrieve workflow reliability."""
     for run in range(3):
         # 1. Validate all fragments
-        # 2. Install collection  
+        # 2. Install collection
         # 3. Verify storage
         # 4. Retrieve each fragment
-        
+
         # Assert consistency across all runs
 ```
 
@@ -389,7 +389,7 @@ def _reset_test_environment(self):
     # Remove fragments directory
     if fragments_dir.exists():
         shutil.rmtree(fragments_dir)
-    
+
     # Reset project files
     self._setup_project_files()
 ```
@@ -401,7 +401,7 @@ Test multiple aspects for each operation:
 # Core functionality
 assert result.success, f"Operation failed: {result.error_message}"
 
-# Consistency  
+# Consistency
 assert result.installed_count == expected_count
 
 # Data integrity
@@ -428,7 +428,7 @@ with pytest.raises(ExpectedError):
 
 ### Test Categories
 - **Unit Tests**: Fast component testing with mocks
-- **Integration Tests**: Full workflow testing with samples  
+- **Integration Tests**: Full workflow testing with samples
 - **Performance Tests**: Benchmark testing for regression detection
 - **End-to-End Tests**: Complete system testing
 
@@ -472,7 +472,7 @@ assert result.throughput > 0.1, f"Throughput too low: {result.operation}"
 
 ### Adding New Benchmarks
 1. Follow `BenchmarkResult` structure
-2. Include warmup runs and multiple iterations  
+2. Include warmup runs and multiple iterations
 3. Add performance thresholds and assertions
 4. Update performance report generation
 
@@ -519,7 +519,7 @@ if not validation_result.is_valid:
 This comprehensive fragment testing infrastructure provides:
 - **Reliability**: Deterministic sample fragments ensure consistent test behavior
 - **Coverage**: Integration tests exercise complete workflows with real operations
-- **Performance**: Benchmark suite documents and monitors performance characteristics  
+- **Performance**: Benchmark suite documents and monitors performance characteristics
 - **Maintainability**: Well-structured fixtures and patterns support easy extension
 
 The testing system serves as both a validation tool for current functionality and a foundation for future comprehensive testing in PACC-58.

@@ -105,7 +105,7 @@ When changing the package name, update these locations:
 Before finalizing a new name:
 
 - [ ] Name is available on PyPI
-- [ ] Name is available on Test PyPI  
+- [ ] Name is available on Test PyPI
 - [ ] No trademark conflicts
 - [ ] Easy to type and remember
 - [ ] Clear relationship to purpose

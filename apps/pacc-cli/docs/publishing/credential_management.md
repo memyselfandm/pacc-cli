@@ -221,27 +221,27 @@ EOF
 2. **Use in Workflow**
    ```yaml
    name: Publish Package
-   
+
    on:
      release:
        types: [published]
-   
+
    jobs:
      publish:
        runs-on: ubuntu-latest
        steps:
          - uses: actions/checkout@v3
-         
+
          - name: Set up Python
            uses: actions/setup-python@v4
            with:
              python-version: '3.10'
-         
+
          - name: Build package
            run: |
              pip install build
              python -m build
-         
+
          - name: Publish to PyPI
            env:
              TWINE_USERNAME: __token__
@@ -283,7 +283,7 @@ EOF
 2. **Use in Config**
    ```yaml
    version: 2.1
-   
+
    jobs:
      publish:
        docker:
@@ -312,11 +312,11 @@ EOF
    ```groovy
    pipeline {
      agent any
-     
+
      environment {
        PYPI_TOKEN = credentials('pypi-api-token')
      }
-     
+
      stages {
        stage('Publish') {
          steps {
@@ -398,7 +398,7 @@ Maintain a security log:
 
 ## 2024-01-15 - Quarterly Rotation
 - Old token: Last 4 chars: ...a4b2
-- New token: Last 4 chars: ...c8d1  
+- New token: Last 4 chars: ...c8d1
 - Updated: .pypirc, GitHub Actions, 1Password
 - Verified: All systems functional
 - Revoked old: 2024-01-17
@@ -419,7 +419,7 @@ If token is compromised:
    ```bash
    # Revoke compromised token IMMEDIATELY
    # Via PyPI web interface
-   
+
    # Create new token
    # Update critical systems first
    ```
@@ -442,7 +442,7 @@ Consider automation for token management:
    ```bash
    # Store token
    vault kv put secret/pypi token="pypi-AgEI..."
-   
+
    # Retrieve in CI/CD
    export TWINE_PASSWORD=$(vault kv get -field=token secret/pypi)
    ```
@@ -453,7 +453,7 @@ Consider automation for token management:
    aws secretsmanager create-secret \
      --name pypi-token \
      --secret-string "pypi-AgEI..."
-   
+
    # Retrieve
    TWINE_PASSWORD=$(aws secretsmanager get-secret-value \
      --secret-id pypi-token \
@@ -465,11 +465,11 @@ Consider automation for token management:
    # scripts/rotate_token.py
    #!/usr/bin/env python3
    """Automated token rotation helper."""
-   
+
    import os
    import sys
    from datetime import datetime
-   
+
    def rotate_token():
        # 1. Prompt for new token
        # 2. Test token

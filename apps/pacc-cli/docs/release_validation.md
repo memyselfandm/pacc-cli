@@ -78,7 +78,7 @@ python tests/qa/run_qa_tests.py --edge-cases        # Edge case tests
    ```bash
    # Remove previous builds
    rm -rf build/ dist/ *.egg-info/
-   
+
    # Ensure clean git state
    git status  # Should show no uncommitted changes
    ```
@@ -87,7 +87,7 @@ python tests/qa/run_qa_tests.py --edge-cases        # Edge case tests
    ```bash
    # Build wheel and source distribution
    python -m build
-   
+
    # Verify build artifacts
    ls -la dist/
    # Should contain both .whl and .tar.gz files
@@ -97,7 +97,7 @@ python tests/qa/run_qa_tests.py --edge-cases        # Edge case tests
    ```bash
    # Check package metadata
    twine check dist/*
-   
+
    # Extract and inspect wheel contents
    unzip -l dist/pacc-*.whl
    ```
@@ -115,14 +115,14 @@ python tests/qa/run_qa_tests.py --edge-cases        # Edge case tests
    # Create fresh virtual environment
    python -m venv test_wheel_install
    source test_wheel_install/bin/activate
-   
+
    # Install from wheel
    pip install dist/pacc-*.whl
-   
+
    # Test functionality
    pacc --version
    pacc --help
-   
+
    # Clean up
    deactivate
    rm -rf test_wheel_install
@@ -133,14 +133,14 @@ python tests/qa/run_qa_tests.py --edge-cases        # Edge case tests
    # Create fresh virtual environment
    python -m venv test_source_install
    source test_source_install/bin/activate
-   
+
    # Install from source
    pip install dist/pacc-*.tar.gz
-   
+
    # Test functionality
    pacc --version
    pacc --help
-   
+
    # Clean up
    deactivate
    rm -rf test_source_install
@@ -223,14 +223,14 @@ done
    # Simulate new user experience
    python -m venv new_user_test
    source new_user_test/bin/activate
-   
+
    # Install from PyPI test or wheel
    pip install dist/pacc-*.whl
-   
+
    # Follow getting started guide
    pacc --help
    pacc validate --help
-   
+
    # Test with sample extension
    pacc validate examples/sample_hook.json
    pacc install examples/sample_hook.json --project --dry-run
@@ -241,13 +241,13 @@ done
    # Simulate upgrade from previous version
    python -m venv upgrade_test
    source upgrade_test/bin/activate
-   
+
    # Install previous version (if available)
    # pip install pacc-cli==<previous_version>
-   
+
    # Upgrade to new version
    pip install --upgrade dist/pacc-*.whl
-   
+
    # Verify upgrade worked
    pacc --version
    ```
@@ -256,13 +256,13 @@ done
    ```bash
    # Test team configuration sharing
    mkdir team_test && cd team_test
-   
+
    # Initialize project with pacc
    pacc init --team-config
-   
+
    # Install shared extensions
    pacc install ../examples/team_hooks/ --project
-   
+
    # Verify configuration
    pacc list --project
    ```
@@ -406,7 +406,7 @@ detect-secrets scan --all-files
    ```bash
    # Upload to test repository
    twine upload --repository testpypi dist/*
-   
+
    # Test installation from test PyPI
    pip install --index-url https://test.pypi.org/simple/ pacc
    ```
@@ -508,7 +508,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: [3.8, 3.9, '3.10', 3.11, 3.12]
-    
+
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
