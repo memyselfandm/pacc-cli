@@ -154,21 +154,6 @@ select = [
 ignore = [
     "PLR0913",  # Too many arguments to function call
     "PLR2004",  # Magic value used in comparison
-    "PLR0911",  # Too many return statements
-    "PLR0912",  # Too many branches
-    "PLR0915",  # Too many statements
-    "E722",     # Do not use bare except (legacy code)
-    "E501",     # Line too long (handled by formatter)
-    "F821",     # Undefined name (handled separately)
-    "ARG002",   # Unused method argument (legacy code)
-    "RUF001",   # Ambiguous unicode characters (intentional)
-    "B904",     # Exception chaining (legacy code)
-    "PLW2901",  # Variable redefinition in loop (legacy patterns)
-    "B017",     # pytest.raises(Exception) - legacy tests
-    "B007",     # Unused loop variable (legacy patterns)
-    "F402",     # Import shadowing (legacy code)
-    "ARG005",   # Unused lambda argument (legacy patterns)
-    "B023",     # Function definition in loop (legacy test patterns)
 ]
 
 [tool.ruff.lint.per-file-ignores]

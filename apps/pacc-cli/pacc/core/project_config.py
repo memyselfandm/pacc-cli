@@ -108,7 +108,7 @@ class ExtensionSpec:
         except Exception:
             return False
 
-    def get_source_type(self) -> str:
+    def get_source_type(self) -> str:  # noqa: PLR0911
         """Determine the type of source."""
         if self.source.startswith(("http://", "https://")):
             if "github.com" in self.source or "gitlab.com" in self.source:
@@ -394,7 +394,7 @@ class ProjectConfigSchema:
             for i, ext_spec in enumerate(ext_list):
                 self._validate_extension_spec(ext_spec, ext_type, i, result)
 
-    def _validate_extension_spec(
+    def _validate_extension_spec(  # noqa: PLR0912
         self, ext_spec: Dict[str, Any], ext_type: str, index: int, result: ConfigValidationResult
     ):
         """Validate individual extension specification."""
