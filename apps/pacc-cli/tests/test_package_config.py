@@ -271,8 +271,9 @@ class TestPackageStructure:
 
         # Check return type annotation
         return_annotation = sig.return_annotation
-        assert (
-            return_annotation == int or return_annotation == inspect._empty
+        assert return_annotation in (
+            int,
+            inspect._empty,
         ), "main function should return int or have no return annotation"
 
 

@@ -60,7 +60,7 @@ class BaseFilter(ABC):
         self.required = required
 
     @abstractmethod
-    def apply(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def apply(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Apply filter to a file path.
 
         Args:
@@ -72,7 +72,7 @@ class BaseFilter(ABC):
         """
         pass
 
-    def __call__(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def __call__(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Make filter callable."""
         return self.apply(file_path, context)
 
@@ -92,13 +92,13 @@ class ExtensionFilter(BaseFilter):
 
         # Normalize extensions
         self.extensions = set()
-        for ext in extensions:
-            ext = ext if ext.startswith(".") else f".{ext}"
-            self.extensions.add(ext.lower() if not case_sensitive else ext)
+        for extension in extensions:
+            normalized_ext = extension if extension.startswith(".") else f".{extension}"
+            self.extensions.add(normalized_ext.lower() if not case_sensitive else normalized_ext)
 
         self.case_sensitive = case_sensitive
 
-    def apply(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def apply(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Apply extension filter."""
         file_ext = file_path.suffix
         if not self.case_sensitive:
@@ -111,7 +111,10 @@ class ExtensionFilter(BaseFilter):
             passed=passed,
             score=score,
             metadata={"extension": file_ext},
-            reason=f"Extension '{file_ext}' {'matches' if passed else 'does not match'} allowed extensions",
+            reason=(
+                f"Extension '{file_ext}' {'matches' if passed else 'does not match'} "
+                "allowed extensions"
+            ),
         )
 
 
@@ -142,11 +145,11 @@ class PatternFilter(BaseFilter):
                 try:
                     self.compiled_patterns.append(re.compile(pattern))
                 except re.error as e:
-                    raise ValueError(f"Invalid regex pattern '{pattern}': {e}")
+                    raise ValueError(f"Invalid regex pattern '{pattern}': {e}") from e
         else:
             self.compiled_patterns = None
 
-    def apply(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def apply(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Apply pattern filter."""
         filename = file_path.name
 
@@ -191,7 +194,7 @@ class SizeFilter(BaseFilter):
         self.min_size = min_size
         self.max_size = max_size
 
-    def apply(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def apply(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Apply size filter."""
         try:
             file_size = file_path.stat().st_size
@@ -243,7 +246,7 @@ class ModificationTimeFilter(BaseFilter):
         self.after = after
         self.before = before
 
-    def apply(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def apply(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Apply modification time filter."""
         try:
             mtime = file_path.stat().st_mtime
@@ -310,7 +313,7 @@ class PathDepthFilter(BaseFilter):
         self.max_depth = max_depth
         self.base_path = base_path
 
-    def apply(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def apply(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Apply path depth filter."""
         # Calculate depth relative to base path or absolute
         if self.base_path:
@@ -363,7 +366,7 @@ class ValidationScoreFilter(BaseFilter):
         self.min_score = min_score
         self.require_valid = require_valid
 
-    def apply(self, file_path: Path, context: Dict[str, Any] = None) -> FilterResult:
+    def apply(self, file_path: Path, context: Optional[Dict[str, Any]] = None) -> FilterResult:
         """Apply validation score filter."""
         if context is None:
             context = {}
@@ -539,7 +542,9 @@ class SelectionFilter:
         """
         return self.add_filter(ValidationScoreFilter(min_score, require_valid, **kwargs))
 
-    def apply(self, files: List[Path], context: Dict[str, Any] = None) -> List[tuple[Path, float]]:
+    def apply(
+        self, files: List[Path], context: Optional[Dict[str, Any]] = None
+    ) -> List[tuple[Path, float]]:
         """Apply all filters to file list.
 
         Args:
@@ -575,7 +580,7 @@ class SelectionFilter:
         files: List[Path],
         sort_by: SortCriteria = SortCriteria.NAME,
         reverse: bool = False,
-        context: Dict[str, Any] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> List[Path]:
         """Filter files and sort by criteria.
 
@@ -596,21 +601,37 @@ class SelectionFilter:
 
         # Sort by criteria
         if sort_by == SortCriteria.NAME:
-            key_func = lambda x: x[0].name.lower()
+
+            def key_func(x):
+                return x[0].name.lower()
         elif sort_by == SortCriteria.SIZE:
-            key_func = lambda x: self._get_file_size(x[0])
+
+            def key_func(x):
+                return self._get_file_size(x[0])
         elif sort_by == SortCriteria.MODIFIED:
-            key_func = lambda x: self._get_mtime(x[0])
+
+            def key_func(x):
+                return self._get_mtime(x[0])
         elif sort_by == SortCriteria.CREATED:
-            key_func = lambda x: self._get_ctime(x[0])
+
+            def key_func(x):
+                return self._get_ctime(x[0])
         elif sort_by == SortCriteria.EXTENSION:
-            key_func = lambda x: x[0].suffix.lower()
+
+            def key_func(x):
+                return x[0].suffix.lower()
         elif sort_by == SortCriteria.PATH_DEPTH:
-            key_func = lambda x: len(x[0].parts)
+
+            def key_func(x):
+                return len(x[0].parts)
         elif sort_by == SortCriteria.VALIDATION_SCORE:
-            key_func = lambda x: x[1]  # Use filter score
+
+            def key_func(x):
+                return x[1]  # Use filter score
         else:
-            key_func = lambda x: x[0].name.lower()
+
+            def key_func(x):
+                return x[0].name.lower()
 
         try:
             sorted_results = sorted(filtered_results, key=key_func, reverse=reverse)
@@ -715,7 +736,9 @@ class MultiCriteriaFilter:
         self.filter_groups.append((filter_group, weight))
         return self
 
-    def apply(self, files: List[Path], context: Dict[str, Any] = None) -> List[tuple[Path, float]]:
+    def apply(
+        self, files: List[Path], context: Optional[Dict[str, Any]] = None
+    ) -> List[tuple[Path, float]]:
         """Apply all filter groups and combine scores.
 
         Args:
@@ -759,7 +782,7 @@ class MultiCriteriaFilter:
         files: List[Path],
         limit: int = 10,
         min_score: float = 0.1,
-        context: Dict[str, Any] = None,
+        context: Optional[Dict[str, Any]] = None,
     ) -> List[Path]:
         """Get top matching files.
 

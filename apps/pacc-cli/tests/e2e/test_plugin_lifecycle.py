@@ -826,13 +826,13 @@ This is test plugin number {plugin_index} for performance testing.
                     with PerformanceTimer(f"Config Update {i}") as timer:
                         # Add and remove plugin quickly
                         config_manager._update_settings_atomic(
-                            lambda s: s["agents"].update(
-                                {f"temp-plugin-{i}": {"path": test_plugin["path"], "enabled": True}}
+                            lambda s, idx=i, plugin=test_plugin: s["agents"].update(
+                                {f"temp-plugin-{idx}": {"path": plugin["path"], "enabled": True}}
                             )
                         )
 
                         config_manager._update_settings_atomic(
-                            lambda s: s["agents"].pop(f"temp-plugin-{i}", None)
+                            lambda s, idx=i: s["agents"].pop(f"temp-plugin-{idx}", None)
                         )
 
                     total_time += timer.duration

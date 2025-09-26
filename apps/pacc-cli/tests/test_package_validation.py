@@ -24,8 +24,7 @@ class TestPackageValidation:
             for f in python_files
             if "__pycache__" not in str(f)
             and "test_" not in f.name
-            and f.name != "demo.py"  # Skip demo files
-            and f.name != "config_demo.py"
+            and f.name not in {"demo.py", "config_demo.py"}
         ]
 
         # Try to compile each file

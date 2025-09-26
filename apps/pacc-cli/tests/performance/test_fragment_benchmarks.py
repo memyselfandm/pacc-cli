@@ -146,7 +146,7 @@ This project is used for fragment performance benchmarking.
                     self._reset_environment()
 
             except Exception as e:
-                print(f"Benchmark iteration {i+1} failed for {operation_name}: {e}")
+                print(f"Benchmark iteration {i + 1} failed for {operation_name}: {e}")
                 continue
 
         if not times:
@@ -210,10 +210,10 @@ This project is used for fragment performance benchmarking.
                 [f for f in collection_path.rglob("*.json") if "collection" not in f.name]
             )
 
-            def validate_collection():
+            def validate_collection(files=fragment_files):
                 """Validate all fragments in collection."""
                 validation_results = []
-                for fragment_file in fragment_files:
+                for fragment_file in files:
                     result = self.validator.validate_single(fragment_file)
                     validation_results.append(result)
                 return validation_results

@@ -208,7 +208,7 @@ class TestPluginCLIPerformance:
     """Performance tests for plugin CLI commands."""
 
     def test_plugin_install_command_performance(
-        self, performance_plugin_repo, cli_test_environment, tmp_path
+        self, performance_plugin_repo, cli_test_environment, _tmp_path
     ):
         """Test performance of plugin install CLI command."""
         repo_dir = performance_plugin_repo
@@ -269,7 +269,7 @@ class TestPluginCLIPerformance:
                 print(f"  Throughput: {throughput:.1f} plugins/second")
 
     def test_plugin_list_command_performance(
-        self, performance_plugin_repo, cli_test_environment, tmp_path
+        self, performance_plugin_repo, cli_test_environment, _tmp_path
     ):
         """Test performance of plugin list CLI command."""
         repo_dir = performance_plugin_repo
@@ -418,7 +418,7 @@ class TestPluginCLIPerformance:
                 print(f"  Batch remove: {profiler.duration:.3f}s")
 
     def test_plugin_info_command_performance(
-        self, performance_plugin_repo, cli_test_environment, tmp_path
+        self, performance_plugin_repo, cli_test_environment, _tmp_path
     ):
         """Test performance of plugin info CLI command."""
         repo_dir = performance_plugin_repo
@@ -686,14 +686,14 @@ Minimal plugin for large repository stress testing.
                 total_start = time.perf_counter()
 
                 for i, command_args in enumerate(command_sequence):
-                    with CLIPerformanceProfiler(f"Command {i+1}") as profiler:
+                    with CLIPerformanceProfiler(f"Command {i + 1}") as profiler:
                         result = cli.main(command_args)
 
                     execution_times.append(profiler.duration)
-                    assert result == 0, f"Command {i+1} failed: {command_args}"
+                    assert result == 0, f"Command {i + 1} failed: {command_args}"
                     assert (
                         profiler.duration < 3.0
-                    ), f"Command {i+1} took {profiler.duration:.3f}s (should be < 3s)"
+                    ), f"Command {i + 1} took {profiler.duration:.3f}s (should be < 3s)"
 
                 total_time = time.perf_counter() - total_start
 
@@ -751,10 +751,10 @@ Minimal plugin for large repository stress testing.
 
                 for i, operation in enumerate(operations):
                     # Perform operation
-                    with CLIPerformanceProfiler(f"Memory Test {i+1}") as profiler:
+                    with CLIPerformanceProfiler(f"Memory Test {i + 1}"):
                         result = cli.main(operation)
 
-                    assert result == 0, f"Operation {i+1} failed"
+                    assert result == 0, f"Operation {i + 1} failed"
 
                     # Measure memory
                     current_memory = process.memory_info().rss

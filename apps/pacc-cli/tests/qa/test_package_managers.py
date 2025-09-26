@@ -210,10 +210,10 @@ class PackageManagerTester:
 
                 # Get paths
                 if sys.platform == "win32":
-                    python_cmd = venv_path / "Scripts" / "python"
+                    venv_path / "Scripts" / "python"
                     pacc_cmd = venv_path / "Scripts" / "pacc"
                 else:
-                    python_cmd = venv_path / "bin" / "python"
+                    venv_path / "bin" / "python"
                     pacc_cmd = venv_path / "bin" / "pacc"
 
                 # Test 1: Install with uv
@@ -461,9 +461,9 @@ class PackageManagerTester:
 
     def run_all_tests(self) -> Dict[str, any]:
         """Run all package manager tests."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Package Manager Compatibility Tests")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         print("Available package managers:")
         for manager, available in self.available_managers.items():
@@ -581,9 +581,9 @@ if __name__ == "__main__":
     results = tester.run_all_tests()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Test Summary")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     total_tests = 0
     passed_tests = 0

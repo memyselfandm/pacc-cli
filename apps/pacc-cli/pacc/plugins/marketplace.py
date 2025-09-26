@@ -741,7 +741,7 @@ class DependencyResolver:
         if plugin_name in dependency_chain:
             return {
                 "has_circular": True,
-                "chain": list(dependency_chain) + [plugin_name],
+                "chain": [*list(dependency_chain), plugin_name],
                 "message": f"Circular dependency detected: {' -> '.join(dependency_chain)} -> {plugin_name}",
             }
 

@@ -58,7 +58,7 @@ class TestURLSourceHandler:
         if not self.handler.available:
             pytest.skip("URL downloader not available")
 
-        mock_result = {
+        {
             "success": True,
             "downloaded_path": Path("/tmp/test.zip"),
             "extracted_path": None,

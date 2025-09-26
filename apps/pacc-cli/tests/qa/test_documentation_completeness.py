@@ -233,7 +233,7 @@ class TestDocumentationCompleteness:
             # Find all markdown links
             links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
 
-            for link_text, link_url in links:
+            for _link_text, link_url in links:
                 # Check internal links
                 if link_url.endswith(".md") and not link_url.startswith("http"):
                     # Remove anchors
@@ -407,7 +407,7 @@ class TestDocumentationMaintenance:
             # Find all links
             links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
 
-            for link_text, link_url in links:
+            for _link_text, link_url in links:
                 if link_url.startswith("http"):
                     # Just check URL format, not actual connectivity
                     assert link_url.startswith(
@@ -427,7 +427,7 @@ class TestDocumentationMaintenance:
                     if i > 0:
                         assert (
                             i == 0 or lines[i - 1].strip() == ""
-                        ), f"Missing blank line before header in {doc_file.name}, line {i+1}"
+                        ), f"Missing blank line before header in {doc_file.name}, line {i + 1}"
 
     def test_code_block_languages_specified(self, docs_dir):
         """Test that code blocks specify languages."""

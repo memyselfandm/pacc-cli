@@ -192,7 +192,7 @@ class TestConflictResolution:
             ),
         ]
 
-        merged_config, conflicts = self.sync_manager._merge_plugin_configs(sources, None)
+        _merged_config, conflicts = self.sync_manager._merge_plugin_configs(sources, None)
 
         assert len(conflicts) == 1
         assert "Version conflict for owner/repo" in conflicts[0]

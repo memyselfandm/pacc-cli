@@ -7,14 +7,16 @@ from .ui import ConfirmationDialog, InteractiveSelector, ProgressTracker
 from .workflow import SelectionWorkflow
 
 __all__ = [
-    "SelectionWorkflow",
-    "SelectionContext",
-    "SelectionResult",
-    "InteractiveSelector",
     "ConfirmationDialog",
+    "InteractiveSelector",
+    "MultiCriteriaFilter",
     "ProgressTracker",
     "SelectionCache",
-    "SelectionHistory",
+    "SelectionContext",
     "SelectionFilter",
-    "MultiCriteriaFilter",
+    "SelectionHistory",
+    "SelectionMode",
+    "SelectionResult",
+    "SelectionStrategy",
+    "SelectionWorkflow",
 ]

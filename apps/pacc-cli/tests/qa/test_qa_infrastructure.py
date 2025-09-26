@@ -208,7 +208,7 @@ class QAInfrastructureTester:
                             results[f"{module_name}_missing_{method}"] = True
 
                     # Check if can instantiate
-                    instance = test_class()
+                    test_class()
                     results[f"{module_name}_instantiable"] = True
 
                 except Exception as e:
@@ -300,7 +300,7 @@ class QAInfrastructureTester:
 
         try:
             # Test with invalid suite name
-            result = subprocess.run(
+            subprocess.run(
                 [sys.executable, str(qa_runner), "--suites", "nonexistent_suite"],
                 capture_output=True,
                 text=True,
@@ -433,9 +433,9 @@ if __name__ == "__main__":
     results = tester.run_all_tests()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("QA Infrastructure Test Summary")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     total_tests = 0
     passed_tests = 0

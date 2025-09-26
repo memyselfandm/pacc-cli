@@ -3,8 +3,11 @@
 import asyncio
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    pass
 
 from ..core.url_downloader import ProgressDisplay, URLDownloader
 from ..errors import SourceError
@@ -78,8 +81,8 @@ class URLSourceHandler(SourceHandler):
         source: str,
         extension_type: Optional[str] = None,
         extract_archives: bool = True,
-        use_cache: bool = True,
-        **kwargs,
+        _use_cache: bool = True,
+        **_kwargs,
     ) -> List:
         """Process URL source and return available extensions.
 
@@ -135,7 +138,8 @@ class URLSourceHandler(SourceHandler):
             if source_path.is_file():
                 ext_type = ExtensionDetector.detect_extension_type(source_path)
                 if ext_type and (not extension_type or ext_type == extension_type):
-                    from ..cli import Extension  # Import here to avoid circular imports
+                    # Import here to avoid circular imports
+                    from ..cli import Extension
 
                     extension = Extension(
                         name=source_path.stem,
@@ -151,7 +155,8 @@ class URLSourceHandler(SourceHandler):
                         continue
 
                     for file_path in file_paths:
-                        from ..cli import Extension  # Import here to avoid circular imports
+                        # Import here to avoid circular imports
+                        from ..cli import Extension
 
                         extension = Extension(
                             name=file_path.stem,

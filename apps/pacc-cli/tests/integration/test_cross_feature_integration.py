@@ -507,7 +507,7 @@ class TestValidationInstallationWorkflowIntegration:
 
             # Step 2: Validation
             validation_start = time.time()
-            validation_results = validate_extension_directory(source_dir)
+            validate_extension_directory(source_dir)
             validation_time = time.time() - validation_start
 
             total_time = time.time() - start_time

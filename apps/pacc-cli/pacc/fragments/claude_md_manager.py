@@ -214,7 +214,7 @@ class CLAUDEmdManager:
             return resolved
 
         except (OSError, ValueError) as e:
-            raise ValidationError(f"Invalid reference path '{ref_path}': {e}")
+            raise ValidationError(f"Invalid reference path '{ref_path}': {e}") from e
 
     def read_file_content(self, file_path: Path) -> str:
         """Read content from a file safely.
@@ -315,7 +315,7 @@ class CLAUDEmdManager:
         # Ensure parent directory exists
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with self._atomic_file_operation(file_path) as (temp_file, backup_path):
+        with self._atomic_file_operation(file_path) as (temp_file, _backup_path):
             original_content = self.read_file_content(file_path)
             start_marker, end_marker = self._get_section_markers(section_name)
 
@@ -375,7 +375,7 @@ class CLAUDEmdManager:
         if not file_path.exists():
             return False
 
-        with self._atomic_file_operation(file_path) as (temp_file, backup_path):
+        with self._atomic_file_operation(file_path) as (temp_file, _backup_path):
             original_content = self.read_file_content(file_path)
             start_marker, end_marker = self._get_section_markers(section_name)
 
@@ -557,7 +557,7 @@ class CLAUDEmdManager:
 
         removed_count = 0
 
-        for original_name, backups in backup_groups.items():
+        for _original_name, backups in backup_groups.items():
             # Sort by modification time, newest first
             backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 

@@ -257,7 +257,7 @@ class PACCPublisher:
                 python_path = venv_path / "bin" / "python"
 
             # Install wheel
-            wheel_file = list(self.dist_dir.glob("*.whl"))[0]
+            wheel_file = next(iter(self.dist_dir.glob("*.whl")))
             result = subprocess.run(
                 [str(pip_path), "install", str(wheel_file)],
                 capture_output=True,
@@ -472,13 +472,13 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Validate command
-    validate_parser = subparsers.add_parser("validate", help="Pre-publish validation")
+    subparsers.add_parser("validate", help="Pre-publish validation")
 
     # Build command
-    build_parser = subparsers.add_parser("build", help="Build distributions")
+    subparsers.add_parser("build", help="Build distributions")
 
     # Test install command
-    test_parser = subparsers.add_parser("test-install", help="Test local installation")
+    subparsers.add_parser("test-install", help="Test local installation")
 
     # Publish command
     publish_parser = subparsers.add_parser("publish", help="Publish to PyPI")

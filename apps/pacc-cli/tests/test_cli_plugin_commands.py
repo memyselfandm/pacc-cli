@@ -337,7 +337,7 @@ class TestPluginCommands:
                 # Mock the repository manager and discovery
                 with patch("pacc.plugins.RepositoryManager") as mock_repo_mgr, patch(
                     "pacc.plugins.PluginDiscovery"
-                ) as mock_discovery, patch("pacc.plugins.PluginConfigManager") as mock_config:
+                ) as mock_discovery, patch("pacc.plugins.PluginConfigManager"):
                     # Setup mocks
                     mock_repo_instance = Mock()
                     mock_repo_info = Mock()

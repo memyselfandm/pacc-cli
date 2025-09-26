@@ -84,7 +84,7 @@ class RecoveryStrategy(ABC):
         """
         pass
 
-    def can_handle(self, error: Exception) -> bool:
+    def can_handle(self, _error: Exception) -> bool:
         """Check if strategy can handle the error type.
 
         Args:
@@ -236,7 +236,6 @@ class InteractiveRecoveryStrategy(RecoveryStrategy):
 
         # Get fix suggestions
         suggestions = await self._get_suggestions(context)
-
         if not suggestions:
             await self._show_error_details(context)
             return RecoveryResult(success=False, message="No fix suggestions available")
@@ -244,47 +243,54 @@ class InteractiveRecoveryStrategy(RecoveryStrategy):
         # Show suggestions to user and get choice
         choice = await self._present_suggestions(suggestions[: self.max_suggestions], context)
 
+        return await self._handle_user_choice(choice, suggestions, context)
+
+    async def _handle_user_choice(self, choice, suggestions, context) -> RecoveryResult:
+        """Handle user's choice for recovery."""
         if choice is None:
             return RecoveryResult(success=False, message="User cancelled recovery")
 
-        if choice == "retry":
-            return RecoveryResult(
+        choice_handlers = {
+            "retry": lambda: RecoveryResult(
                 success=False, retry_recommended=True, message="User chose to retry operation"
-            )
+            ),
+            "skip": lambda: RecoveryResult(success=True, message="User chose to skip and continue"),
+        }
 
-        if choice == "skip":
-            return RecoveryResult(success=True, message="User chose to skip and continue")
+        handler = choice_handlers.get(choice)
+        if handler:
+            return handler()
 
-        # Apply chosen fix
+        # Handle suggestion choice
         if isinstance(choice, int) and 0 <= choice < len(suggestions):
-            suggestion = suggestions[choice]
-
-            if suggestion.action:
-                logger.info(f"Applying user-selected fix: {suggestion.title}")
-
-                if suggestion.action.auto_fixable:
-                    success = await self._attempt_auto_fix(suggestion, context)
-
-                    return RecoveryResult(
-                        success=success,
-                        action_taken=suggestion.action,
-                        fixed_error=success,
-                        retry_recommended=True,
-                        message=f"{'Applied' if success else 'Failed to apply'} fix: {suggestion.title}",
-                    )
-                else:
-                    # Manual fix - show instructions
-                    await self._show_manual_fix_instructions(suggestion)
-
-                    return RecoveryResult(
-                        success=False,
-                        user_input_required=True,
-                        message=f"Manual fix required: {suggestion.title}",
-                    )
-            else:
-                return RecoveryResult(success=False, message="Selected suggestion has no action")
+            return await self._apply_suggestion(suggestions[choice], context)
 
         return RecoveryResult(success=False, message="Invalid user choice")
+
+    async def _apply_suggestion(self, suggestion, context) -> RecoveryResult:
+        """Apply the chosen suggestion."""
+        if not suggestion.action:
+            return RecoveryResult(success=False, message="Selected suggestion has no action")
+
+        logger.info(f"Applying user-selected fix: {suggestion.title}")
+
+        if suggestion.action.auto_fixable:
+            success = await self._attempt_auto_fix(suggestion, context)
+            return RecoveryResult(
+                success=success,
+                action_taken=suggestion.action,
+                fixed_error=success,
+                retry_recommended=True,
+                message=f"{'Applied' if success else 'Failed'} fix: {suggestion.title}",
+            )
+        else:
+            # Manual fix - show instructions
+            await self._show_manual_fix_instructions(suggestion)
+            return RecoveryResult(
+                success=False,
+                user_input_required=True,
+                message=f"Manual fix required: {suggestion.title}",
+            )
 
     async def _show_error_details(self, context: RecoveryContext) -> None:
         """Show detailed error information to user.
@@ -322,7 +328,7 @@ class InteractiveRecoveryStrategy(RecoveryStrategy):
             auto_text = " (auto)" if suggestion.action and suggestion.action.auto_fixable else ""
 
             print(
-                f"  {i+1:2d}. {confidence_color}{suggestion.title}{auto_text}{self._get_color('reset')}"
+                f"  {i + 1:2d}. {confidence_color}{suggestion.title}{auto_text}{self._get_color('reset')}"
             )
             print(f"      {suggestion.description}")
 

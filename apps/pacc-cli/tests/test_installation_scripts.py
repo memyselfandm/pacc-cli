@@ -144,7 +144,7 @@ class TestInstallationScripts:
     def test_console_script_entry_point(self, pacc_source_dir, temp_venv_dir):
         """Test console_scripts entry point after installation."""
         # Create virtual environment
-        python_exe, pip_exe = self.create_venv(temp_venv_dir)
+        _python_exe, pip_exe = self.create_venv(temp_venv_dir)
 
         # Install in editable mode
         subprocess.run(

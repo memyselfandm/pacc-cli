@@ -82,12 +82,7 @@ class TestCompletePluginLifecycle:
             shutil.rmtree(self.temp_dir)
 
     @patch("pathlib.Path.home")
-    @patch("pacc.plugins.GitRepository")
-    @patch("pacc.plugins.PluginDiscovery")
-    @patch("pacc.plugins.RepositoryManager")
-    @patch("pacc.plugins.PluginConfigManager")
-    @patch("pacc.plugins.PluginSelector")
-    def test_complete_plugin_lifecycle_workflow(
+    def _setup_lifecycle_mocks(
         self,
         mock_selector,
         mock_plugin_config,
@@ -96,7 +91,7 @@ class TestCompletePluginLifecycle:
         mock_git_repo,
         mock_home,
     ):
-        """Test complete plugin lifecycle: install → info → update → sync → remove."""
+        """Set up all mocks for lifecycle testing."""
         mock_home.return_value = self.temp_dir
 
         # Setup mock plugin repository
@@ -145,7 +140,10 @@ class TestCompletePluginLifecycle:
         mock_selector_instance.select_plugins_for_installation.return_value = [mock_plugin_details]
         mock_selector.return_value = mock_selector_instance
 
-        # Step 1: Install plugin repository
+        return mock_plugin_details, mock_config_instance
+
+    def _test_plugin_install_step(self, mock_config_instance):
+        """Test plugin installation step."""
         install_args = Namespace(
             repo_url="https://github.com/test/repo.git",
             dry_run=False,
@@ -164,8 +162,10 @@ class TestCompletePluginLifecycle:
             result = self.cli.handle_plugin_install(install_args)
 
         assert result == 0, "Plugin install should succeed"
+        return mock_config_instance
 
-        # Step 2: Get plugin info (using same mock config instance)
+    def _test_plugin_info_step(self, mock_config_instance):
+        """Test plugin info step."""
         info_args = Namespace(plugin="test-plugin", repo="test/repo", format="table")
 
         # Configure mock for info command
@@ -190,7 +190,8 @@ class TestCompletePluginLifecycle:
 
         assert result == 0, "Plugin info should succeed"
 
-        # Step 3: Update plugin
+    def _test_plugin_update_step(self):
+        """Test plugin update step."""
         update_args = Namespace(
             repo="test/repo",
             version="v1.1.0",
@@ -215,7 +216,8 @@ class TestCompletePluginLifecycle:
 
         assert result == 0, "Plugin update should succeed"
 
-        # Step 4: Remove plugin
+    def _test_plugin_remove_step(self):
+        """Test plugin removal step."""
         remove_args = Namespace(
             plugin="test-plugin", repo="test/repo", dry_run=False, keep_files=False, force=True
         )
@@ -234,10 +236,41 @@ class TestCompletePluginLifecycle:
             mock_instance.transaction.return_value.__exit__ = Mock(return_value=None)
             mock_config.return_value = mock_instance
 
-            with patch("shutil.rmtree") as mock_rmtree:
+            with patch("shutil.rmtree"):
                 result = self.cli.handle_plugin_remove(remove_args)
 
         assert result == 0, "Plugin remove should succeed"
+
+    @patch("pacc.plugins.GitRepository")
+    @patch("pacc.plugins.PluginDiscovery")
+    @patch("pacc.plugins.RepositoryManager")
+    @patch("pacc.plugins.PluginConfigManager")
+    @patch("pacc.plugins.PluginSelector")
+    def test_complete_plugin_lifecycle_workflow(
+        self,
+        mock_selector,
+        mock_plugin_config,
+        mock_repo_manager,
+        mock_discovery,
+        mock_git_repo,
+        mock_home,
+    ):
+        """Test complete plugin lifecycle: install → info → update → sync → remove."""
+        # Set up all mocks
+        mock_plugin_details, mock_config_instance = self._setup_lifecycle_mocks(
+            mock_selector,
+            mock_plugin_config,
+            mock_repo_manager,
+            mock_discovery,
+            mock_git_repo,
+            mock_home,
+        )
+
+        # Execute lifecycle steps
+        self._test_plugin_install_step(mock_config_instance)
+        self._test_plugin_info_step(mock_config_instance)
+        self._test_plugin_update_step()
+        self._test_plugin_remove_step()
 
         # Verify complete lifecycle executed without errors
         print("✓ Complete plugin lifecycle test passed")

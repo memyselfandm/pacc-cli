@@ -6,16 +6,16 @@ from .strategies import AutoRecoveryStrategy, InteractiveRecoveryStrategy, Recov
 from .suggestions import FixSuggestion, RecoveryAction, SuggestionEngine
 
 __all__ = [
-    "RecoveryStrategy",
     "AutoRecoveryStrategy",
-    "InteractiveRecoveryStrategy",
-    "SuggestionEngine",
+    "DiagnosticEngine",
+    "ErrorAnalyzer",
+    "ExponentialBackoff",
     "FixSuggestion",
+    "InteractiveRecoveryStrategy",
     "RecoveryAction",
+    "RecoveryStrategy",
     "RetryManager",
     "RetryPolicy",
-    "ExponentialBackoff",
-    "DiagnosticEngine",
+    "SuggestionEngine",
     "SystemDiagnostics",
-    "ErrorAnalyzer",
 ]

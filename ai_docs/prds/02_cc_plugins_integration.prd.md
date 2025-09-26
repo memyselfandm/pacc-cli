@@ -266,7 +266,7 @@ class PluginConverter:
 
 3. **Repository Structure**: Plugins live in `~/.claude/plugins/repos/owner/repo/` with potential multiple plugins per repository.
 
-4. **Configuration Duality**: 
+4. **Configuration Duality**:
    - `config.json` tracks repositories (not individual plugins)
    - `settings.json` enables specific plugins from those repositories
    - PACC must manage both files correctly

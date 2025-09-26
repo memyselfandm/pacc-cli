@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, ClassVar, Dict, List, Union
 
 import yaml
 
@@ -17,7 +17,7 @@ class CommandsValidator(BaseValidator):
     COMMAND_NAME_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
     # Reserved command names that shouldn't be used
-    RESERVED_COMMAND_NAMES = {
+    RESERVED_COMMAND_NAMES: ClassVar[set[str]] = {
         "help",
         "exit",
         "quit",
@@ -39,7 +39,7 @@ class CommandsValidator(BaseValidator):
 
     # Frontmatter is completely optional for slash commands
     # Valid frontmatter fields per Claude Code documentation
-    VALID_FRONTMATTER_FIELDS = {
+    VALID_FRONTMATTER_FIELDS: ClassVar[Dict[str, Union[type, tuple]]] = {
         "allowed-tools": (str, list),  # Can be string or list
         "argument-hint": str,
         "description": str,
@@ -47,7 +47,7 @@ class CommandsValidator(BaseValidator):
     }
 
     # Valid parameter types for command parameters
-    VALID_PARAMETER_TYPES = {
+    VALID_PARAMETER_TYPES: ClassVar[set[str]] = {
         "string",
         "number",
         "integer",
@@ -166,7 +166,10 @@ class CommandsValidator(BaseValidator):
             result.add_error(
                 "INVALID_FILENAME_FORMAT",
                 f"Command filename '{filename}' contains invalid characters",
-                suggestion="Use only alphanumeric characters, hyphens, and underscores, starting with a letter",
+                suggestion=(
+                    "Use only alphanumeric characters, hyphens, and underscores, "
+                    "starting with a letter"
+                ),
             )
 
         # Check for reserved names
@@ -273,20 +276,22 @@ class CommandsValidator(BaseValidator):
 
         # Look for command definition patterns
         for line in lines:
-            line = line.strip()
-            if line.startswith("#"):
+            stripped_line = line.strip()
+            if stripped_line.startswith("#"):
                 # Potential command name from header
-                header_text = line.lstrip("#").strip()
+                header_text = stripped_line.lstrip("#").strip()
                 if self._command_syntax_pattern.match(header_text):
                     command_name = header_text
                 elif not command_name and header_text:
                     command_name = header_text
-            elif line.startswith("/") and self._command_syntax_pattern.match(line):
+            elif stripped_line.startswith("/") and self._command_syntax_pattern.match(
+                stripped_line
+            ):
                 # Direct command syntax
-                command_name = line.split()[0]
-            elif not description and len(line) > 20 and not line.startswith("#"):
+                command_name = stripped_line.split()[0]
+            elif not description and len(stripped_line) > 20 and not stripped_line.startswith("#"):
                 # Potential description
-                description = line
+                description = stripped_line
 
         # Validate extracted information
         if command_name:
@@ -306,6 +311,60 @@ class CommandsValidator(BaseValidator):
             "content_length": len(content.strip()),
         }
 
+    def _validate_unknown_frontmatter_fields(
+        self, frontmatter: Dict[str, Any], result: ValidationResult
+    ) -> None:
+        """Check for unknown fields in frontmatter."""
+        for field in frontmatter:
+            if field not in self.VALID_FRONTMATTER_FIELDS:
+                # Map common misunderstandings
+                if field == "name":
+                    result.add_warning(
+                        "INVALID_FRONTMATTER_FIELD",
+                        f"Field '{field}' is not valid in slash command frontmatter",
+                        suggestion=(
+                            "Command name is derived from the filename, not frontmatter. "
+                            "Remove this field."
+                        ),
+                    )
+                else:
+                    result.add_warning(
+                        "UNKNOWN_FRONTMATTER_FIELD",
+                        f"Unknown field '{field}' in frontmatter",
+                        suggestion=(
+                            f"Valid fields are: {', '.join(self.VALID_FRONTMATTER_FIELDS.keys())}"
+                        ),
+                    )
+
+    def _validate_frontmatter_field_types(
+        self, frontmatter: Dict[str, Any], result: ValidationResult
+    ) -> None:
+        """Validate field types for known fields."""
+        for field, expected_types in self.VALID_FRONTMATTER_FIELDS.items():
+            if field in frontmatter:
+                value = frontmatter[field]
+                # Handle fields that can have multiple types
+                if isinstance(expected_types, tuple):
+                    if not any(isinstance(value, t) for t in expected_types):
+                        type_names = " or ".join(t.__name__ for t in expected_types)
+                        result.add_error(
+                            "INVALID_FIELD_TYPE",
+                            (
+                                f"Field '{field}' must be of type {type_names}, "
+                                f"got {type(value).__name__}"
+                            ),
+                            suggestion=f"Change '{field}' to the correct type",
+                        )
+                elif not isinstance(value, expected_types):
+                    result.add_error(
+                        "INVALID_FIELD_TYPE",
+                        (
+                            f"Field '{field}' must be of type {expected_types.__name__}, "
+                            f"got {type(value).__name__}"
+                        ),
+                        suggestion=f"Change '{field}' to the correct type",
+                    )
+
     def _validate_frontmatter_structure(
         self, frontmatter: Dict[str, Any], result: ValidationResult
     ) -> None:
@@ -317,41 +376,10 @@ class CommandsValidator(BaseValidator):
         - Command name comes from filename, not frontmatter
         """
         # Check for unknown fields and warn about them
-        for field in frontmatter:
-            if field not in self.VALID_FRONTMATTER_FIELDS:
-                # Map common misunderstandings
-                if field == "name":
-                    result.add_warning(
-                        "INVALID_FRONTMATTER_FIELD",
-                        f"Field '{field}' is not valid in slash command frontmatter",
-                        suggestion="Command name is derived from the filename, not frontmatter. Remove this field.",
-                    )
-                else:
-                    result.add_warning(
-                        "UNKNOWN_FRONTMATTER_FIELD",
-                        f"Unknown field '{field}' in frontmatter",
-                        suggestion=f"Valid fields are: {', '.join(self.VALID_FRONTMATTER_FIELDS.keys())}",
-                    )
+        self._validate_unknown_frontmatter_fields(frontmatter, result)
 
         # Validate field types for known fields
-        for field, expected_types in self.VALID_FRONTMATTER_FIELDS.items():
-            if field in frontmatter:
-                value = frontmatter[field]
-                # Handle fields that can have multiple types
-                if isinstance(expected_types, tuple):
-                    if not any(isinstance(value, t) for t in expected_types):
-                        type_names = " or ".join(t.__name__ for t in expected_types)
-                        result.add_error(
-                            "INVALID_FIELD_TYPE",
-                            f"Field '{field}' must be of type {type_names}, got {type(value).__name__}",
-                            suggestion=f"Change '{field}' to the correct type",
-                        )
-                elif not isinstance(value, expected_types):
-                    result.add_error(
-                        "INVALID_FIELD_TYPE",
-                        f"Field '{field}' must be of type {expected_types.__name__}, got {type(value).__name__}",
-                        suggestion=f"Change '{field}' to the correct type",
-                    )
+        self._validate_frontmatter_field_types(frontmatter, result)
 
         # Validate specific field values
         if "description" in frontmatter:

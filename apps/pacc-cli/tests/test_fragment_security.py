@@ -179,7 +179,7 @@ class TestFragmentSecurityPrevention:
                 storage_manager = FragmentStorageManager()
 
                 # Try to remove via symlink - should fail or only remove link
-                success = storage_manager.remove_fragment("evil_link")
+                storage_manager.remove_fragment("evil_link")
 
                 # Original file should still exist
                 assert self.outside_file.exists(), "Original file should not be deleted via symlink"

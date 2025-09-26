@@ -45,7 +45,7 @@ class TestSlashCommandsIntegration:
 
         try:
             result = subprocess.run(
-                ["python", "-m", "pacc"] + args,
+                ["python", "-m", "pacc", *args],
                 cwd=cwd or os.getcwd(),
                 capture_output=True,
                 text=True,
@@ -101,21 +101,21 @@ class TestSlashCommandsIntegration:
 
     def test_install_command_json_flag(self):
         """Test that install command has JSON flag."""
-        returncode, stdout, stderr = self.run_pacc_cli(["install", "--help"])
+        returncode, stdout, _stderr = self.run_pacc_cli(["install", "--help"])
 
         assert returncode == 0
         assert "--json" in stdout, "Install command should support --json flag"
 
     def test_remove_command_json_flag(self):
         """Test that remove command has JSON flag."""
-        returncode, stdout, stderr = self.run_pacc_cli(["remove", "--help"])
+        returncode, stdout, _stderr = self.run_pacc_cli(["remove", "--help"])
 
         assert returncode == 0
         assert "--json" in stdout, "Remove command should support --json flag"
 
     def test_info_command_json_flag(self):
         """Test that info command has JSON flag."""
-        returncode, stdout, stderr = self.run_pacc_cli(["info", "--help"])
+        returncode, stdout, _stderr = self.run_pacc_cli(["info", "--help"])
 
         assert returncode == 0
         assert "--json" in stdout, "Info command should support --json flag"
@@ -256,7 +256,7 @@ class TestSlashCommandsIntegration:
     @pytest.mark.parametrize("command", ["install", "list", "info", "remove"])
     def test_cli_command_json_support(self, command):
         """Parametrized test for JSON support in CLI commands."""
-        returncode, stdout, stderr = self.run_pacc_cli([command, "--help"])
+        returncode, stdout, _stderr = self.run_pacc_cli([command, "--help"])
 
         assert returncode == 0, f"{command} --help should work"
 
@@ -279,7 +279,7 @@ class TestSlashCommandWorkflows:
 
         try:
             result = subprocess.run(
-                ["python", "-m", "pacc"] + args,
+                ["python", "-m", "pacc", *args],
                 cwd=cwd or os.getcwd(),
                 capture_output=True,
                 text=True,
@@ -294,7 +294,7 @@ class TestSlashCommandWorkflows:
     def test_list_and_parse_workflow(self):
         """Test workflow of listing extensions and parsing JSON results."""
         # This simulates what a slash command would do
-        returncode, stdout, stderr = self.run_pacc_cli(["list", "--format", "json"])
+        returncode, stdout, _stderr = self.run_pacc_cli(["list", "--format", "json"])
 
         assert returncode == 0
 

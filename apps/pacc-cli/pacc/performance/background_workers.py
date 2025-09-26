@@ -528,8 +528,8 @@ class WorkerPool:
             logger.debug(f"Submitted task {task_id} to pool {self.pool_name}")
             return task_id
 
-        except queue.Full:
-            raise PACCError(f"Worker pool {self.pool_name} queue is full")
+        except queue.Full as err:
+            raise PACCError(f"Worker pool {self.pool_name} queue is full") from err
 
     def get_result(self, task_id: str, timeout: Optional[float] = None) -> Optional[TaskResult]:
         """Get result for a specific task.

@@ -544,7 +544,7 @@ Legacy command content.
 
             except Exception as e:
                 # Should not break on legacy configurations
-                assert False, f"Legacy config caused error: {e}"
+                raise AssertionError(f"Legacy config caused error: {e}")
 
     def test_migration_from_legacy_to_folder_structure(self):
         """Test migration path from legacy to new folder structure."""
@@ -552,12 +552,6 @@ Legacy command content.
             temp_path = Path(temp_dir)
 
             # Create legacy setup
-            legacy_extensions = {
-                "hooks": [{"name": "old-hook", "path": "./old-hook.json", "version": "1.0.0"}],
-                "commands": [
-                    {"name": "old-command", "path": "./old-command.md", "version": "1.0.0"}
-                ],
-            }
 
             # Create new pacc.json with folder structure features
             new_config = {
@@ -672,7 +666,7 @@ Modern command.
                 assert legacy_config_loaded is not None or modern_config_loaded is not None
 
             except Exception as e:
-                assert False, f"Mixed configuration caused conflict: {e}"
+                raise AssertionError(f"Mixed configuration caused conflict: {e}")
 
 
 class TestFolderStructureCrossPlatform:
@@ -797,7 +791,7 @@ Unix-style command.
 
             extensions_config = {"hooks": []}
 
-            for filename, ext_type in test_files:
+            for filename, _ext_type in test_files:
                 file_path = hooks_dir / filename
                 file_path.write_text(
                     json.dumps(

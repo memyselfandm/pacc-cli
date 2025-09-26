@@ -146,7 +146,9 @@ class PACCCli:
         install_parser = subparsers.add_parser(
             "install",
             help="Install Claude Code extensions",
-            description="Install hooks, MCP servers, agents, or commands from local sources or URLs",
+            description=(
+                "Install hooks, MCP servers, agents, or commands from local sources or URLs"
+            ),
         )
 
         install_parser.add_argument(
@@ -462,19 +464,8 @@ class PACCCli:
 
         sync_parser.set_defaults(func=self.sync_command)
 
-    def _add_plugin_parser(self, subparsers) -> None:
-        """Add the plugin command parser."""
-        plugin_parser = subparsers.add_parser(
-            "plugin",
-            help="Manage Claude Code plugins",
-            description="Install, list, enable, and disable Claude Code plugins from Git repositories",
-        )
-
-        plugin_subparsers = plugin_parser.add_subparsers(
-            dest="plugin_command", help="Plugin commands", metavar="<plugin_command>"
-        )
-
-        # Plugin install command
+    def _add_plugin_install_parser(self, plugin_subparsers) -> None:
+        """Add the plugin install command parser."""
         install_plugin_parser = plugin_subparsers.add_parser(
             "install",
             help="Install plugins from Git repository",
@@ -520,7 +511,8 @@ class PACCCli:
 
         install_plugin_parser.set_defaults(func=self.handle_plugin_install)
 
-        # Plugin list command
+    def _add_plugin_list_parser(self, plugin_subparsers) -> None:
+        """Add the plugin list command parser."""
         list_plugin_parser = plugin_subparsers.add_parser(
             "list",
             aliases=["ls"],
@@ -553,21 +545,17 @@ class PACCCli:
 
         list_plugin_parser.set_defaults(func=self.handle_plugin_list)
 
+    def _add_plugin_enable_disable_parsers(self, plugin_subparsers) -> None:
+        """Add the plugin enable and disable command parsers."""
         # Plugin enable command
         enable_plugin_parser = plugin_subparsers.add_parser(
             "enable",
             help="Enable a specific plugin",
             description="Enable a plugin by adding it to enabledPlugins in settings.json",
         )
-
         enable_plugin_parser.add_argument(
             "plugin", help="Plugin to enable (format: repo/plugin or just plugin name)"
         )
-
-        enable_plugin_parser.add_argument(
-            "--repo", help="Repository containing the plugin (owner/repo format)"
-        )
-
         enable_plugin_parser.set_defaults(func=self.handle_plugin_enable)
 
         # Plugin disable command
@@ -576,370 +564,172 @@ class PACCCli:
             help="Disable a specific plugin",
             description="Disable a plugin by removing it from enabledPlugins in settings.json",
         )
-
         disable_plugin_parser.add_argument(
             "plugin", help="Plugin to disable (format: repo/plugin or just plugin name)"
         )
-
-        disable_plugin_parser.add_argument(
-            "--repo", help="Repository containing the plugin (owner/repo format)"
-        )
-
         disable_plugin_parser.set_defaults(func=self.handle_plugin_disable)
 
-        # Plugin update command
+    def _add_plugin_update_parser(self, plugin_subparsers) -> None:
+        """Add the plugin update command parser."""
         update_plugin_parser = plugin_subparsers.add_parser(
             "update",
             help="Update plugins from Git repositories",
             description="Update plugins by pulling latest changes from Git repositories",
         )
-
         update_plugin_parser.add_argument(
             "plugin",
             nargs="?",
-            help="Specific plugin to update (format: owner/repo or repo/plugin). If not specified, updates all plugins.",
+            help=(
+                "Specific plugin to update (format: owner/repo or repo/plugin). "
+                "If not specified, updates all plugins."
+            ),
         )
-
         update_plugin_parser.add_argument(
             "--dry-run",
             "-n",
             action="store_true",
             help="Show what would be updated without making changes",
         )
-
         update_plugin_parser.add_argument(
-            "--force",
-            "-f",
-            action="store_true",
-            help="Force update even if there are conflicts (performs git reset --hard)",
+            "--force", action="store_true", help="Force update even with local changes"
         )
-
-        update_plugin_parser.add_argument(
-            "--show-diff", action="store_true", help="Show diff of changes when updating"
-        )
-
         update_plugin_parser.set_defaults(func=self.handle_plugin_update)
 
+    def _add_plugin_management_parsers(self, plugin_subparsers) -> None:
+        """Add plugin management command parsers (sync, info, remove)."""
         # Plugin sync command
         sync_plugin_parser = plugin_subparsers.add_parser(
             "sync",
             help="Synchronize plugins from pacc.json configuration",
-            description="Sync team plugins by reading pacc.json configuration and installing/updating required plugins",
+            description=(
+                "Sync team plugins by reading pacc.json configuration and "
+                "installing/updating required plugins"
+            ),
         )
-
         sync_plugin_parser.add_argument(
             "--project-dir",
-            type=Path,
-            default=Path.cwd(),
-            help="Project directory containing pacc.json (default: current directory)",
+            help="Directory containing pacc.json (defaults to current directory)",
         )
-
-        sync_plugin_parser.add_argument(
-            "--environment", "-e", default="default", help="Environment to sync (default: default)"
-        )
-
         sync_plugin_parser.add_argument(
             "--dry-run",
             "-n",
             action="store_true",
             help="Show what would be synced without making changes",
         )
-
-        sync_plugin_parser.add_argument(
-            "--force", "-f", action="store_true", help="Force sync even if there are conflicts"
-        )
-
-        sync_plugin_parser.add_argument(
-            "--required-only",
-            action="store_true",
-            help="Only install required plugins, skip optional ones",
-        )
-
-        sync_plugin_parser.add_argument(
-            "--optional-only",
-            action="store_true",
-            help="Only install optional plugins, skip required ones",
-        )
-
         sync_plugin_parser.set_defaults(func=self.handle_plugin_sync)
 
         # Plugin info command
         info_plugin_parser = plugin_subparsers.add_parser(
             "info",
-            help="Show detailed plugin information",
-            description="Display detailed metadata, components, and status of a plugin",
+            help="Show detailed information about a plugin",
+            description="Display comprehensive information about an installed plugin",
         )
-
         info_plugin_parser.add_argument(
             "plugin", help="Plugin to show info for (format: repo/plugin or just plugin name)"
         )
-
-        info_plugin_parser.add_argument(
-            "--repo", help="Repository containing the plugin (owner/repo format)"
-        )
-
-        info_plugin_parser.add_argument(
-            "--format", choices=["table", "json"], default="table", help="Output format"
-        )
-
         info_plugin_parser.set_defaults(func=self.handle_plugin_info)
 
         # Plugin remove command
         remove_plugin_parser = plugin_subparsers.add_parser(
             "remove",
-            aliases=["rm"],
-            help="Remove/uninstall a plugin",
-            description="Remove plugin from enabled plugins and optionally delete repository files",
+            aliases=["rm", "uninstall"],
+            help="Remove installed plugins",
+            description="Remove plugins and their repositories",
         )
-
         remove_plugin_parser.add_argument(
-            "plugin", help="Plugin to remove (format: repo/plugin or just plugin name)"
+            "plugin", help="Plugin to remove (format: repo/plugin or repo)"
         )
-
         remove_plugin_parser.add_argument(
-            "--repo", help="Repository containing the plugin (owner/repo format)"
+            "--keep-repo", action="store_true", help="Remove plugin but keep repository"
         )
-
         remove_plugin_parser.add_argument(
-            "--force", "-f", action="store_true", help="Skip confirmation prompts"
+            "--confirm", action="store_true", help="Skip confirmation prompt"
         )
-
-        remove_plugin_parser.add_argument(
-            "--keep-files",
-            action="store_true",
-            help="Remove from settings but keep repository files",
-        )
-
-        remove_plugin_parser.add_argument(
-            "--dry-run",
-            "-n",
-            action="store_true",
-            help="Show what would be removed without making changes",
-        )
-
         remove_plugin_parser.set_defaults(func=self.handle_plugin_remove)
 
+    def _add_plugin_advanced_parsers(self, plugin_subparsers) -> None:
+        """Add advanced plugin command parsers (convert, push, create, search, env)."""
         # Plugin convert command
         convert_plugin_parser = plugin_subparsers.add_parser(
             "convert",
             help="Convert extensions to plugin format",
-            description="Convert Claude Code extensions (hooks, agents, MCPs, commands) to plugin format",
+            description=(
+                "Convert Claude Code extensions (hooks, agents, MCPs, commands) to plugin format"
+            ),
         )
-
         convert_plugin_parser.add_argument(
             "extension", help="Path to extension file or directory to convert"
         )
-
-        convert_plugin_parser.add_argument(
-            "--name", help="Plugin name (auto-generated if not provided)"
-        )
-
-        convert_plugin_parser.add_argument(
-            "--version", default="1.0.0", help="Plugin version (default: 1.0.0)"
-        )
-
-        convert_plugin_parser.add_argument("--author", help="Plugin author information")
-
-        convert_plugin_parser.add_argument(
-            "--repo", help="Git repository URL for direct push after conversion"
-        )
-
-        convert_plugin_parser.add_argument(
-            "--local",
-            action="store_true",
-            default=True,
-            help="Local-only conversion (default behavior)",
-        )
-
-        convert_plugin_parser.add_argument(
-            "--batch", action="store_true", help="Convert all extensions in directory"
-        )
-
-        convert_plugin_parser.add_argument(
-            "--output", "-o", type=Path, help="Output directory for converted plugins"
-        )
-
-        convert_plugin_parser.add_argument(
-            "--overwrite", action="store_true", help="Overwrite existing plugin directories"
-        )
-
+        convert_plugin_parser.add_argument("--output", "-o", help="Output directory for plugin")
         convert_plugin_parser.set_defaults(func=self.handle_plugin_convert)
 
         # Plugin push command
         push_plugin_parser = plugin_subparsers.add_parser(
             "push",
             help="Push local plugin to Git repository",
-            description="Push a local plugin directory to a Git repository",
+            description="Create or update Git repository with local plugin",
         )
-
-        push_plugin_parser.add_argument("plugin", help="Path to local plugin directory")
-
-        push_plugin_parser.add_argument(
-            "repo", help="Git repository URL (e.g., https://github.com/owner/repo)"
-        )
-
-        push_plugin_parser.add_argument(
-            "--private", action="store_true", help="Repository is private (affects auth handling)"
-        )
-
-        push_plugin_parser.add_argument(
-            "--auth",
-            choices=["https", "ssh"],
-            default="https",
-            help="Authentication method (default: https)",
-        )
-
+        push_plugin_parser.add_argument("plugin", help="Plugin directory to push")
+        push_plugin_parser.add_argument("repo_url", help="Git repository URL")
         push_plugin_parser.set_defaults(func=self.handle_plugin_push)
-
-        # Plugin search command
-        search_plugin_parser = plugin_subparsers.add_parser(
-            "search",
-            help="Search for available plugins",
-            description="Search community plugins and locally installed plugins",
-        )
-
-        search_plugin_parser.add_argument(
-            "query", nargs="?", help="Search query (optional - shows all plugins if omitted)"
-        )
-
-        search_plugin_parser.add_argument(
-            "--type",
-            "-t",
-            choices=["all", "command", "agent", "hook", "mcp"],
-            default="all",
-            help="Filter by plugin type (default: all)",
-        )
-
-        search_plugin_parser.add_argument(
-            "--sort",
-            "-s",
-            choices=["relevance", "popularity", "date", "name"],
-            default="relevance",
-            help="Sort results by criteria (default: relevance)",
-        )
-
-        search_plugin_parser.add_argument(
-            "--installed-only", action="store_true", help="Only show locally installed plugins"
-        )
-
-        search_plugin_parser.add_argument(
-            "--exclude-installed",
-            action="store_true",
-            help="Exclude locally installed plugins from results",
-        )
-
-        search_plugin_parser.add_argument(
-            "--recommendations",
-            action="store_true",
-            help="Show recommendations based on current project",
-        )
-
-        search_plugin_parser.add_argument(
-            "--limit",
-            "-l",
-            type=int,
-            default=20,
-            help="Maximum number of results to show (default: 20)",
-        )
-
-        search_plugin_parser.set_defaults(func=self.handle_plugin_search)
 
         # Plugin create command
         create_plugin_parser = plugin_subparsers.add_parser(
             "create",
-            help="Create new Claude Code plugin",
-            description="Interactive wizard for creating new Claude Code plugins with templates",
+            help="Create a new plugin interactively",
+            description="Interactive wizard to create new plugin structure",
         )
-
-        create_plugin_parser.add_argument(
-            "name", nargs="?", help="Plugin name (will prompt if not provided)"
-        )
-
-        create_plugin_parser.add_argument(
-            "--type",
-            "-t",
-            choices=["hooks", "agents", "commands", "mcp"],
-            help="Plugin type (will prompt if not provided)",
-        )
-
-        create_plugin_parser.add_argument(
-            "--output-dir",
-            "-o",
-            type=str,
-            default=".",
-            help="Output directory for the plugin (default: current directory)",
-        )
-
-        create_plugin_parser.add_argument(
-            "--mode",
-            "-m",
-            choices=["guided", "quick"],
-            default="guided",
-            help="Creation mode: guided (full wizard) or quick (minimal prompts) (default: guided)",
-        )
-
-        create_plugin_parser.add_argument(
-            "--init-git",
-            action="store_true",
-            help="Initialize Git repository (will prompt in guided mode if not specified)",
-        )
-
-        create_plugin_parser.add_argument(
-            "--no-git", action="store_true", help="Skip Git initialization"
-        )
-
+        create_plugin_parser.add_argument("--name", help="Plugin name")
+        create_plugin_parser.add_argument("--type", choices=["hooks", "agents", "mcps", "commands"])
         create_plugin_parser.set_defaults(func=self.handle_plugin_create)
 
-        # Plugin environment commands
+        # Plugin search command
+        search_plugin_parser = plugin_subparsers.add_parser(
+            "search",
+            help="Search for plugins in community repositories",
+            description="Discover and search for Claude Code plugins",
+        )
+        search_plugin_parser.add_argument("query", nargs="?", help="Search query")
+        search_plugin_parser.add_argument("--type", choices=["hooks", "agents", "mcps", "commands"])
+        search_plugin_parser.add_argument("--limit", type=int, default=20)
+        search_plugin_parser.set_defaults(func=self.handle_plugin_search)
+
+        # Plugin env command
         env_plugin_parser = plugin_subparsers.add_parser(
             "env",
-            help="Manage Claude Code plugin environment",
-            description="Configure environment variables for Claude Code plugin support",
+            help="Manage plugin environment",
+            description="Setup and manage plugin environment configuration",
+        )
+        env_subparsers = env_plugin_parser.add_subparsers(dest="env_command")
+
+        env_subparsers.add_parser("setup", help="Setup plugin environment")
+        env_subparsers.add_parser("status", help="Check environment status")
+        env_subparsers.add_parser("verify", help="Verify environment")
+        env_subparsers.add_parser("reset", help="Reset environment")
+
+        env_plugin_parser.set_defaults(func=self.handle_plugin_env)
+
+    def _add_plugin_parser(self, subparsers) -> None:
+        """Add the plugin command parser."""
+        plugin_parser = subparsers.add_parser(
+            "plugin",
+            help="Manage Claude Code plugins",
+            description=(
+                "Install, list, enable, and disable Claude Code plugins from Git repositories"
+            ),
         )
 
-        env_subparsers = env_plugin_parser.add_subparsers(
-            dest="env_command", help="Environment commands", metavar="<env_command>"
+        plugin_subparsers = plugin_parser.add_subparsers(
+            dest="plugin_command", help="Plugin commands", metavar="<plugin_command>"
         )
 
-        # Environment setup command
-        setup_env_parser = env_subparsers.add_parser(
-            "setup",
-            help="Configure environment for plugins",
-            description="Automatically configure ENABLE_PLUGINS environment variable",
-        )
-        setup_env_parser.add_argument(
-            "--force", action="store_true", help="Force setup even if already configured"
-        )
-        setup_env_parser.set_defaults(func=self.handle_plugin_env_setup)
-
-        # Environment status command
-        status_env_parser = env_subparsers.add_parser(
-            "status",
-            help="Show environment status",
-            description="Display current environment configuration status",
-        )
-        status_env_parser.set_defaults(func=self.handle_plugin_env_status)
-
-        # Environment verify command
-        verify_env_parser = env_subparsers.add_parser(
-            "verify",
-            help="Verify environment configuration",
-            description="Test if environment is properly configured for plugins",
-        )
-        verify_env_parser.set_defaults(func=self.handle_plugin_env_verify)
-
-        # Environment reset command
-        reset_env_parser = env_subparsers.add_parser(
-            "reset",
-            help="Reset environment configuration",
-            description="Remove PACC environment modifications",
-        )
-        reset_env_parser.add_argument(
-            "--confirm", action="store_true", help="Skip confirmation prompt"
-        )
-        reset_env_parser.set_defaults(func=self.handle_plugin_env_reset)
-
-        env_plugin_parser.set_defaults(func=self._plugin_env_help)
+        # Add all plugin command parsers via helper methods
+        self._add_plugin_install_parser(plugin_subparsers)
+        self._add_plugin_list_parser(plugin_subparsers)
+        self._add_plugin_enable_disable_parsers(plugin_subparsers)
+        self._add_plugin_update_parser(plugin_subparsers)
+        self._add_plugin_management_parsers(plugin_subparsers)
+        self._add_plugin_advanced_parsers(plugin_subparsers)
 
         plugin_parser.set_defaults(func=self._plugin_help)
 
@@ -1631,7 +1421,7 @@ class PACCCli:
 
             if validation_errors:
                 self._print_error("Validation failed for some extensions:")
-                for ext, result in validation_errors:
+                for _ext, result in validation_errors:
                     formatted = ValidationResultFormatter.format_result(result)
                     self._print_error(formatted)
 
@@ -1790,7 +1580,7 @@ class PACCCli:
 
         if validation_errors:
             self._print_error("Validation failed for some extensions:")
-            for ext, result in validation_errors:
+            for _ext, result in validation_errors:
                 formatted = ValidationResultFormatter.format_result(result)
                 self._print_error(formatted)
 
@@ -1816,7 +1606,10 @@ class PACCCli:
         if self._json_output:
             result = CommandResult(
                 success=True,
-                message=f"{'Would install' if args.dry_run else 'Successfully installed'} {success_count} extension(s)",
+                message=(
+                    f"{'Would install' if args.dry_run else 'Successfully installed'} "
+                    f"{success_count} extension(s)"
+                ),
                 data={
                     "installed_count": success_count,
                     "dry_run": args.dry_run,
@@ -1857,7 +1650,7 @@ class PACCCli:
                 # Flatten it into a single list for CLI processing
                 validation_dict = validate_extension_directory(source_path, args.type)
                 results = []
-                for extension_type, validation_results in validation_dict.items():
+                for _extension_type, validation_results in validation_dict.items():
                     results.extend(validation_results)
 
             if not results:
@@ -2477,7 +2270,7 @@ class PACCCli:
 
         # Flatten results
         all_files = []
-        for extension_type, validation_results in validation_dict.items():
+        for _extension_type, validation_results in validation_dict.items():
             for result in validation_results:
                 all_files.append(result)
 
@@ -2621,9 +2414,9 @@ class PACCCli:
         ext_type = extension_info.get("type", "Unknown")
 
         # Header section
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"📦 {name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Type:        {ext_type}")
         print(f"Version:     {version}")
         print(f"Description: {description}")
@@ -2859,7 +2652,7 @@ class PACCCli:
         if extension.extension_type in ["hooks", "mcps"]:
             # Update configuration using the JSON merger
             config_manager = ClaudeConfigManager()
-            config_path = base_dir / "settings.json"
+            base_dir / "settings.json"
 
             # Load extension metadata for configuration
             extension_config = self._create_extension_config(extension, dest_path)
@@ -2967,7 +2760,7 @@ class PACCCli:
                 if 0 <= idx < len(matching_extensions):
                     return matching_extensions[idx]
                 else:
-                    print(f"Invalid selection. Please choose 0-{len(matching_extensions)-1}")
+                    print(f"Invalid selection. Please choose 0-{len(matching_extensions) - 1}")
             except (ValueError, KeyboardInterrupt):
                 print("Invalid input. Please enter a number or 'cancel'")
                 continue
@@ -3555,7 +3348,7 @@ class PACCCli:
             # Initialize managers
             plugins_dir = Path.home() / ".claude" / "plugins"
             plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
-            repo_manager = PluginRepositoryManager(plugins_dir=plugins_dir)
+            PluginRepositoryManager(plugins_dir=plugins_dir)
             discovery = PluginDiscovery()
 
             # Load configuration
@@ -3685,7 +3478,7 @@ class PACCCli:
             # Initialize managers
             plugins_dir = Path.home() / ".claude" / "plugins"
             plugin_config = PluginConfigManager(plugins_dir=plugins_dir)
-            repo_manager = PluginRepositoryManager(plugins_dir=plugins_dir)
+            PluginRepositoryManager(plugins_dir=plugins_dir)
 
             # Load configuration
             config = plugin_config._load_plugin_config()
@@ -5470,7 +5263,7 @@ class PACCCli:
             from pacc.plugins.discovery import PluginScanner
 
             # Initialize collection manager and scanner
-            collection_manager = FragmentCollectionManager()
+            FragmentCollectionManager()
             scanner = PluginScanner()
 
             # Discover collections
@@ -5773,14 +5566,14 @@ class PACCCli:
 
                 if args.format == "json":
                     collection_data = []
-                    for name, metadata in collections:
+                    for name, _metadata in collections:
                         status = collection_manager.get_collection_status(name)
                         collection_data.append(status)
                     print(json.dumps(collection_data, indent=2))
 
                 elif args.format == "yaml":
                     collection_data = []
-                    for name, metadata in collections:
+                    for name, _metadata in collections:
                         status = collection_manager.get_collection_status(name)
                         collection_data.append(status)
                     print(yaml.dump(collection_data, default_flow_style=False))
@@ -5793,7 +5586,7 @@ class PACCCli:
                     )
                     print("=" * 70)
 
-                    for name, metadata in collections:
+                    for name, _metadata in collections:
                         status = collection_manager.get_collection_status(name)
                         version = status["version"] or "unknown"
                         files_count = status["files_count"]

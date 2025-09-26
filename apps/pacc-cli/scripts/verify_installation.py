@@ -131,11 +131,11 @@ def verify_entry_point():
             print("✓ Console script 'pacc' is available in PATH")
             return True
         else:
-            print("ℹ Console script 'pacc' not found (this is OK if not installed via pip)")
+            print("i Console script 'pacc' not found (this is OK if not installed via pip)")
             # This is not a failure - just informational
             return True
     except (FileNotFoundError, OSError):
-        print("ℹ Console script 'pacc' not found in PATH (expected if not installed)")
+        print("i Console script 'pacc' not found in PATH (expected if not installed)")
         # This is not a failure for development environments
         return True
 

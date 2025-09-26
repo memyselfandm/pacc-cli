@@ -21,7 +21,7 @@ This command launches an interactive wizard to convert your existing Claude Code
 
 This will:
 1. Scan for existing extensions in your .claude directory
-2. Let you select which ones to convert  
+2. Let you select which ones to convert
 3. Help you choose plugin name and metadata
 4. Convert extensions to plugin format
 5. Optionally push to Git repository for sharing

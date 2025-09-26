@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO
 
-from .exceptions import PACCError
+from .exceptions import FileSystemError, PACCError, ValidationError
 
 
 @dataclass
@@ -206,8 +206,6 @@ class ErrorReporter:
             line_number: Line number where validation failed
             validation_type: Type of validation that failed
         """
-        from .exceptions import ValidationError
-
         error = ValidationError(
             message=message,
             file_path=file_path,
@@ -229,8 +227,6 @@ class ErrorReporter:
             file_path: File path that caused the error
             operation: Operation that failed
         """
-        from .exceptions import FileSystemError
-
         error = FileSystemError(message=message, file_path=file_path, operation=operation)
 
         context = ErrorContext(operation=operation or "filesystem", file_path=file_path)

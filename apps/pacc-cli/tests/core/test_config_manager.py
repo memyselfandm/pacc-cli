@@ -210,7 +210,7 @@ class TestClaudeConfigManager:
     def test_save_config_creates_backup(self):
         """Test that saving creates backup of existing file."""
         config_path = Path(self.temp_dir) / "config.json"
-        backup_path = config_path.with_suffix(".json.backup")
+        config_path.with_suffix(".json.backup")
 
         # Create initial config
         initial_config = {"hooks": []}
@@ -304,7 +304,7 @@ class TestClaudeConfigManager:
 
         # Mock getting config path to use our temp directory
         original_method = self.config_manager.get_config_path
-        self.config_manager.get_config_path = lambda user_level: config_path
+        self.config_manager.get_config_path = lambda _: config_path
 
         try:
             hook_config = {

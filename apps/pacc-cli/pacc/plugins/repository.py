@@ -611,7 +611,7 @@ class PluginRepositoryManager:
                             plugins.append(str(relative_path))
 
             # Remove duplicates and sort
-            plugins = sorted(list(set(plugins)))
+            plugins = sorted(set(plugins))
 
             logger.debug(f"Discovered {len(plugins)} plugins in {repo_path}: {plugins}")
             return plugins

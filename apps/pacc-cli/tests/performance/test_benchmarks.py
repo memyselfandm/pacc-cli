@@ -430,7 +430,7 @@ class TestSecurityPerformance:
 
         print(f"Scanned {len(large_content)} chars in {profiler.duration:.3f}s")
         print(f"Found {len(issues)} issues")
-        print(f"Throughput: {throughput/1024:.0f} KB/second")
+        print(f"Throughput: {throughput / 1024:.0f} KB/second")
 
     def test_security_auditor_performance(self, large_test_dataset):
         """Test SecurityAuditor performance with many files."""
@@ -547,7 +547,7 @@ class TestMemoryPerformance:
 
         for file_path in scanner.scan_directory(large_test_dataset, recursive=True):
             # Process individual file
-            is_valid = validator.is_valid_path(file_path)
+            validator.is_valid_path(file_path)
             processed_count += 1
 
             # Check memory every batch
@@ -593,7 +593,7 @@ class TestScalabilityBenchmarks:
 
             # Time the validation operation
             start_time = time.perf_counter()
-            valid_count = sum(1 for f in files if validator.is_valid_path(f))
+            sum(1 for f in files if validator.is_valid_path(f))
             validate_time = time.perf_counter() - start_time
 
             results.append(
@@ -640,7 +640,7 @@ class TestScalabilityBenchmarks:
 
             # Time the validation operation
             start_time = time.perf_counter()
-            is_valid = validator.is_valid_path(test_file)
+            validator.is_valid_path(test_file)
             validate_time = time.perf_counter() - start_time
 
             actual_size = test_file.stat().st_size
@@ -657,7 +657,7 @@ class TestScalabilityBenchmarks:
         # Analyze scaling behavior
         for result in results:
             print(
-                f"Size: {result['actual_size']/1024:.0f}KB, "
+                f"Size: {result['actual_size'] / 1024:.0f}KB, "
                 f"Time: {result['validate_time']:.3f}s, "
                 f"Throughput: {result['throughput_mbps']:.1f} MB/s"
             )

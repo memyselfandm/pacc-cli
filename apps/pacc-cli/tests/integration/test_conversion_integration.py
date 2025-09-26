@@ -16,7 +16,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from unittest.mock import Mock, patch
 
 from pacc.cli import PACCCli
@@ -60,7 +60,7 @@ class ConversionIntegrationTestCase(unittest.TestCase):
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def _create_test_hook(self, name: str, events: List[str] = None) -> Path:
+    def _create_test_hook(self, name: str, events: Optional[List[str]] = None) -> Path:
         """Create a test hook file."""
         if events is None:
             events = ["PreToolUse", "PostToolUse"]
@@ -82,7 +82,7 @@ class ConversionIntegrationTestCase(unittest.TestCase):
 
         return hook_file
 
-    def _create_test_agent(self, name: str, tools: List[str] = None) -> Path:
+    def _create_test_agent(self, name: str, tools: Optional[List[str]] = None) -> Path:
         """Create a test agent file."""
         if tools is None:
             tools = ["file_editor", "web_search"]
@@ -111,7 +111,7 @@ You are a specialized agent for {name} tasks.
 
         return agent_file
 
-    def _create_test_command(self, name: str, namespace: str = None) -> Path:
+    def _create_test_command(self, name: str, namespace: Optional[str] = None) -> Path:
         """Create a test command file."""
         commands_dir = self.claude_dir / "commands"
         if namespace:
@@ -139,7 +139,7 @@ Use this command to perform {name} operations.
 
         return command_file
 
-    def _create_test_mcp(self, name: str, command: str = None) -> Path:
+    def _create_test_mcp(self, name: str, command: Optional[str] = None) -> Path:
         """Create a test MCP server configuration."""
         if command is None:
             command = f"python -m {name}_mcp"
@@ -185,10 +185,10 @@ class TestEndToEndConversionWorkflow(ConversionIntegrationTestCase):
     def test_scan_convert_generate_workflow(self):
         """Test complete workflow: scan → convert → generate."""
         # Create test extensions
-        hook_file = self._create_test_hook("test_hook")
-        agent_file = self._create_test_agent("test_agent")
-        command_file = self._create_test_command("test_command")
-        mcp_file = self._create_test_mcp("test_mcp")
+        self._create_test_hook("test_hook")
+        self._create_test_agent("test_agent")
+        self._create_test_command("test_command")
+        self._create_test_mcp("test_mcp")
 
         # Step 1: Scan for extensions
         extensions = self.converter.scan_extensions(self.test_project_dir)
@@ -699,7 +699,7 @@ class TestCLIIntegration(ConversionIntegrationTestCase):
     def test_plugin_convert_command_integration(self):
         """Test plugin convert command through CLI interface."""
         # Create test extension
-        hook_file = self._create_test_hook("cli_integration_hook")
+        self._create_test_hook("cli_integration_hook")
 
         # Simulate CLI args (use batch mode since passing directory)
         from argparse import Namespace

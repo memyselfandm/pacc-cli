@@ -11,7 +11,7 @@ This command installs Claude Code plugins from a Git repository using PACC.
 
 ## Arguments
 - **repo_url**: Git repository URL (e.g., owner/repo or full https://github.com/owner/repo.git)
-- **--enable**: Automatically enable installed plugins  
+- **--enable**: Automatically enable installed plugins
 - **--all**: Install all plugins found in repository
 - **--type TYPE**: Install only plugins of specified type (commands, agents, hooks)
 - **--interactive**: Interactively select plugins to install

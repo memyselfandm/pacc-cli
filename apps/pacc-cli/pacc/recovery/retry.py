@@ -144,7 +144,7 @@ class FixedBackoff(BackoffStrategy):
         """
         self.fixed_delay = fixed_delay
 
-    def calculate_delay(self, attempt: int, base_delay: float) -> float:
+    def calculate_delay(self, _attempt: int, _base_delay: float) -> float:
         """Return fixed delay."""
         return self.fixed_delay
 
@@ -195,23 +195,19 @@ class RetryPolicy:
         if attempt >= self.max_attempts:
             return False
 
-        # Check retry condition
-        if self.retry_condition == RetryCondition.NEVER:
-            return False
+        # Define condition handlers
+        condition_handlers = {
+            RetryCondition.NEVER: lambda: False,
+            RetryCondition.ALWAYS: lambda: True,
+            RetryCondition.ON_FAILURE: lambda: error is not None,
+            RetryCondition.ON_SPECIFIC_ERRORS: lambda: (
+                error is not None
+                and any(isinstance(error, err_type) for err_type in self.retryable_errors)
+            ),
+        }
 
-        if self.retry_condition == RetryCondition.ALWAYS:
-            return True
-
-        if self.retry_condition == RetryCondition.ON_FAILURE:
-            return error is not None
-
-        if self.retry_condition == RetryCondition.ON_SPECIFIC_ERRORS:
-            if error is None:
-                return False
-
-            return any(isinstance(error, err_type) for err_type in self.retryable_errors)
-
-        return False
+        handler = condition_handlers.get(self.retry_condition)
+        return handler() if handler else False
 
     def get_delay(self, attempt: int) -> float:
         """Get delay for given attempt.

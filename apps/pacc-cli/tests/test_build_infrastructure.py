@@ -186,7 +186,7 @@ class TestBuildInfrastructure:
         )
 
         # Extract and check wheel metadata
-        wheel_file = list((build_env / "dist").glob("*.whl"))[0]
+        wheel_file = next(iter((build_env / "dist").glob("*.whl")))
         with zipfile.ZipFile(wheel_file, "r") as zip_ref:
             metadata_files = [f for f in zip_ref.namelist() if f.endswith("METADATA")]
             assert metadata_files
@@ -217,7 +217,7 @@ class TestBuildInfrastructure:
             check=False,
         )
 
-        wheel_file = list((build_env / "dist").glob("*.whl"))[0]
+        wheel_file = next(iter((build_env / "dist").glob("*.whl")))
 
         # Create virtual environment for testing
         venv_dir = tmp_path / "test_venv"
@@ -258,7 +258,7 @@ class TestBuildInfrastructure:
             check=False,
         )
 
-        wheel_file = list((build_env / "dist").glob("*.whl"))[0]
+        wheel_file = next(iter((build_env / "dist").glob("*.whl")))
 
         # Create virtual environment
         venv_dir = tmp_path / "test_venv"
@@ -301,7 +301,7 @@ class TestBuildInfrastructure:
         dist_dir = build_env / "dist"
 
         # Check sdist
-        sdist_file = list(dist_dir.glob("*.tar.gz"))[0]
+        sdist_file = next(iter(dist_dir.glob("*.tar.gz")))
         with tarfile.open(sdist_file, "r:gz") as tar:
             members = tar.getnames()
 
@@ -336,7 +336,7 @@ class TestBuildInfrastructure:
             check=False,
         )
 
-        wheel1 = list((build_env / "dist").glob("*.whl"))[0]
+        wheel1 = next(iter((build_env / "dist").glob("*.whl")))
         size1 = wheel1.stat().st_size
 
         # Clean and rebuild
@@ -347,7 +347,7 @@ class TestBuildInfrastructure:
             check=False,
         )
 
-        wheel2 = list((build_env / "dist").glob("*.whl"))[0]
+        wheel2 = next(iter((build_env / "dist").glob("*.whl")))
         size2 = wheel2.stat().st_size
 
         # Sizes should be very close (metadata might have timestamps)
@@ -375,7 +375,7 @@ class TestBuildInfrastructure:
         assert result.returncode == 0, f"Clean build failed: {result.stderr}"
 
         # Verify no __pycache__ in distributions
-        wheel_file = list((build_env / "dist").glob("*.whl"))[0]
+        wheel_file = next(iter((build_env / "dist").glob("*.whl")))
         with zipfile.ZipFile(wheel_file, "r") as zip_ref:
             assert not any("__pycache__" in f for f in zip_ref.namelist())
 
@@ -450,7 +450,7 @@ class TestBuildAutomation:
         makefile = project_root / "Makefile"
 
         if makefile.exists():
-            content = makefile.read_text()
+            makefile.read_text()
 
             # Check for build targets (we'll add these)
             expected_targets = [
@@ -461,6 +461,6 @@ class TestBuildAutomation:
                 "install-build-deps",
             ]
 
-            for target in expected_targets:
+            for _target in expected_targets:
                 # This will fail initially, driving implementation
                 pass  # We'll check after implementation

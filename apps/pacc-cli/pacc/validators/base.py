@@ -193,7 +193,9 @@ class BaseValidator(ABC):
             result.add_error(
                 "NO_EXTENSIONS_FOUND",
                 f"No {self.get_extension_type()} extensions found in directory",
-                suggestion=f"Check that the directory contains valid {self.get_extension_type()} files",
+                suggestion=(
+                    f"Check that the directory contains valid {self.get_extension_type()} files"
+                ),
             )
             return [result]
 
@@ -277,23 +279,23 @@ class BaseValidator(ABC):
     ) -> List[ValidationError]:
         """Validate that required fields are present in data."""
         errors = []
-        for field in required_fields:
-            if field not in data:
+        for field_name in required_fields:
+            if field_name not in data:
                 errors.append(
                     ValidationError(
                         code="MISSING_REQUIRED_FIELD",
-                        message=f"Missing required field: '{field}'",
+                        message=f"Missing required field: '{field_name}'",
                         file_path=file_path,
-                        suggestion=f"Add the '{field}' field to the configuration",
+                        suggestion=f"Add the '{field_name}' field to the configuration",
                     )
                 )
-            elif data[field] is None:
+            elif data[field_name] is None:
                 errors.append(
                     ValidationError(
                         code="NULL_REQUIRED_FIELD",
-                        message=f"Required field '{field}' cannot be null",
+                        message=f"Required field '{field_name}' cannot be null",
                         file_path=file_path,
-                        suggestion=f"Provide a value for the '{field}' field",
+                        suggestion=f"Provide a value for the '{field_name}' field",
                     )
                 )
         return errors
@@ -324,7 +326,10 @@ class BaseValidator(ABC):
         if not isinstance(value, expected_type):
             return ValidationError(
                 code="INVALID_FIELD_TYPE",
-                message=f"Field '{field}' must be of type {expected_type.__name__}, got {type(value).__name__}",
+                message=(
+                    f"Field '{field}' must be of type {expected_type.__name__}, "
+                    f"got {type(value).__name__}"
+                ),
                 file_path=file_path,
                 suggestion=f"Change '{field}' to a {expected_type.__name__} value",
             )

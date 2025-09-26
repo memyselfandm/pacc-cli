@@ -487,7 +487,7 @@ class BenchmarkRunner:
         self.results.append(result)
 
         logger.info(
-            f"Benchmark {name} completed: " f"{average_time:.6f}s avg, {ops_per_second:.1f} ops/sec"
+            f"Benchmark {name} completed: {average_time:.6f}s avg, {ops_per_second:.1f} ops/sec"
         )
 
         return result
@@ -527,7 +527,7 @@ class BenchmarkRunner:
         logger.info("Benchmark comparison results (fastest first):")
         for i, result in enumerate(results):
             logger.info(
-                f"  {i+1}. {result.name}: {result.average_time:.6f}s "
+                f"  {i + 1}. {result.name}: {result.average_time:.6f}s "
                 f"({result.ops_per_second:.1f} ops/sec)"
             )
 
@@ -571,7 +571,7 @@ class PerformanceOptimizer:
         optimizations.append("validation_cache")
 
         # Start background worker pool for file operations
-        file_pool = get_worker_pool("file_operations", num_workers=4)
+        get_worker_pool("file_operations", num_workers=4)
         optimizations.append("file_worker_pool")
 
         self._optimizations_applied.extend(optimizations)

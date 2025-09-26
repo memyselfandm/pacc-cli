@@ -5,9 +5,9 @@ from .formats import FormatDetector, JSONValidator, MarkdownValidator, YAMLValid
 
 __all__ = [
     "BaseValidator",
-    "ValidationResult",
-    "JSONValidator",
-    "YAMLValidator",
-    "MarkdownValidator",
     "FormatDetector",
+    "JSONValidator",
+    "MarkdownValidator",
+    "ValidationResult",
+    "YAMLValidator",
 ]

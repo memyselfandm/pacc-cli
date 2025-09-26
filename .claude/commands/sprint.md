@@ -48,7 +48,7 @@ INSTRUCTIONS:
 
 ### Step 2: Plan the Sprint
 1. Read the backlog file: identify the next phase/sprint of work, and the features and tasks in the sprint.
-2. Plan the team: based on the features, tasks, and parallelization guidance, plan the sub-agents who will execute the sprint. 
+2. Plan the team: based on the features, tasks, and parallelization guidance, plan the sub-agents who will execute the sprint.
     - Assign specializations, features, and tasks, acceptance criteria, and instruction to each subagent using the prompt template.
     - Assign each subagent an incremental number (used for their worklog file)
 3. Plan the execution: based on dependencies, assign the agents to an execution phase. You do not need to assign agents to every phase.

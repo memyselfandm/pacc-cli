@@ -193,7 +193,7 @@ class QATestRunner:
         if suite_name not in self.test_suites:
             raise ValueError(f"Unknown test suite: {suite_name}")
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Running {suite_name.replace('_', ' ').title()} Tests")
         print("=" * 60)
 
@@ -206,10 +206,10 @@ class QATestRunner:
             total_tests = 0
             passed_tests = 0
 
-            for category, test_results in results.get("tests", {}).items():
+            for _category, test_results in results.get("tests", {}).items():
                 if isinstance(test_results, dict) and "tests" in test_results:
                     tests = test_results["tests"]
-                    for test_name, test_result in tests.items():
+                    for _test_name, test_result in tests.items():
                         if isinstance(test_result, bool):
                             total_tests += 1
                             if test_result:
@@ -323,7 +323,7 @@ class QATestRunner:
         report.append("## Overall Summary")
         report.append(f"- **Total Test Suites**: {total_suites}")
         report.append(f"- **Passed Suites**: {passed_suites}")
-        report.append(f"- **Success Rate**: {passed_suites/total_suites*100:.1f}%")
+        report.append(f"- **Success Rate**: {passed_suites / total_suites * 100:.1f}%")
         report.append("")
 
         # Individual suite results
@@ -344,7 +344,7 @@ class QATestRunner:
                 report.append(
                     f"- Tests: {summary.get('passed_tests', 0)}/{summary.get('total_tests', 0)}"
                 )
-                report.append(f"- Pass Rate: {summary.get('pass_rate', 0)*100:.1f}%")
+                report.append(f"- Pass Rate: {summary.get('pass_rate', 0) * 100:.1f}%")
             elif "return_code" in results:
                 report.append(f"- Return Code: {results['return_code']}")
 

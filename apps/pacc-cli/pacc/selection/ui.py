@@ -124,19 +124,71 @@ class InteractiveSelector:
                         return [selected_file]
                     # If not confirmed, continue loop
                 else:
-                    print(
-                        f"{self._get_color('red')}Invalid selection. Please choose 1-{len(candidate_files)}.{self._get_color('reset')}"
-                    )
+                    red = self._get_color("red")
+                    reset = self._get_color("reset")
+                    print(f"{red}Invalid selection. Please choose 1-{len(candidate_files)}.{reset}")
 
             except ValueError:
-                print(
-                    f"{self._get_color('red')}Invalid input. Please enter a number or 'q'.{self._get_color('reset')}"
-                )
+                red = self._get_color("red")
+                reset = self._get_color("reset")
+                print(f"{red}Invalid input. Please enter a number or 'q'.{reset}")
             except KeyboardInterrupt:
                 print(
                     f"\\n{self._get_color('yellow')}Selection cancelled.{self._get_color('reset')}"
                 )
                 return []
+
+    def _display_selection_prompt(self, selected_indices: Set[int]) -> None:
+        """Display the selection prompt and current state."""
+        print(f"\\n{self._get_color('cyan')}Multi-file selection:{self._get_color('reset')}")
+        print("Enter file numbers separated by spaces (e.g., '1 3 5')")
+        print("Use 'all' to select all files, 'none' to clear selection")
+        print("Use 'done' to finish, 'q' to quit")
+
+        if selected_indices:
+            print(f"Currently selected: {sorted(i + 1 for i in selected_indices)}")
+
+    def _process_number_input(
+        self,
+        choice: str,
+        candidate_files: List[Path],
+        selected_indices: Set[int],
+    ) -> Set[int]:
+        """Process numeric input and return new indices to add."""
+        try:
+            numbers = [int(x) for x in choice.split()]
+            new_indices = set()
+
+            for num in numbers:
+                if 1 <= num <= len(candidate_files):
+                    new_indices.add(num - 1)
+                else:
+                    red = self._get_color("red")
+                    reset = self._get_color("reset")
+                    print(f"{red}Invalid file number: {num}{reset}")
+
+            return new_indices
+        except ValueError:
+            red = self._get_color("red")
+            reset = self._get_color("reset")
+            print(f"{red}Invalid input. Please enter space-separated numbers.{reset}")
+            return set()
+
+    def _apply_selection_limit(
+        self, selected_indices: Set[int], context: SelectionContext
+    ) -> Set[int]:
+        """Apply max selection limit and return updated indices."""
+        if len(selected_indices) > context.max_selections:
+            excess = len(selected_indices) - context.max_selections
+            limited_indices = set(sorted(selected_indices)[: context.max_selections])
+            yellow = self._get_color("yellow")
+            reset = self._get_color("reset")
+            print(
+                f"{yellow}Selection limited to {context.max_selections} files "
+                f"({excess} removed).{reset}"
+            )
+            return limited_indices
+        return selected_indices
 
     async def _select_multiple(
         self, candidate_files: List[Path], context: SelectionContext
@@ -146,16 +198,7 @@ class InteractiveSelector:
 
         while True:
             try:
-                print(
-                    f"\\n{self._get_color('cyan')}Multi-file selection:{self._get_color('reset')}"
-                )
-                print("Enter file numbers separated by spaces (e.g., '1 3 5')")
-                print("Use 'all' to select all files, 'none' to clear selection")
-                print("Use 'done' to finish, 'q' to quit")
-
-                if selected_indices:
-                    print(f"Currently selected: {sorted(i+1 for i in selected_indices)}")
-
+                self._display_selection_prompt(selected_indices)
                 choice = input("Selection: ").strip().lower()
 
                 if choice == "q":
@@ -166,69 +209,47 @@ class InteractiveSelector:
                         if await self._confirm_multiple_selection(selected_files):
                             return selected_files
                     else:
-                        print(
-                            f"{self._get_color('yellow')}No files selected. Use 'q' to quit or select files.{self._get_color('reset')}"
-                        )
+                        yellow = self._get_color("yellow")
+                        reset = self._get_color("reset")
+                        print(f"{yellow}No files selected. Use 'q' to quit or select files.{reset}")
                 elif choice == "all":
                     selected_indices = set(range(len(candidate_files)))
-                    print(
-                        f"{self._get_color('green')}All {len(candidate_files)} files selected.{self._get_color('reset')}"
-                    )
+                    green = self._get_color("green")
+                    reset = self._get_color("reset")
+                    print(f"{green}All {len(candidate_files)} files selected.{reset}")
                 elif choice == "none":
                     selected_indices.clear()
-                    print(
-                        f"{self._get_color('yellow')}Selection cleared.{self._get_color('reset')}"
-                    )
+                    yellow = self._get_color("yellow")
+                    reset = self._get_color("reset")
+                    print(f"{yellow}Selection cleared.{reset}")
                 else:
-                    # Parse file numbers
-                    try:
-                        numbers = [int(x) for x in choice.split()]
-                        new_indices = set()
+                    # Process numeric input
+                    new_indices = self._process_number_input(
+                        choice, candidate_files, selected_indices
+                    )
+                    if new_indices:
+                        selected_indices.update(new_indices)
+                        green = self._get_color("green")
+                        reset = self._get_color("reset")
+                        print(f"{green}Added {len(new_indices)} files to selection.{reset}")
 
-                        for num in numbers:
-                            if 1 <= num <= len(candidate_files):
-                                new_indices.add(num - 1)
-                            else:
-                                print(
-                                    f"{self._get_color('red')}Invalid file number: {num}{self._get_color('reset')}"
-                                )
-
-                        if new_indices:
-                            selected_indices.update(new_indices)
-                            print(
-                                f"{self._get_color('green')}Added {len(new_indices)} files to selection.{self._get_color('reset')}"
-                            )
-
-                        # Check max selections limit
-                        if len(selected_indices) > context.max_selections:
-                            excess = len(selected_indices) - context.max_selections
-                            # Remove excess (newest selections)
-                            selected_indices = set(
-                                sorted(selected_indices)[: context.max_selections]
-                            )
-                            print(
-                                f"{self._get_color('yellow')}Selection limited to {context.max_selections} files ({excess} removed).{self._get_color('reset')}"
-                            )
-
-                    except ValueError:
-                        print(
-                            f"{self._get_color('red')}Invalid input. Please enter numbers separated by spaces.{self._get_color('reset')}"
-                        )
+                        # Apply selection limit
+                        selected_indices = self._apply_selection_limit(selected_indices, context)
 
             except KeyboardInterrupt:
-                print(
-                    f"\\n{self._get_color('yellow')}Selection cancelled.{self._get_color('reset')}"
-                )
+                yellow = self._get_color("yellow")
+                reset = self._get_color("reset")
+                print(f"\\n{yellow}Selection cancelled.{reset}")
                 return []
 
     async def _confirm_multiple_selection(self, selected_files: List[Path]) -> bool:
         """Confirm multiple file selection."""
-        print(
-            f"\\n{self._get_color('cyan')}Confirm Selection ({len(selected_files)} files):{self._get_color('reset')}"
-        )
+        cyan = self._get_color("cyan")
+        reset = self._get_color("reset")
+        print(f"\\n{cyan}Confirm Selection ({len(selected_files)} files):{reset}")
 
         for i, file_path in enumerate(selected_files[:10]):  # Show first 10
-            print(f"  {i+1:2d}. {self._format_path(file_path)}")
+            print(f"  {i + 1:2d}. {self._format_path(file_path)}")
 
         if len(selected_files) > 10:
             print(f"  ... and {len(selected_files) - 10} more files")
@@ -255,13 +276,13 @@ class InteractiveSelector:
 
         for i, file_path in enumerate(files[:max_display]):
             file_info = self._get_file_info_string(file_path)
-            print(f"{self._get_color('blue')}{i+1:3d}.{self._get_color('reset')} {file_info}")
+            print(f"{self._get_color('blue')}{i + 1:3d}.{self._get_color('reset')} {file_info}")
 
         if len(files) > max_display:
             remaining = len(files) - max_display
-            print(
-                f"{self._get_color('yellow')}... and {remaining} more files{self._get_color('reset')}"
-            )
+            yellow = self._get_color("yellow")
+            reset = self._get_color("reset")
+            print(f"{yellow}... and {remaining} more files{reset}")
 
     def _display_file_info(self, file_path: Path, detailed: bool = False) -> None:
         """Display detailed information about a file."""
@@ -339,9 +360,9 @@ class InteractiveSelector:
                 elif response in ["n", "no"]:
                     return False
                 else:
-                    print(
-                        f"{self._get_color('red')}Please enter 'y' or 'n'.{self._get_color('reset')}"
-                    )
+                    red = self._get_color("red")
+                    reset = self._get_color("reset")
+                    print(f"{red}Please enter 'y' or 'n'.{reset}")
 
             except KeyboardInterrupt:
                 print(f"\\n{self._get_color('yellow')}Cancelled.{self._get_color('reset')}")
@@ -494,16 +515,16 @@ class ConfirmationDialog:
         Returns:
             True if user confirms, False otherwise
         """
-        print(f"\\n{'='*60}")
+        print(f"\\n{'=' * 60}")
         print(f"{self._get_color('bold')}Selection Summary{self._get_color('reset')}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Show selected files
-        print(
-            f"\\n{self._get_color('cyan')}Selected Files ({len(selected_files)}):{self._get_color('reset')}"
-        )
+        cyan = self._get_color("cyan")
+        reset = self._get_color("reset")
+        print(f"\\n{cyan}Selected Files ({len(selected_files)}):{reset}")
         for i, file_path in enumerate(selected_files[:10]):
-            print(f"  {i+1:2d}. {file_path}")
+            print(f"  {i + 1:2d}. {file_path}")
 
         if len(selected_files) > 10:
             print(f"  ... and {len(selected_files) - 10} more files")
@@ -523,17 +544,17 @@ class ConfirmationDialog:
         print(f"\\n{self._get_color('cyan')}Validation Results:{self._get_color('reset')}")
 
         if valid_count == total_count:
-            print(
-                f"  {self._get_color('green')}✓ All {total_count} validations passed{self._get_color('reset')}"
-            )
+            green = self._get_color("green")
+            reset = self._get_color("reset")
+            print(f"  {green}✓ All {total_count} validations passed{reset}")
         else:
             failed_count = total_count - valid_count
-            print(
-                f"  {self._get_color('green')}✓ {valid_count} validations passed{self._get_color('reset')}"
-            )
-            print(
-                f"  {self._get_color('red')}✗ {failed_count} validations failed{self._get_color('reset')}"
-            )
+            green = self._get_color("green")
+            reset = self._get_color("reset")
+            print(f"  {green}✓ {valid_count} validations passed{reset}")
+            red = self._get_color("red")
+            reset = self._get_color("reset")
+            print(f"  {red}✗ {failed_count} validations failed{reset}")
 
         # Show detailed issues if requested
         if self.config.show_validation_details:
@@ -595,9 +616,9 @@ class ConfirmationDialog:
                 elif response in ["n", "no"]:
                     return False
                 else:
-                    print(
-                        f"{self._get_color('red')}Please enter 'y' or 'n'.{self._get_color('reset')}"
-                    )
+                    red = self._get_color("red")
+                    reset = self._get_color("reset")
+                    print(f"{red}Please enter 'y' or 'n'.{reset}")
 
             except KeyboardInterrupt:
                 print(f"\\n{self._get_color('yellow')}Cancelled.{self._get_color('reset')}")

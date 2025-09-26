@@ -214,7 +214,7 @@ class YAMLValidator(BaseValidator):
         lines = content.split("\n")
         indent_levels = set()
 
-        for line_num, line in enumerate(lines, 1):
+        for _line_num, line in enumerate(lines, 1):
             if not line.strip():  # Skip empty lines
                 continue
 

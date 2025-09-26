@@ -1,11 +1,15 @@
 """Fix suggestion engine for generating recovery actions."""
 
 import asyncio
+import difflib
 import logging
+import stat
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+import chardet
 
 from ..errors import ConfigurationError, FileSystemError, ValidationError
 
@@ -37,7 +41,7 @@ class RecoveryAction:
     parameters: Dict[str, Any] = field(default_factory=dict)
     execute_func: Optional[Callable] = None
 
-    async def execute(self, context: Dict[str, Any] = None) -> bool:
+    async def execute(self, context: Optional[Dict[str, Any]] = None) -> bool:
         """Execute the recovery action.
 
         Args:
@@ -156,7 +160,7 @@ class SuggestionEngine:
         )
 
     async def analyze_error(
-        self, error: Exception, file_path: Optional[Path] = None, operation: Optional[str] = None
+        self, error: Exception, file_path: Optional[Path] = None, _operation: Optional[str] = None
     ) -> List[FixSuggestion]:
         """Analyze error and generate fix suggestions.
 
@@ -186,7 +190,7 @@ class SuggestionEngine:
         return suggestions
 
     async def _run_rule(
-        self, rule: Callable, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, rule: Callable, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Run a suggestion rule.
 
@@ -260,7 +264,7 @@ class SuggestionEngine:
         return sorted(suggestions, key=lambda s: (s.priority, -s.confidence))
 
     def _suggest_file_not_found_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for file not found errors."""
         suggestions = []
@@ -268,7 +272,7 @@ class SuggestionEngine:
         if not isinstance(error, (FileNotFoundError, FileSystemError)):
             return suggestions
 
-        error_msg = str(error).lower()
+        str(error).lower()
 
         if file_path:
             parent_dir = file_path.parent
@@ -287,7 +291,7 @@ class SuggestionEngine:
                             auto_fixable=True,
                             safe=True,
                             command=f"mkdir -p '{parent_dir}'",
-                            execute_func=lambda ctx: self._create_directory(parent_dir),
+                            execute_func=lambda _ctx: self._create_directory(parent_dir),
                         ),
                         category="file_system",
                         priority=1,
@@ -332,7 +336,7 @@ class SuggestionEngine:
                             description=f"Fix permissions for {file_path}",
                             auto_fixable=True,
                             command=f"chmod 644 '{file_path}'",
-                            execute_func=lambda ctx: self._fix_file_permissions(file_path),
+                            execute_func=lambda _ctx: self._fix_file_permissions(file_path),
                         ),
                         category="permissions",
                         priority=2,
@@ -343,7 +347,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_permission_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for permission errors."""
         suggestions = []
@@ -362,7 +366,7 @@ class SuggestionEngine:
                         description=f"Fix permissions for {file_path}",
                         auto_fixable=True,
                         command=f"chmod 644 '{file_path}'",
-                        execute_func=lambda ctx: self._fix_file_permissions(file_path),
+                        execute_func=lambda _ctx: self._fix_file_permissions(file_path),
                     ),
                     category="permissions",
                     priority=1,
@@ -394,7 +398,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_validation_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for validation errors."""
         suggestions = []
@@ -478,7 +482,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_configuration_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for configuration errors."""
         suggestions = []
@@ -511,7 +515,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_dependency_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for dependency-related errors."""
         suggestions = []
@@ -543,7 +547,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_format_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for format-related errors."""
         suggestions = []
@@ -560,7 +564,7 @@ class SuggestionEngine:
                         action_type=ActionType.FORMAT_CONVERSION,
                         description="Convert to UTF-8 encoding",
                         auto_fixable=True,
-                        execute_func=lambda ctx: self._fix_encoding(file_path)
+                        execute_func=lambda _ctx: self._fix_encoding(file_path)
                         if file_path
                         else False,
                     ),
@@ -572,7 +576,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_encoding_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for encoding errors."""
         suggestions = []
@@ -587,7 +591,7 @@ class SuggestionEngine:
                         action_type=ActionType.FORMAT_CONVERSION,
                         description="Fix file encoding",
                         auto_fixable=True,
-                        execute_func=lambda ctx: self._fix_encoding(file_path)
+                        execute_func=lambda _ctx: self._fix_encoding(file_path)
                         if file_path
                         else False,
                     ),
@@ -600,7 +604,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_space_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, _file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for disk space errors."""
         suggestions = []
@@ -632,7 +636,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_path_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, error: Exception, file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest fixes for path-related errors."""
         suggestions = []
@@ -687,7 +691,7 @@ class SuggestionEngine:
         return suggestions
 
     def _suggest_generic_fixes(
-        self, error: Exception, file_path: Optional[Path], operation: Optional[str]
+        self, _error: Exception, _file_path: Optional[Path], _operation: Optional[str]
     ) -> List[FixSuggestion]:
         """Suggest generic fixes that apply to most errors."""
         suggestions = []
@@ -746,8 +750,6 @@ class SuggestionEngine:
     async def _fix_file_permissions(self, path: Path) -> bool:
         """Fix file permissions."""
         try:
-            import stat
-
             if path.is_file():
                 # Make file readable and writable by owner
                 path.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
@@ -771,8 +773,6 @@ class SuggestionEngine:
     async def _fix_encoding(self, path: Path) -> bool:
         """Fix file encoding by converting to UTF-8."""
         try:
-            import chardet
-
             # Detect current encoding
             with open(path, "rb") as f:
                 raw_data = f.read()
@@ -796,8 +796,6 @@ class SuggestionEngine:
     def _find_similar_files(self, directory: Path, filename: str) -> List[Path]:
         """Find files with similar names in directory."""
         try:
-            import difflib
-
             if not directory.exists():
                 return []
 

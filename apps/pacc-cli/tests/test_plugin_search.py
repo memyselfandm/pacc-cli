@@ -811,7 +811,7 @@ class TestConvenienceFunctions:
             mock_engine.return_value.search.return_value = []
 
             # Should default to SearchPluginType.ALL for invalid type
-            results = search_plugins(plugin_type="invalid")
+            search_plugins(plugin_type="invalid")
 
             # Verify search was called with ALL type
             mock_engine.return_value.search.assert_called_once()
@@ -824,7 +824,7 @@ class TestConvenienceFunctions:
             mock_engine.return_value.search.return_value = []
 
             # Should default to SortBy.RELEVANCE for invalid sort
-            results = search_plugins(sort_by="invalid")
+            search_plugins(sort_by="invalid")
 
             # Verify search was called with RELEVANCE sort
             mock_engine.return_value.search.assert_called_once()

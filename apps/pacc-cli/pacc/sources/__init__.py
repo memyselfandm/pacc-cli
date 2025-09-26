@@ -11,18 +11,18 @@ from .url import (
 )
 
 __all__ = [
-    # Base classes
-    "SourceHandler",
-    "Source",
+    "GitCloner",
+    "GitRepositorySource",
     # Git implementation
     "GitSourceHandler",
-    "GitRepositorySource",
     "GitUrlParser",
-    "GitCloner",
+    "Source",
+    # Base classes
+    "SourceHandler",
+    "URLSource",
     # URL implementation
     "URLSourceHandler",
-    "URLSource",
     "create_url_source_handler",
-    "is_url",
     "extract_filename_from_url",
+    "is_url",
 ]

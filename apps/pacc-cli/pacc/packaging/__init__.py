@@ -6,15 +6,15 @@ from .handlers import ArchivePackageHandler, FilePackageHandler, PackageHandler
 from .metadata import ManifestGenerator, PackageMetadata
 
 __all__ = [
-    "PackageFormat",
-    "SingleFilePackage",
-    "MultiFilePackage",
     "ArchivePackage",
-    "FormatConverter",
-    "PackageConverter",
-    "PackageHandler",
-    "FilePackageHandler",
     "ArchivePackageHandler",
-    "PackageMetadata",
+    "FilePackageHandler",
+    "FormatConverter",
     "ManifestGenerator",
+    "MultiFilePackage",
+    "PackageConverter",
+    "PackageFormat",
+    "PackageHandler",
+    "PackageMetadata",
+    "SingleFilePackage",
 ]

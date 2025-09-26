@@ -328,8 +328,8 @@ class TestFragmentCollectionManager:
     def test_discover_collections(self):
         """Test discovering collections in directories."""
         # Create test collections
-        collection1 = self.create_test_collection("collection1")
-        collection2 = self.create_test_collection("collection2")
+        self.create_test_collection("collection1")
+        self.create_test_collection("collection2")
 
         # Discover collections
         collections = self.collection_manager.discover_collections([self.temp_dir])

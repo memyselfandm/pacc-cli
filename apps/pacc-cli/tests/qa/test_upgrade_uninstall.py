@@ -519,9 +519,9 @@ class UpgradeUninstallTester:
 
     def run_all_tests(self) -> Dict[str, any]:
         """Run all upgrade/uninstall tests."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Upgrade and Uninstall Tests")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         all_results = {
             "test_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -627,9 +627,9 @@ if __name__ == "__main__":
     results = tester.run_all_tests()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Test Summary")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     total_tests = 0
     passed_tests = 0

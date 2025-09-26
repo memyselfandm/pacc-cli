@@ -289,7 +289,7 @@ chmod 600 ~/.pypirc
 - [Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
 
 ---
-Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
 
     def _generate_checklist(self) -> str:
@@ -371,7 +371,10 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
         content += f"""## Registration Status
 
-**Ready for Registration**: {'✅ Yes' if checks['ready_for_registration'] else '❌ No - resolve issues above'}
+**Ready for Registration**: {
+    "✅ Yes" if checks["ready_for_registration"]
+    else "❌ No - resolve issues above"
+}
 
 ## Commands to Run
 
@@ -396,7 +399,7 @@ twine upload dist/*
 ```
 
 ---
-Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
         return content
 
@@ -427,7 +430,10 @@ pip install --upgrade pip
 
 # Test installation from TestPyPI
 echo "🔍 Testing installation from TestPyPI..."
-if pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ {package_name}; then
+if pip install \\
+    --index-url https://test.pypi.org/simple/ \\
+    --extra-index-url https://pypi.org/simple/ \\
+    {package_name}; then
     echo "✅ TestPyPI installation successful"
 
     # Test basic functionality
@@ -437,7 +443,7 @@ if pip install --index-url https://test.pypi.org/simple/ --extra-index-url https
 
     # Run basic import test
     echo "🐍 Testing Python import..."
-    python -c "import {package_name.replace('-', '_')}; print('✅ Import successful')"
+    python -c "import {package_name.replace("-", "_")}; print('✅ Import successful')"
 
 else
     echo "❌ TestPyPI installation failed"
@@ -451,7 +457,7 @@ if pip install {package_name}; then
     echo "✅ PyPI installation successful"
     {package_name} --version
 else
-    echo "ℹ️  Package not yet available on PyPI"
+    echo "i  Package not yet available on PyPI"
 fi
 
 # Cleanup
@@ -576,7 +582,7 @@ Examples:
         docs = prep.generate_registration_docs(output_dir)
 
         print(f"\n✅ Generated files in {output_dir}:")
-        for doc_type, path in docs.items():
+        for _doc_type, path in docs.items():
             print(f"  - {path.name}")
 
         print("\n📖 Next steps:")

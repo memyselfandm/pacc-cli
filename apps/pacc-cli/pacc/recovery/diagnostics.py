@@ -1,10 +1,13 @@
 """Diagnostic and error analysis utilities for recovery operations."""
 
+import dataclasses
+import difflib
 import logging
 import os
 import platform
 import shutil
 import sys
+import time
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -235,7 +238,7 @@ class SystemDiagnostics:
                     description=f"Permission issues: {', '.join(issues)}",
                     recommendations=[
                         f"Check file permissions: ls -la '{path}'",
-                        f"Fix permissions: chmod 644 '{path}' (for files) or chmod 755 '{path}' (for directories)",
+                        f"Fix permissions: chmod 644 '{path}' (files) or chmod 755 '{path}' (dirs)",
                         "Run with appropriate user privileges",
                     ],
                     confidence=0.8,
@@ -269,11 +272,6 @@ class SystemDiagnostics:
         recommendations = []
 
         # Check Python version
-        if sys.version_info < (3, 8):
-            issues.append(
-                f"Python version {sys.version_info.major}.{sys.version_info.minor} is too old"
-            )
-            recommendations.append("Upgrade to Python 3.8 or later")
 
         # Check if we're in a virtual environment
         in_venv = hasattr(sys, "real_prefix") or (
@@ -319,7 +317,7 @@ class SystemDiagnostics:
                 metadata={"python_version": sys.version, "in_venv": in_venv},
             )
 
-    def check_dependencies(self, required_packages: List[str] = None) -> DiagnosticResult:
+    def check_dependencies(self, required_packages: Optional[List[str]] = None) -> DiagnosticResult:
         """Check if required packages are available.
 
         Args:
@@ -405,8 +403,6 @@ class ErrorAnalyzer:
         )
 
         # Add timestamps
-        import time
-
         error_context.timestamps["analyzed_at"] = time.time()
 
         # Extract additional metadata from error
@@ -426,41 +422,39 @@ class ErrorAnalyzer:
         Returns:
             Tuple of (category, severity_score)
         """
-        error_type = type(error).__name__
         error_msg = str(error).lower()
 
-        # File system errors
-        if isinstance(
-            error, (FileNotFoundError, FileExistsError, IsADirectoryError, NotADirectoryError)
-        ):
-            return "file_system", 0.6
+        # Define error categorization rules
+        error_rules = [
+            # (condition_func, category, severity)
+            (lambda e: isinstance(e, PermissionError), "permissions", 0.7),
+            (lambda e: isinstance(e, MemoryError) or "memory" in error_msg, "memory", 0.9),
+            (lambda e: isinstance(e, SyntaxError), "syntax", 0.8),
+            (
+                lambda e: isinstance(
+                    e, (FileNotFoundError, FileExistsError, IsADirectoryError, NotADirectoryError)
+                ),
+                "file_system",
+                0.6,
+            ),
+            (lambda e: isinstance(e, (ImportError, ModuleNotFoundError)), "dependencies", 0.6),
+            (lambda e: isinstance(e, UnicodeError), "encoding", 0.5),
+            (
+                lambda e: any(term in error_msg for term in ["json", "yaml", "invalid"]),
+                "validation",
+                0.5,
+            ),
+            (
+                lambda e: any(term in error_msg for term in ["connection", "network", "timeout"]),
+                "network",
+                0.4,
+            ),
+        ]
 
-        if isinstance(error, PermissionError):
-            return "permissions", 0.7
-
-        # Validation errors
-        if "json" in error_msg or "yaml" in error_msg or "invalid" in error_msg:
-            return "validation", 0.5
-
-        # Network errors
-        if "connection" in error_msg or "network" in error_msg or "timeout" in error_msg:
-            return "network", 0.4
-
-        # Memory errors
-        if isinstance(error, MemoryError) or "memory" in error_msg:
-            return "memory", 0.9
-
-        # Import/dependency errors
-        if isinstance(error, ImportError) or isinstance(error, ModuleNotFoundError):
-            return "dependencies", 0.6
-
-        # Syntax errors
-        if isinstance(error, SyntaxError):
-            return "syntax", 0.8
-
-        # Encoding errors
-        if isinstance(error, UnicodeError):
-            return "encoding", 0.5
+        # Check each rule
+        for condition, category, severity in error_rules:
+            if condition(error):
+                return category, severity
 
         # Default category
         return "unknown", 0.3
@@ -728,8 +722,6 @@ class ErrorAnalyzer:
     ) -> List[Path]:
         """Find files with similar names."""
         try:
-            import difflib
-
             if not directory.exists():
                 return []
 
@@ -755,7 +747,7 @@ class DiagnosticEngine:
         self,
         error: Optional[Exception] = None,
         file_path: Optional[Union[str, Path]] = None,
-        operation: Optional[str] = None,
+        _operation: Optional[str] = None,
     ) -> List[DiagnosticResult]:
         """Run comprehensive diagnostics.
 
@@ -855,8 +847,6 @@ class DiagnosticEngine:
         }
 
         # Convert dataclass to dict for system_info
-        import dataclasses
-
         report["system_info"] = dataclasses.asdict(self.system_diagnostics.get_system_info())
 
         # Run diagnostics
@@ -880,7 +870,3 @@ class DiagnosticEngine:
         )
 
         return report
-
-
-# Import time for report generation
-import time

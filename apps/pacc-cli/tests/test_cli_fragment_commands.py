@@ -780,9 +780,7 @@ This tests the enhanced dry-run preview functionality.
             invalid_content = "This is not a proper fragment"
             (fragments_dir / "invalid.md").write_text(invalid_content)
 
-            with patch(
-                "pacc.fragments.storage_manager.FragmentStorageManager"
-            ) as mock_storage, patch(
+            with patch("pacc.fragments.storage_manager.FragmentStorageManager"), patch(
                 "pacc.validators.fragment_validator.FragmentValidator"
             ) as mock_validator:
 

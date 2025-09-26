@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, List, Optional, Union
 
 import yaml
 
@@ -14,10 +14,10 @@ class AgentsValidator(BaseValidator):
     """Validator for Claude Code agent extensions."""
 
     # Required fields in agent YAML frontmatter per Claude Code documentation
-    REQUIRED_FRONTMATTER_FIELDS = ["name", "description"]
+    REQUIRED_FRONTMATTER_FIELDS: ClassVar[List[str]] = ["name", "description"]
 
     # Optional fields per Claude Code documentation
-    OPTIONAL_FRONTMATTER_FIELDS = {
+    OPTIONAL_FRONTMATTER_FIELDS: ClassVar[Dict[str, type]] = {
         "tools": str,  # Comma-separated string like "Read, Write, Bash"
         "model": str,  # Optional model string like "claude-3-opus"
         "color": str,  # Optional terminal color like "cyan", "red"
@@ -25,7 +25,7 @@ class AgentsValidator(BaseValidator):
 
     # Known Claude Code tools for validation
     # This is not exhaustive as MCP tools can be added dynamically
-    COMMON_TOOLS = {
+    COMMON_TOOLS: ClassVar[set[str]] = {
         "Read",
         "Write",
         "Edit",
@@ -202,7 +202,6 @@ class AgentsValidator(BaseValidator):
 
     def _validate_frontmatter(self, frontmatter: Dict[str, Any], result: ValidationResult) -> None:
         """Validate agent YAML frontmatter structure and content."""
-        file_path = result.file_path
 
         # Validate required fields
         for field in self.REQUIRED_FRONTMATTER_FIELDS:

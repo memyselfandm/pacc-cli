@@ -187,7 +187,6 @@ class TestEndToEndPackageInstallation:
 
     def test_cross_platform_compatibility(self, clean_build_env):
         """Test cross-platform compatibility features."""
-        project_root = clean_build_env
 
         # Test path handling components
         from pacc.core.file_utils import PathNormalizer
@@ -494,7 +493,7 @@ class TestCrossPlatformCompatibility:
         """Test handling of different character encodings."""
         from pacc.core.file_utils import FilePathValidator
 
-        validator = FilePathValidator()
+        FilePathValidator()
 
         # Test various Unicode filenames
         test_names = [

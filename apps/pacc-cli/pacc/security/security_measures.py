@@ -1,9 +1,11 @@
 """Security measures and hardening for PACC source management."""
 
 import hashlib
+import json
 import os
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -244,7 +246,7 @@ class InputSanitizer:
                     SecurityIssue(
                         threat_level=ThreatLevel.MEDIUM,
                         issue_type="excessive_length",
-                        description=f"Content exceeds maximum safe length ({len(content)} > {max_length})",
+                        description=f"Content exceeds max length ({len(content)} > {max_length})",
                         recommendation="Reduce content length or split into smaller parts",
                     )
                 )
@@ -266,9 +268,9 @@ class InputSanitizer:
                             SecurityIssue(
                                 threat_level=threat_level,
                                 issue_type=f"suspicious_{category}",
-                                description=f"Potentially dangerous {category.replace('_', ' ')}: {match.group()}",
+                                description=f"Dangerous {category.replace('_', ' ')}: {match.group()}",
                                 line_number=line_number,
-                                recommendation=f"Review and validate {category.replace('_', ' ')} usage",
+                                recommendation=f"Review {category.replace('_', ' ')} usage",
                             )
                         )
 
@@ -278,7 +280,7 @@ class InputSanitizer:
                     SecurityIssue(
                         threat_level=ThreatLevel.HIGH,
                         issue_type="suspicious_encoding",
-                        description="Content contains suspicious encoding that might hide malicious code",
+                        description="Suspicious encoding that might hide malicious code",
                         recommendation="Decode and verify all encoded content",
                     )
                 )
@@ -430,7 +432,7 @@ class FileContentScanner:
                     SecurityIssue(
                         threat_level=ThreatLevel.MEDIUM,
                         issue_type="file_too_large",
-                        description=f"File exceeds maximum safe size ({file_size} > {self.max_file_size})",
+                        description=f"File exceeds max size ({file_size} > {self.max_file_size})",
                         file_path=str(file_path),
                         recommendation="Review file necessity and reduce size if possible",
                     )
@@ -449,7 +451,7 @@ class FileContentScanner:
                             issue_type="binary_executable",
                             description=f"File appears to be a binary executable: {file_type}",
                             file_path=str(file_path),
-                            recommendation="Binary executables should not be included in extension packages",
+                            recommendation="Binary executables not allowed in packages",
                         )
                     )
                     return issues  # Don't scan binary files further
@@ -667,7 +669,7 @@ class SecurityAuditor:
             audit_result["risk_score"] = self._calculate_risk_score(audit_result["issues"])
 
             # Determine if file is safe
-            blocking_issues, warning_issues = self.policy.enforce_policy(audit_result["issues"])
+            blocking_issues, _warning_issues = self.policy.enforce_policy(audit_result["issues"])
             audit_result["is_safe"] = len(blocking_issues) == 0
 
             # Generate recommendations
@@ -802,8 +804,6 @@ class SecurityAuditor:
 
     def _get_timestamp(self) -> str:
         """Get current timestamp for audit logging."""
-        from datetime import datetime
-
         return datetime.now().isoformat()
 
     def export_audit_log(self, file_path: Path) -> None:
@@ -812,8 +812,6 @@ class SecurityAuditor:
         Args:
             file_path: Path to export file
         """
-        import json
-
         # Convert SecurityIssue objects to dictionaries
         exportable_log = []
         for entry in self.audit_log:

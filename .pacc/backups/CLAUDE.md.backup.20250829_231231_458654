@@ -151,13 +151,7 @@ pacc-main/
    - No arbitrary code execution during installation
    - Clear user consent for changes
 
-3. **Security Features (PACC-60, PACC-61 Fixes)**
-   - Path traversal protection in fragment operations
-   - Input validation and sanitization for all file paths
-   - Boundary validation restricts operations to storage directories
-   - Fragment install properly updates CLAUDE.md references
-
-4. **User Experience**
+3. **User Experience**
    - Familiar package manager patterns (npm/pip style)
    - Colored output with progress indicators
    - Helpful error messages
@@ -186,7 +180,3 @@ The complete Product Requirements Document is located at `ai_docs/prds/00_pacc_m
 - Success metrics and KPIs
 
 When implementing features, always refer to the PRD for the authoritative specification.
-
-<!-- PACC:fragments:START -->
-@.claude/pacc/fragments/test_fragment.md - Test Memory Fragment
-<!-- PACC:fragments:END -->

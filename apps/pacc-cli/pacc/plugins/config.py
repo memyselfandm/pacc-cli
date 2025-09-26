@@ -1,14 +1,16 @@
 """Plugin configuration management with atomic operations and backup support."""
 
+import hashlib
 import json
 import logging
+import platform
 import shutil
 import tempfile
 import threading
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, ContextManager, Dict, List, Optional
 
@@ -138,7 +140,6 @@ class AtomicFileWriter:
             raise ConfigurationError("No temporary file to replace with")
 
         # On Windows, we need to remove the target first for atomic replacement
-        import platform
 
         if platform.system() == "Windows" and self.target_path.exists():
             self.target_path.unlink()
@@ -287,7 +288,6 @@ class ConfigBackup:
         Returns:
             Number of backups removed
         """
-        from datetime import timedelta
 
         cutoff_date = datetime.now() - timedelta(days=max_age_days)
         removed_count = 0
@@ -300,12 +300,12 @@ class ConfigBackup:
             backups_by_file[backup.original_path].append(backup)
 
         # Clean up old backups for each file
-        for original_path, file_backups in backups_by_file.items():
+        for _original_path, file_backups in backups_by_file.items():
             # Sort by timestamp (newest first)
             file_backups.sort(key=lambda b: b.timestamp, reverse=True)
 
             # Keep the most recent backups
-            to_keep = file_backups[:keep_count]
+            file_backups[:keep_count]
             candidates_for_removal = file_backups[keep_count:]
 
             # Remove backups older than cutoff date
@@ -337,7 +337,6 @@ class ConfigBackup:
         Returns:
             Hexadecimal checksum string
         """
-        import hashlib
 
         sha256_hash = hashlib.sha256()
         with open(file_path, "rb") as f:
@@ -927,9 +926,9 @@ class PluginConfigManager:
             return config
 
         except json.JSONDecodeError as e:
-            raise ConfigurationError(f"Invalid JSON in {self.config_path}: {e}")
+            raise ConfigurationError(f"Invalid JSON in {self.config_path}: {e}") from e
         except OSError as e:
-            raise ConfigurationError(f"Cannot read {self.config_path}: {e}")
+            raise ConfigurationError(f"Cannot read {self.config_path}: {e}") from e
 
     def _save_plugin_config(self, config: Dict[str, Any]) -> bool:
         """Save plugin configuration to config.json atomically.
@@ -999,9 +998,9 @@ class PluginConfigManager:
             return settings
 
         except json.JSONDecodeError as e:
-            raise ConfigurationError(f"Invalid JSON in {self.settings_path}: {e}")
+            raise ConfigurationError(f"Invalid JSON in {self.settings_path}: {e}") from e
         except OSError as e:
-            raise ConfigurationError(f"Cannot read {self.settings_path}: {e}")
+            raise ConfigurationError(f"Cannot read {self.settings_path}: {e}") from e
 
     def _save_settings(self, settings: Dict[str, Any]) -> bool:
         """Save Claude settings to settings.json atomically.

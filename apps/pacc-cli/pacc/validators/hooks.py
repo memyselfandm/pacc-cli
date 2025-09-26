@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, ClassVar, Dict, List, Union
 
 from .base import BaseValidator, ValidationResult
 
@@ -19,10 +19,10 @@ class HooksValidator(BaseValidator):
     """Validator for Claude Code hook extensions."""
 
     # Valid hook event types according to Claude Code specification
-    VALID_EVENT_TYPES = {"PreToolUse", "PostToolUse", "Notification", "Stop"}
+    VALID_EVENT_TYPES: ClassVar[set[str]] = {"PreToolUse", "PostToolUse", "Notification", "Stop"}
 
     # Valid matcher types for hooks
-    VALID_MATCHER_TYPES = {"exact", "regex", "prefix", "suffix", "contains"}
+    VALID_MATCHER_TYPES: ClassVar[set[str]] = {"exact", "regex", "prefix", "suffix", "contains"}
 
     def __init__(self, max_file_size: int = 10 * 1024 * 1024):
         """Initialize hooks validator."""

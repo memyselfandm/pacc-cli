@@ -158,7 +158,7 @@ class MemoryMonitor:
         """Stop memory monitoring."""
         self.monitoring = False
 
-    def sample(self, label: str = None):
+    def sample(self, label: Optional[str] = None):
         """Take a memory sample."""
         if not self.monitoring:
             return
@@ -291,9 +291,10 @@ def assert_performance(
         ), f"{operation} used {metrics.memory_delta_mb:.1f}MB (should be ≤ {max_memory_mb}MB)"
 
     if max_peak_memory_mb is not None:
-        assert (
-            metrics.peak_memory_mb <= max_peak_memory_mb
-        ), f"{operation} peak memory {metrics.peak_memory_mb:.1f}MB (should be ≤ {max_peak_memory_mb}MB)"
+        assert metrics.peak_memory_mb <= max_peak_memory_mb, (
+            f"{operation} peak memory {metrics.peak_memory_mb:.1f}MB "
+            f"(should be ≤ {max_peak_memory_mb}MB)"
+        )
 
     if min_throughput is not None and metrics.throughput is not None:
         assert (
@@ -346,32 +347,36 @@ class PerformanceAssertion:
 
     def duration_less_than(self, seconds: float):
         """Assert duration is less than specified seconds."""
-        assert (
-            self.metrics.duration < seconds
-        ), f"{self.metrics.operation_name} took {self.metrics.duration:.3f}s (should be < {seconds}s)"
+        assert self.metrics.duration < seconds, (
+            f"{self.metrics.operation_name} took {self.metrics.duration:.3f}s "
+            f"(should be < {seconds}s)"
+        )
         return self
 
     def memory_less_than(self, mb: float):
         """Assert memory usage is less than specified MB."""
-        assert (
-            self.metrics.memory_delta_mb < mb
-        ), f"{self.metrics.operation_name} used {self.metrics.memory_delta_mb:.1f}MB (should be < {mb}MB)"
+        assert self.metrics.memory_delta_mb < mb, (
+            f"{self.metrics.operation_name} used {self.metrics.memory_delta_mb:.1f}MB "
+            f"(should be < {mb}MB)"
+        )
         return self
 
     def throughput_greater_than(self, ops_per_sec: float):
         """Assert throughput is greater than specified ops/sec."""
         if self.metrics.throughput is None:
             raise ValueError("No throughput data available")
-        assert (
-            self.metrics.throughput > ops_per_sec
-        ), f"{self.metrics.operation_name} throughput {self.metrics.throughput:.1f} (should be > {ops_per_sec})"
+        assert self.metrics.throughput > ops_per_sec, (
+            f"{self.metrics.operation_name} throughput {self.metrics.throughput:.1f} "
+            f"(should be > {ops_per_sec})"
+        )
         return self
 
     def peak_memory_less_than(self, mb: float):
         """Assert peak memory is less than specified MB."""
-        assert (
-            self.metrics.peak_memory_mb < mb
-        ), f"{self.metrics.operation_name} peak memory {self.metrics.peak_memory_mb:.1f}MB (should be < {mb}MB)"
+        assert self.metrics.peak_memory_mb < mb, (
+            f"{self.metrics.operation_name} peak memory {self.metrics.peak_memory_mb:.1f}MB "
+            f"(should be < {mb}MB)"
+        )
         return self
 
 

@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import os
 import shutil
 import tarfile
 import tempfile
@@ -477,8 +478,8 @@ class ZipPackage(ArchivePackage):
         with zipfile.ZipFile(self.path, "r") as zip_file:
             try:
                 return zip_file.read(file_path)
-            except KeyError:
-                raise PACCError(f"File not found in ZIP archive: {file_path}")
+            except KeyError as err:
+                raise PACCError(f"File not found in ZIP archive: {file_path}") from err
 
     def validate(self) -> bool:
         """Validate ZIP archive.
@@ -578,8 +579,8 @@ class TarPackage(ArchivePackage):
                 if file_obj is None:
                     raise PACCError(f"Cannot extract file from TAR archive: {file_path}")
                 return file_obj.read()
-            except KeyError:
-                raise PACCError(f"File not found in TAR archive: {file_path}")
+            except KeyError as err:
+                raise PACCError(f"File not found in TAR archive: {file_path}") from err
 
     def validate(self) -> bool:
         """Validate TAR archive.
@@ -594,6 +595,50 @@ class TarPackage(ArchivePackage):
                 return True
         except (tarfile.TarError, OSError):
             return False
+
+
+def _detect_file_format(path_obj: Path) -> PackageFormat:
+    """Detect package format for a file based on extension."""
+    suffix = path_obj.suffix.lower()
+
+    if suffix == ".zip":
+        return PackageFormat.ZIP_ARCHIVE
+
+    if suffix in [".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tar.xz"]:
+        return (
+            PackageFormat.TAR_GZ_ARCHIVE
+            if suffix in [".tar.gz", ".tgz"]
+            else PackageFormat.TAR_ARCHIVE
+        )
+
+    return PackageFormat.SINGLE_FILE
+
+
+def _detect_format(path_obj: Path) -> PackageFormat:
+    """Detect package format based on path."""
+    if path_obj.is_file():
+        return _detect_file_format(path_obj)
+    elif path_obj.is_dir():
+        return PackageFormat.MULTI_FILE
+    else:
+        raise PACCError(f"Cannot determine format for path: {path_obj}")
+
+
+def _create_package_instance(path: Union[str, Path], format_hint: PackageFormat) -> BasePackage:
+    """Create package instance based on format."""
+    package_creators = {
+        PackageFormat.SINGLE_FILE: lambda p: SingleFilePackage(p),
+        PackageFormat.MULTI_FILE: lambda p: MultiFilePackage(p),
+        PackageFormat.ZIP_ARCHIVE: lambda p: ZipPackage(p),
+        PackageFormat.TAR_ARCHIVE: lambda p: TarPackage(p, compression=None),
+        PackageFormat.TAR_GZ_ARCHIVE: lambda p: TarPackage(p, compression="gz"),
+    }
+
+    creator = package_creators.get(format_hint)
+    if creator is None:
+        raise PACCError(f"Unsupported package format: {format_hint}")
+
+    return creator(path)
 
 
 def create_package(
@@ -611,36 +656,7 @@ def create_package(
     path_obj = Path(path)
 
     # Determine format if not provided
-    if format_hint is None:
-        if path_obj.is_file():
-            suffix = path_obj.suffix.lower()
-            if suffix == ".zip":
-                format_hint = PackageFormat.ZIP_ARCHIVE
-            elif suffix in [".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tar.xz"]:
-                if suffix in [".tar.gz", ".tgz"]:
-                    format_hint = PackageFormat.TAR_GZ_ARCHIVE
-                else:
-                    format_hint = PackageFormat.TAR_ARCHIVE
-            else:
-                format_hint = PackageFormat.SINGLE_FILE
-        elif path_obj.is_dir():
-            format_hint = PackageFormat.MULTI_FILE
-        else:
-            raise PACCError(f"Cannot determine format for path: {path}")
+    detected_format = format_hint or _detect_format(path_obj)
 
     # Create appropriate package instance
-    if format_hint == PackageFormat.SINGLE_FILE:
-        return SingleFilePackage(path)
-    elif format_hint == PackageFormat.MULTI_FILE:
-        return MultiFilePackage(path)
-    elif format_hint == PackageFormat.ZIP_ARCHIVE:
-        return ZipPackage(path)
-    elif format_hint in [PackageFormat.TAR_ARCHIVE, PackageFormat.TAR_GZ_ARCHIVE]:
-        compression = "gz" if format_hint == PackageFormat.TAR_GZ_ARCHIVE else None
-        return TarPackage(path, compression=compression)
-    else:
-        raise PACCError(f"Unsupported package format: {format_hint}")
-
-
-# Import os for security checks
-import os
+    return _create_package_instance(path, detected_format)

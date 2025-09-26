@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, ClassVar, Dict, List, Union
 
 from .base import BaseValidator, ValidationResult
 
@@ -13,11 +13,11 @@ class MCPValidator(BaseValidator):
     """Validator for Claude Code MCP server extensions."""
 
     # Valid transport types for MCP servers
-    VALID_TRANSPORT_TYPES = {"stdio", "sse", "websocket"}
+    VALID_TRANSPORT_TYPES: ClassVar[set[str]] = {"stdio", "sse", "websocket"}
 
     # Standard MCP server configuration fields
-    REQUIRED_SERVER_FIELDS = ["command"]
-    OPTIONAL_SERVER_FIELDS = {
+    REQUIRED_SERVER_FIELDS: ClassVar[List[str]] = ["command"]
+    OPTIONAL_SERVER_FIELDS: ClassVar[Dict[str, Union[type, tuple]]] = {
         "args": list,
         "env": dict,
         "cwd": str,
@@ -111,7 +111,6 @@ class MCPValidator(BaseValidator):
 
     def _validate_mcp_structure(self, mcp_data: Dict[str, Any], result: ValidationResult) -> None:
         """Validate the overall structure of an MCP configuration."""
-        file_path = result.file_path
 
         # Check that data is a dictionary
         if not isinstance(mcp_data, dict):
@@ -512,7 +511,7 @@ class MCPValidator(BaseValidator):
 
                 # Try to start the process with a short timeout
                 proc = subprocess.Popen(
-                    [command] + args,
+                    [command, *args],
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -523,7 +522,7 @@ class MCPValidator(BaseValidator):
 
                 # Send a simple test message
                 try:
-                    stdout, stderr = proc.communicate(
+                    _stdout, _stderr = proc.communicate(
                         input=b'{"jsonrpc": "2.0", "method": "ping", "id": 1}\n', timeout=2
                     )
 

@@ -44,7 +44,7 @@ class TestCommandFunctionality:
             cwd = pacc_dir
 
         result = subprocess.run(
-            [sys.executable, "-m", "pacc"] + args,
+            [sys.executable, "-m", "pacc", *args],
             cwd=cwd,
             capture_output=True,
             text=True,

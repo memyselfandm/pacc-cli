@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -38,7 +39,7 @@ class PackageHandler(ABC):
         self,
         package: BasePackage,
         destination: Union[str, Path],
-        options: Optional[Dict[str, Any]] = None,
+        _options: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Install package to destination.
 
@@ -54,7 +55,7 @@ class PackageHandler(ABC):
 
     @abstractmethod
     async def uninstall_package(
-        self, package_info: Dict[str, Any], options: Optional[Dict[str, Any]] = None
+        self, package_info: Dict[str, Any], _options: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Uninstall previously installed package.
 
@@ -90,7 +91,7 @@ class FilePackageHandler(PackageHandler):
         self,
         package: BasePackage,
         destination: Union[str, Path],
-        options: Optional[Dict[str, Any]] = None,
+        _options: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Install file package.
 
@@ -129,8 +130,6 @@ class FilePackageHandler(PackageHandler):
             if extracted_path != dest_path:
                 if dest_path.exists():
                     if dest_path.is_dir():
-                        import shutil
-
                         shutil.rmtree(dest_path)
                     else:
                         dest_path.unlink()
@@ -145,7 +144,7 @@ class FilePackageHandler(PackageHandler):
             return False
 
     async def uninstall_package(
-        self, package_info: Dict[str, Any], options: Optional[Dict[str, Any]] = None
+        self, package_info: Dict[str, Any], _options: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Uninstall file package.
 
@@ -167,8 +166,6 @@ class FilePackageHandler(PackageHandler):
             if install_path.is_file():
                 install_path.unlink()
             elif install_path.is_dir():
-                import shutil
-
                 shutil.rmtree(install_path)
 
             logger.info(f"Uninstalled file package from {install_path}")
@@ -195,7 +192,7 @@ class ArchivePackageHandler(PackageHandler):
         self,
         package: BasePackage,
         destination: Union[str, Path],
-        options: Optional[Dict[str, Any]] = None,
+        _options: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Install archive package.
 
@@ -264,8 +261,6 @@ class ArchivePackageHandler(PackageHandler):
             # Move to final destination if needed
             if extracted_path != dest_path:
                 if dest_path.exists():
-                    import shutil
-
                     if dest_path.is_dir():
                         shutil.rmtree(dest_path)
                     else:
@@ -281,7 +276,7 @@ class ArchivePackageHandler(PackageHandler):
             return False
 
     async def uninstall_package(
-        self, package_info: Dict[str, Any], options: Optional[Dict[str, Any]] = None
+        self, package_info: Dict[str, Any], _options: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Uninstall archive package.
 
@@ -303,8 +298,6 @@ class ArchivePackageHandler(PackageHandler):
             if install_path.is_file():
                 install_path.unlink()
             elif install_path.is_dir():
-                import shutil
-
                 shutil.rmtree(install_path)
 
             logger.info(f"Uninstalled archive package from {install_path}")
@@ -352,7 +345,7 @@ class UniversalPackageHandler(PackageHandler):
         self,
         package: BasePackage,
         destination: Union[str, Path],
-        options: Optional[Dict[str, Any]] = None,
+        _options: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Install package using appropriate handler.
 
@@ -374,7 +367,7 @@ class UniversalPackageHandler(PackageHandler):
         return await handler.install_package(package, destination, options)
 
     async def uninstall_package(
-        self, package_info: Dict[str, Any], options: Optional[Dict[str, Any]] = None
+        self, package_info: Dict[str, Any], _options: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Uninstall package using appropriate handler.
 
@@ -399,7 +392,7 @@ class UniversalPackageHandler(PackageHandler):
         source_path: Union[str, Path],
         destination: Union[str, Path],
         format_hint: Optional[PackageFormat] = None,
-        options: Optional[Dict[str, Any]] = None,
+        _options: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Install package from path.
 
@@ -422,7 +415,7 @@ class UniversalPackageHandler(PackageHandler):
     async def batch_install(
         self,
         packages: List[tuple[Union[str, Path], Union[str, Path]]],
-        options: Optional[Dict[str, Any]] = None,
+        _options: Optional[Dict[str, Any]] = None,
     ) -> List[bool]:
         """Install multiple packages.
 

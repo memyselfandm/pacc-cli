@@ -7,7 +7,9 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
+
+import yaml
 
 from ..errors import SourceError
 from ..validators import ExtensionDetector
@@ -32,7 +34,7 @@ class GitUrlParser:
     """Parser for Git repository URLs."""
 
     # Supported Git providers and their patterns
-    PROVIDER_PATTERNS = {
+    PROVIDER_PATTERNS: ClassVar[Dict[str, Any]] = {
         "github": {
             "https": r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?(?:/(.+?))?(?:[#@](.+))?/?$",
             "ssh": r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?(?:/(.+?))?(?:[#@](.+))?/?$",
@@ -305,20 +307,25 @@ class GitCloner:
                 )
 
                 if checkout_result.returncode != 0:
-                    error_msg = f"Git checkout failed: {checkout_result.stderr or checkout_result.stdout or 'Unknown error'}"
+                    error_msg = (
+                        f"Git checkout failed: "
+                        f"{checkout_result.stderr or checkout_result.stdout or 'Unknown error'}"
+                    )
                     raise SourceError(error_msg, source_type="git", source_path=Path(url))
 
             return clone_path
 
         except subprocess.CalledProcessError as e:
             error_msg = f"Git clone failed: {e.stderr or e.stdout or str(e)}"
-            raise SourceError(error_msg, source_type="git", source_path=Path(url))
-        except subprocess.TimeoutExpired:
-            raise SourceError("Git clone timed out", source_type="git", source_path=Path(url))
+            raise SourceError(error_msg, source_type="git", source_path=Path(url)) from e
+        except subprocess.TimeoutExpired as e:
+            raise SourceError(
+                "Git clone timed out", source_type="git", source_path=Path(url)
+            ) from e
         except Exception as e:
             raise SourceError(
                 f"Unexpected error during clone: {e!s}", source_type="git", source_path=Path(url)
-            )
+            ) from e
 
     def _get_clone_url(self, original_url: str, repo_info: Dict[str, Any]) -> str:
         """Get the actual URL to use for cloning.
@@ -397,7 +404,8 @@ class GitRepositorySource(Source):
         Returns:
             List of Extension objects found in repository
         """
-        from ..cli import Extension  # Import here to avoid circular imports
+        # Import here to avoid circular imports
+        from ..cli import Extension
 
         # Clone the repository if not already done
         if not self._clone_path:
@@ -513,8 +521,6 @@ class GitRepositorySource(Source):
                 return data.get("description")
             elif ext_type == "agents":
                 # Markdown with YAML frontmatter
-                import yaml
-
                 with open(file_path, encoding="utf-8") as f:
                     content = f.read()
                 if content.startswith("---"):
@@ -526,8 +532,8 @@ class GitRepositorySource(Source):
                 # Markdown file - extract first line after title
                 with open(file_path, encoding="utf-8") as f:
                     lines = f.readlines()
-                for i, line in enumerate(lines):
-                    line = line.strip()
+                for i, original_line in enumerate(lines):
+                    line = original_line.strip()
                     if line and not line.startswith("#") and i > 0:
                         return line
         except Exception:
@@ -624,7 +630,7 @@ class GitSourceHandler(SourceHandler):
         """
         return self.parser.validate(source)
 
-    def process_source(self, source: str, extension_type: Optional[str] = None, **kwargs) -> List:
+    def process_source(self, source: str, extension_type: Optional[str] = None, **_kwargs) -> List:
         """Process Git repository source and return extensions.
 
         Args:

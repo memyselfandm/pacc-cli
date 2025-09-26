@@ -390,7 +390,7 @@ class TestTeamPluginSync:
                     "pacc.core.project_config.ProjectConfigValidator._find_claude_dir",
                     return_value=member.claude_dir,
                 ):
-                    member_repo_manager = member.get_repo_manager()
+                    member.get_repo_manager()
                     member_config_manager = member.get_config_manager()
 
                     # Sync from shared repository

@@ -519,7 +519,7 @@ class TestErrorRecoveryWorkflows:
         scanner = DirectoryScanner()
         file_filter = FileFilter().add_extension_filter({".txt", ".json", ".yaml"})
 
-        for iteration in range(5):
+        for _iteration in range(5):
             discovered_files = list(scanner.scan_directory(performance_directory, recursive=True))
             filtered_files = file_filter.filter_files(discovered_files)
 
@@ -528,7 +528,7 @@ class TestErrorRecoveryWorkflows:
             for i in range(0, len(filtered_files), batch_size):
                 batch = filtered_files[i : i + batch_size]
                 # Simulate processing batch
-                processed_count = len(batch)
+                len(batch)
 
             # Force garbage collection
             gc.collect()

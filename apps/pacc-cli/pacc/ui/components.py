@@ -1,6 +1,7 @@
 """UI components for PACC interactive interfaces."""
 
 import os
+import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,7 +104,7 @@ class KeyboardHandler:
         ch = msvcrt.getch()
 
         # Handle special keys
-        if ch == b"\x00" or ch == b"\xe0":  # Special key prefix
+        if ch in {b"\x00", b"\xe0"}:  # Special key prefix
             ch2 = msvcrt.getch()
             key_map = {
                 b"H": self.KEY_UP,
@@ -157,15 +158,15 @@ class KeyboardHandler:
                         sys.stdin.read(1)  # Read the '~'
                         return self.KEY_DELETE
                 return self.KEY_ESCAPE
-            except:
+            except Exception:
                 return self.KEY_ESCAPE
 
         # Handle normal keys
-        if ch == "\r" or ch == "\n":
+        if ch in {"\r", "\n"}:
             return self.KEY_ENTER
         elif ch == " ":
             return self.KEY_SPACE
-        elif ch == "\x7f" or ch == "\x08":
+        elif ch in {"\x7f", "\x08"}:
             return self.KEY_BACKSPACE
         elif ch == "\t":
             return self.KEY_TAB
@@ -471,12 +472,10 @@ class MultiSelectList:
     def _update_terminal_size(self) -> None:
         """Update terminal size information."""
         try:
-            import shutil
-
             size = shutil.get_terminal_size()
             self.terminal_width = size.columns
             self.terminal_height = size.lines
-        except:
+        except Exception:
             pass  # Use defaults
 
     def run(self) -> List[SelectableItem]:

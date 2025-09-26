@@ -4,7 +4,7 @@ import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from unittest.mock import Mock, patch
 
 
@@ -19,7 +19,7 @@ class MockGitRepository:
         self.remotes = {"origin": "https://github.com/test/repo.git"}
         self.is_dirty = False
 
-    def clone(self, url: str, target_path: Path) -> bool:
+    def clone(self, _url: str, target_path: Path) -> bool:
         """Mock git clone operation."""
         target_path.mkdir(parents=True, exist_ok=True)
         (target_path / ".git").mkdir(exist_ok=True)
@@ -29,11 +29,11 @@ class MockGitRepository:
         """Mock git pull operation."""
         return True
 
-    def push(self, branch: str = None) -> bool:
+    def push(self, _branch: Optional[str] = None) -> bool:
         """Mock git push operation."""
         return True
 
-    def add(self, files: List[str]) -> bool:
+    def add(self, _files: List[str]) -> bool:
         """Mock git add operation."""
         return True
 
@@ -167,7 +167,7 @@ class MockEnvironment:
         """Set environment variable."""
         self.env_vars[key] = value
 
-    def get_env(self, key: str, default: str = None) -> str:
+    def get_env(self, key: str, default: Optional[str] = None) -> str:
         """Get environment variable."""
         return self.env_vars.get(key, default)
 
@@ -304,10 +304,8 @@ def patch_file_system(mock_fs: MockFileSystem):
         mock_exists.side_effect = lambda self: mock_fs.exists(str(self))
         mock_is_file.side_effect = lambda self: mock_fs.is_file(str(self))
         mock_is_dir.side_effect = lambda self: mock_fs.is_dir(str(self))
-        mock_read.side_effect = lambda self, **kwargs: mock_fs.read_text(str(self))
-        mock_write.side_effect = lambda self, content, **kwargs: mock_fs.write_text(
-            str(self), content
-        )
+        mock_read.side_effect = lambda self, **_: mock_fs.read_text(str(self))
+        mock_write.side_effect = lambda self, content, **_: mock_fs.write_text(str(self), content)
 
         yield mock_fs
 

@@ -493,7 +493,7 @@ class TestErrorPerformance:
 
         # Create 1000 errors
         for i in range(1000):
-            error = ValidationError(f"Error {i}", line_number=i)
+            ValidationError(f"Error {i}", line_number=i)
 
         end_time = time.time()
         duration = end_time - start_time
@@ -513,7 +513,7 @@ class TestErrorPerformance:
 
         # Serialize 1000 times
         for _ in range(1000):
-            error_dict = error.to_dict()
+            error.to_dict()
 
         end_time = time.time()
         duration = end_time - start_time

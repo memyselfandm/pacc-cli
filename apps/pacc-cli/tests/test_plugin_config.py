@@ -208,9 +208,9 @@ class TestConfigBackup:
         backup_manager = ConfigBackup(tmp_path / "backups")
 
         # Create multiple backups
-        backup1 = backup_manager.create_backup(config_file1)
-        backup2 = backup_manager.create_backup(config_file2)
-        backup3 = backup_manager.create_backup(config_file1)  # Second backup of file1
+        backup_manager.create_backup(config_file1)
+        backup_manager.create_backup(config_file2)
+        backup_manager.create_backup(config_file1)  # Second backup of file1
 
         # List all backups
         all_backups = backup_manager.list_backups()
@@ -547,7 +547,7 @@ class TestEdgeCases:
         try:
             # Should raise an exception during initialization due to permission error
             with pytest.raises(PermissionError):
-                config_manager = PluginConfigManager(plugins_dir=plugins_dir)
+                PluginConfigManager(plugins_dir=plugins_dir)
 
         finally:
             # Restore write permissions for cleanup

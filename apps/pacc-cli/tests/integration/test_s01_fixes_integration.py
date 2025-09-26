@@ -84,7 +84,7 @@ class TestS01DirectoryValidationIntegration:
             assert total_files > 10, "Should find multiple extension files"
 
             # Verify results are valid
-            for extension_type, validation_results in results.items():
+            for _extension_type, validation_results in results.items():
                 assert isinstance(validation_results, list)
                 for result in validation_results:
                     assert isinstance(result, ValidationResult)
@@ -959,7 +959,7 @@ class TestS01PerformanceBenchmarks:
 
             # Benchmark validation
             start_time = time.time()
-            results = validate_extension_directory(temp_path)
+            validate_extension_directory(temp_path)
             end_time = time.time()
 
             duration = end_time - start_time
@@ -1000,7 +1000,7 @@ class TestS01PerformanceBenchmarks:
 
             start_time = time.time()
             for file_path in test_files:
-                detected_type = detector.detect_extension_type(file_path)
+                detector.detect_extension_type(file_path)
             end_time = time.time()
 
             duration = end_time - start_time

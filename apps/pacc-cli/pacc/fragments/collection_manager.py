@@ -568,7 +568,7 @@ class FragmentCollectionManager:
                 try:
                     # Install individual fragment
                     content = file_path.read_text(encoding="utf-8")
-                    stored_path = self.storage_manager.store_fragment(
+                    self.storage_manager.store_fragment(
                         fragment_name=file_name,
                         content=content,
                         storage_type=options.storage_type,
@@ -771,7 +771,8 @@ class FragmentCollectionManager:
             result = self.install_collection(source_path, update_options)
             result.changes_made.extend(
                 [
-                    f"Updated from version {update_info.current_version} to {update_info.available_version}"
+                    f"Updated from version {update_info.current_version} to "
+                    f"{update_info.available_version}"
                 ]
             )
 
@@ -783,7 +784,7 @@ class FragmentCollectionManager:
             return result
 
     def _analyze_collection_update(
-        self, collection_name: str, new_metadata: CollectionMetadata, storage_type: str
+        self, collection_name: str, new_metadata: CollectionMetadata, _storage_type: str
     ) -> CollectionUpdateInfo:
         """Analyze collection for updates."""
         # Load current collection metadata from pacc.json
@@ -900,7 +901,7 @@ class FragmentCollectionManager:
         except Exception as e:
             logger.warning(f"Could not update pacc.json during collection removal: {e}")
 
-    def _remove_unused_dependencies(self, removed_collection: str, storage_type: str) -> None:
+    def _remove_unused_dependencies(self, removed_collection: str, _storage_type: str) -> None:
         """Remove dependencies that are no longer needed."""
         # This is a simplified implementation
         # In practice, you'd want to check all remaining collections for dependency usage

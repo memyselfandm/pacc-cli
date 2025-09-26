@@ -71,7 +71,7 @@ class TestPluginManifestParser:
             f.write('{"name": "test", invalid json}')
 
         parser = PluginManifestParser()
-        manifest, result = parser.parse_manifest(manifest_path)
+        _manifest, result = parser.parse_manifest(manifest_path)
 
         assert not result.is_valid
         assert result.has_errors
@@ -86,7 +86,7 @@ class TestPluginManifestParser:
             json.dump(manifest_data, f)
 
         parser = PluginManifestParser()
-        manifest, result = parser.parse_manifest(manifest_path)
+        _manifest, result = parser.parse_manifest(manifest_path)
 
         assert not result.is_valid
         assert result.has_errors
@@ -110,7 +110,7 @@ class TestPluginManifestParser:
             with open(manifest_path, "w") as f:
                 json.dump(manifest_data, f)
 
-            manifest, result = parser.parse_manifest(manifest_path)
+            _manifest, result = parser.parse_manifest(manifest_path)
             assert not result.is_valid, f"Name '{invalid_name}' should be invalid"
 
     def test_validate_version_format(self, tmp_path):
@@ -131,7 +131,7 @@ class TestPluginManifestParser:
             with open(manifest_path, "w") as f:
                 json.dump(manifest_data, f)
 
-            manifest, result = parser.parse_manifest(manifest_path)
+            _manifest, result = parser.parse_manifest(manifest_path)
             assert not result.is_valid, f"Version '{invalid_version}' should be invalid"
 
     def test_validate_author_email(self, tmp_path):
@@ -147,7 +147,7 @@ class TestPluginManifestParser:
             with open(manifest_path, "w") as f:
                 json.dump(manifest_data, f)
 
-            manifest, result = parser.parse_manifest(manifest_path)
+            _manifest, result = parser.parse_manifest(manifest_path)
             assert not result.is_valid, f"Email '{invalid_email}' should be invalid"
 
 

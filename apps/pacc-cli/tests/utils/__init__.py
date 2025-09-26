@@ -17,21 +17,21 @@ from .performance import (
 )
 
 __all__ = [
+    "BenchmarkReporter",
+    "ClaudeEnvironmentFactory",
+    "MemoryMonitor",
+    "MockEnvironment",
+    "MockFileSystem",
+    # Mock utilities
+    "MockGitRepository",
     # Performance utilities
     "PerformanceProfiler",
-    "MemoryMonitor",
-    "BenchmarkReporter",
-    "assert_performance",
-    "measure_throughput",
     # Test fixtures
     "PluginRepositoryFactory",
     "TeamWorkspaceFactory",
-    "ClaudeEnvironmentFactory",
-    "create_test_plugin",
+    "assert_performance",
     "create_test_manifest",
-    # Mock utilities
-    "MockGitRepository",
-    "MockFileSystem",
-    "MockEnvironment",
+    "create_test_plugin",
+    "measure_throughput",
     "patch_claude_environment",
 ]

@@ -105,8 +105,8 @@ This is an optional fragment.
     def test_fragment_discover_basic(self):
         """Test basic fragment discover command."""
         # Create test collections
-        collection1 = self.create_test_collection("collection1")
-        collection2 = self.create_test_collection("collection2")
+        self.create_test_collection("collection1")
+        self.create_test_collection("collection2")
 
         # Test discover command
         with patch("sys.argv", ["pacc", "fragment", "discover", str(self.temp_dir)]):
@@ -117,7 +117,7 @@ This is an optional fragment.
     def test_fragment_discover_with_metadata(self):
         """Test fragment discover command with metadata."""
         # Create test collection
-        collection_dir = self.create_test_collection()
+        self.create_test_collection()
 
         # Test discover command with metadata
         with patch(
@@ -130,7 +130,7 @@ This is an optional fragment.
     def test_fragment_discover_json_format(self):
         """Test fragment discover command with JSON format."""
         # Create test collection
-        collection_dir = self.create_test_collection()
+        self.create_test_collection()
 
         # Test discover command with JSON format
         with patch(
@@ -143,7 +143,7 @@ This is an optional fragment.
     def test_fragment_discover_yaml_format(self):
         """Test fragment discover command with YAML format."""
         # Create test collection
-        collection_dir = self.create_test_collection()
+        self.create_test_collection()
 
         # Test discover command with YAML format
         with patch(

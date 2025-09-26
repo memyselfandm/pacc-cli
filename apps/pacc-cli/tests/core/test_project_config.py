@@ -7,11 +7,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from pacc.cli import PACCCli
 from pacc.core.project_config import (
     ExtensionSpec,
     InstallationPathResolver,
     ProjectConfigManager,
     ProjectConfigSchema,
+    ProjectConfigValidator,
+    ProjectSyncManager,
 )
 from pacc.errors.exceptions import ValidationError
 
@@ -297,7 +300,7 @@ class TestProjectConfigManager:
 
     def test_update_project_config(self, temp_project_dir, config_manager, sample_project_config):
         """Test updating project configuration."""
-        config_path = temp_project_dir / "pacc.json"
+        temp_project_dir / "pacc.json"
 
         # Initialize config
         config_manager.init_project_config(temp_project_dir, sample_project_config)
@@ -398,8 +401,6 @@ class TestProjectSync:
     @pytest.fixture
     def sync_manager(self):
         """Create project sync manager."""
-        from pacc.core.project_config import ProjectSyncManager
-
         return ProjectSyncManager()
 
     @pytest.fixture
@@ -550,8 +551,6 @@ class TestCLIIntegration:
 
     def test_init_command_with_project_config(self, temp_project_dir):
         """Test 'pacc init --project-config' command."""
-        from pacc.cli import PACCCli
-
         cli = PACCCli()
 
         # Mock the arguments
@@ -579,8 +578,6 @@ class TestCLIIntegration:
 
     def test_sync_command(self, sample_project_for_sync):
         """Test 'pacc sync' command."""
-        from pacc.cli import PACCCli
-
         cli = PACCCli()
 
         args = Mock()
@@ -597,8 +594,6 @@ class TestCLIIntegration:
 
     def test_sync_command_dry_run(self, sample_project_for_sync):
         """Test 'pacc sync --dry-run' command."""
-        from pacc.cli import PACCCli
-
         cli = PACCCli()
 
         args = Mock()
@@ -633,8 +628,6 @@ class TestConfigValidation:
             },
         }
 
-        from pacc.core.project_config import ProjectConfigValidator
-
         validator = ProjectConfigValidator()
 
         result = validator.validate_dependencies(config)
@@ -660,8 +653,6 @@ class TestConfigValidation:
             },
         }
 
-        from pacc.core.project_config import ProjectConfigValidator
-
         validator = ProjectConfigValidator()
 
         result = validator.validate_compatibility(config, current_pacc_version="1.0.0")
@@ -686,8 +677,6 @@ class TestConfigValidation:
                 ]
             },
         }
-
-        from pacc.core.project_config import ProjectConfigValidator
 
         validator = ProjectConfigValidator()
 
@@ -1029,7 +1018,7 @@ class TestInstallationPathResolver:
         result = resolver.resolve_target_path(spec, base_dir, source_file)
 
         # Should preserve the nested structure
-        expected = base_dir / "deep.json"  # Simplified expectation for now
+        base_dir / "deep.json"  # Simplified expectation for now
         assert result.name == "deep.json"
 
     def test_resolve_target_path_with_both_custom_and_preserve(self, resolver, claude_code_dir):

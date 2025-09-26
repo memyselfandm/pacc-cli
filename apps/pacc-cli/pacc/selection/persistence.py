@@ -147,7 +147,7 @@ class SelectionCache:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Load existing cache
-        asyncio.create_task(self._load_cache())
+        self._load_task = asyncio.create_task(self._load_cache())
 
     def generate_key(self, source_paths: List[Union[str, Path]], context: SelectionContext) -> str:
         """Generate cache key for selection parameters.
@@ -255,7 +255,7 @@ class SelectionCache:
         self._memory_cache[key] = entry
 
         # Store to disk asynchronously
-        asyncio.create_task(self._write_cache_entry(key, entry))
+        self._write_task = asyncio.create_task(self._write_cache_entry(key, entry))
 
         # Cleanup if we exceed max entries
         if len(self._memory_cache) > self.max_entries:

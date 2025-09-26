@@ -1,6 +1,7 @@
 """Tests for core file utilities."""
 
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -90,8 +91,6 @@ class TestDirectoryScanner(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test fixtures."""
-        import shutil
-
         shutil.rmtree(self.temp_dir)
 
     def test_scan_directory_non_recursive(self):
@@ -148,8 +147,6 @@ class TestFileFilter(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test fixtures."""
-        import shutil
-
         shutil.rmtree(self.temp_dir)
 
     def test_extension_filter(self):

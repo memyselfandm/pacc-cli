@@ -251,7 +251,7 @@ class TestEnvironmentManager(unittest.TestCase):
                 conflicts=[],
             )
 
-            success, message, warnings = self.manager.setup_environment()
+            success, message, _warnings = self.manager.setup_environment()
             self.assertTrue(success)
             self.assertIn("already configured", message)
 
@@ -270,7 +270,7 @@ class TestEnvironmentManager(unittest.TestCase):
                 conflicts=[],
             )
 
-            success, message, warnings = self.manager.setup_environment()
+            success, message, _warnings = self.manager.setup_environment()
             self.assertFalse(success)
             self.assertIn("Cannot write", message)
 
@@ -283,7 +283,7 @@ class TestEnvironmentManager(unittest.TestCase):
                 with patch.object(manager, "_setup_windows_environment_variables") as mock_setup:
                     mock_setup.return_value = (True, "Success", [])
 
-                    success, message, warnings = manager.setup_environment()
+                    success, _message, _warnings = manager.setup_environment()
                     self.assertTrue(success)
                     mock_setup.assert_called_once()
 
@@ -292,7 +292,7 @@ class TestEnvironmentManager(unittest.TestCase):
         """Test Windows environment variable setup success."""
         mock_run.return_value = Mock(returncode=0, stderr="")
 
-        success, message, warnings = self.manager._setup_windows_environment_variables()
+        success, message, _warnings = self.manager._setup_windows_environment_variables()
         self.assertTrue(success)
         self.assertIn("registry", message)
 
@@ -301,7 +301,7 @@ class TestEnvironmentManager(unittest.TestCase):
         """Test Windows environment variable setup failure."""
         mock_run.return_value = Mock(returncode=1, stderr="Access denied")
 
-        success, message, warnings = self.manager._setup_windows_environment_variables()
+        success, message, _warnings = self.manager._setup_windows_environment_variables()
         self.assertFalse(success)
         self.assertIn("Failed to set", message)
 
@@ -323,7 +323,7 @@ class TestEnvironmentManager(unittest.TestCase):
 
         with patch.object(self.manager, "backup_profile", return_value=(True, "Backup created")):
             with patch.object(self.manager, "_is_already_configured", return_value=False):
-                success, message, warnings = self.manager._setup_shell_profile(status, False)
+                success, message, _warnings = self.manager._setup_shell_profile(status, False)
 
                 self.assertTrue(success)
                 self.assertIn("configured", message)
@@ -357,7 +357,7 @@ class TestEnvironmentManager(unittest.TestCase):
 
         with patch.object(manager, "backup_profile", return_value=(True, "Backup created")):
             with patch.object(manager, "_is_already_configured", return_value=False):
-                success, message, warnings = manager._setup_shell_profile(status, False)
+                success, _message, _warnings = manager._setup_shell_profile(status, False)
 
                 self.assertTrue(success)
                 content = profile_path.read_text()
@@ -396,7 +396,7 @@ class TestEnvironmentManager(unittest.TestCase):
         backup_path = Path(str(profile_path) + ".pacc.backup")
         backup_path.write_text("old backup")
 
-        success, message = self.manager.backup_profile(profile_path)
+        success, _message = self.manager.backup_profile(profile_path)
 
         self.assertTrue(success)
         # Should create timestamped backup
@@ -417,7 +417,7 @@ class TestEnvironmentManager(unittest.TestCase):
                 conflicts=[],
             )
 
-            success, message, details = self.manager.verify_environment()
+            success, message, _details = self.manager.verify_environment()
             self.assertTrue(success)
             self.assertIn("properly configured", message)
 
@@ -436,7 +436,7 @@ class TestEnvironmentManager(unittest.TestCase):
                 conflicts=[],
             )
 
-            success, message, details = self.manager.verify_environment()
+            success, message, _details = self.manager.verify_environment()
             self.assertFalse(success)
             self.assertIn("not set", message)
 
@@ -455,7 +455,7 @@ class TestEnvironmentManager(unittest.TestCase):
                 conflicts=[],
             )
 
-            success, message, details = self.manager.verify_environment()
+            success, message, _details = self.manager.verify_environment()
             self.assertFalse(success)
             self.assertIn("should be 'true'", message)
 
@@ -468,7 +468,7 @@ class TestEnvironmentManager(unittest.TestCase):
                 with patch.object(manager, "_reset_windows_environment") as mock_reset:
                     mock_reset.return_value = (True, "Reset successful", [])
 
-                    success, message, warnings = manager.reset_environment()
+                    success, _message, _warnings = manager.reset_environment()
                     self.assertTrue(success)
                     mock_reset.assert_called_once()
 
@@ -477,7 +477,7 @@ class TestEnvironmentManager(unittest.TestCase):
         """Test successful Windows environment reset."""
         mock_run.return_value = Mock(returncode=0, stderr="")
 
-        success, message, warnings = self.manager._reset_windows_environment()
+        success, message, _warnings = self.manager._reset_windows_environment()
         self.assertTrue(success)
         self.assertIn("removed", message)
 
@@ -486,7 +486,7 @@ class TestEnvironmentManager(unittest.TestCase):
         """Test Windows environment reset when variable not found."""
         mock_run.return_value = Mock(returncode=1, stderr="cannot find the file specified")
 
-        success, message, warnings = self.manager._reset_windows_environment()
+        success, message, _warnings = self.manager._reset_windows_environment()
         self.assertTrue(success)
         self.assertIn("was not set", message)
 
@@ -511,7 +511,7 @@ export ENABLE_PLUGINS=true
             conflicts=[],
         )
 
-        success, message, warnings = self.manager._reset_shell_profile(status)
+        success, message, _warnings = self.manager._reset_shell_profile(status)
 
         self.assertTrue(success)
         self.assertIn("removed", message)
@@ -540,7 +540,7 @@ export ENABLE_PLUGINS=true
             conflicts=[],
         )
 
-        success, message, warnings = self.manager._reset_shell_profile(status)
+        success, message, _warnings = self.manager._reset_shell_profile(status)
 
         self.assertTrue(success)
         self.assertIn("No PACC modifications", message)

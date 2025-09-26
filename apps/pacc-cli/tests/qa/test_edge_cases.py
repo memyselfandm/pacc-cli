@@ -214,7 +214,7 @@ sys.exit(0)
                 pip_cmd = venv_path / "bin" / "pip"
 
             # Install to user directory
-            result = subprocess.run(
+            subprocess.run(
                 [
                     str(pip_cmd),
                     "install",
@@ -476,7 +476,7 @@ except ImportError as e:
             def safe_update_config(file_path: Path, lock_path: Path, process_id: int):
                 """Update config with lock file."""
                 max_attempts = 10
-                for attempt in range(max_attempts):
+                for _attempt in range(max_attempts):
                     try:
                         # Try to create lock file
                         lock_path.touch(exist_ok=False)
@@ -655,9 +655,9 @@ except ImportError as e:
 
     def run_all_tests(self) -> Dict[str, Any]:
         """Run all edge case tests."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Edge Case Testing Suite")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         all_results = {
             "test_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -783,9 +783,9 @@ if __name__ == "__main__":
     results = tester.run_all_tests()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Test Summary")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     total_tests = 0
     passed_tests = 0

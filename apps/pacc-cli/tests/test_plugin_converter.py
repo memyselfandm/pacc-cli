@@ -235,7 +235,7 @@ class TestPluginConverter:
             hook_files = []
             try:
                 # Create hook files
-                for i, data in enumerate([hook_data1, hook_data2], 1):
+                for _i, data in enumerate([hook_data1, hook_data2], 1):
                     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
                         json.dump(data, f)
                         hook_files.append(Path(f.name))

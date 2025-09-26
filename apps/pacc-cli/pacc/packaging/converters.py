@@ -1,5 +1,6 @@
 """Format converters for transforming between package formats."""
 
+import io
 import logging
 import shutil
 import tarfile
@@ -298,7 +299,7 @@ class UniversalConverter(BaseConverter):
         source_path: Path,
         output_path: Path,
         source_package: BasePackage,
-        options: Dict[str, Any],
+        _options: Dict[str, Any],
     ) -> ConversionResult:
         """Convert to multi-file format."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -382,7 +383,7 @@ class UniversalConverter(BaseConverter):
         output_path: Path,
         source_package: BasePackage,
         compression: Optional[str],
-        options: Dict[str, Any],
+        _options: Dict[str, Any],
     ) -> ConversionResult:
         """Convert to TAR archive format."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -514,7 +515,7 @@ class SpecializedConverter(BaseConverter):
         self,
         source_package: SingleFilePackage,
         output_path: Path,
-        options: Dict[str, Any],
+        _options: Dict[str, Any],
         compression: Optional[str],
     ) -> ConversionResult:
         """Common implementation for single file to TAR conversion."""
@@ -578,7 +579,7 @@ class SpecializedConverter(BaseConverter):
         self,
         source_package: MultiFilePackage,
         output_path: Path,
-        options: Dict[str, Any],
+        _options: Dict[str, Any],
         compression: Optional[str],
     ) -> ConversionResult:
         """Common implementation for multi-file to TAR conversion."""
@@ -896,7 +897,3 @@ class PackageConverter:
             }
         else:
             return {}
-
-
-# Import io for BytesIO
-import io

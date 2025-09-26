@@ -1,3 +1,13 @@
 {
-
+  "permissions": {
+    "allow": [
+      "Bash(git fetch:*)",
+      "Bash(python -m pytest:*",
+      "Bash(uv run pytest:*)",
+      "Bash(python -m pacc:*)",
+      "Bash(python test:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
 }

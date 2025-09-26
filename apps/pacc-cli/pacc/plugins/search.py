@@ -139,7 +139,7 @@ class PluginRegistry:
                 ptype = SearchPluginType(plugin_data.get("type", "command").lower())
 
                 # Filter by type if specified
-                if plugin_type != SearchPluginType.ALL and ptype != plugin_type:
+                if plugin_type not in (SearchPluginType.ALL, ptype):
                     continue
 
                 result = SearchResult(
@@ -252,7 +252,7 @@ class LocalPluginIndex:
             enabled_plugins = self.config_manager.get_enabled_plugins()
 
             # Scan each repository
-            for repo_key, repo_info in config.get("repositories", {}).items():
+            for _repo_key, repo_info in config.get("repositories", {}).items():
                 repo_path = Path(repo_info.get("path", ""))
                 if not repo_path.exists():
                     continue
@@ -357,7 +357,7 @@ class PluginSearchEngine:
 
             # Filter installed plugins
             for plugin in installed:
-                if plugin_type == SearchPluginType.ALL or plugin.plugin_type == plugin_type:
+                if plugin_type in (SearchPluginType.ALL, plugin.plugin_type):
                     if plugin.matches_query(query):
                         results.append(plugin)
 

@@ -19,21 +19,21 @@ import pytest
 class TestCompleteBuildWorkflow:
     """Test the complete PACC build and installation workflow."""
 
-    def test_complete_build_to_install_workflow(self):
-        """Test complete workflow from source to working installation."""
-
-        # Get project root
+    def _get_project_root(self):
+        """Get the project root directory."""
         test_dir = Path(__file__).parent
-        project_root = test_dir.parent
+        return test_dir.parent
 
-        # Step 1: Clean environment
+    def _clean_build_environment(self, project_root):
+        """Clean build artifacts."""
         print("Step 1: Cleaning build environment...")
         for artifact_dir in ["build", "dist"]:
             for path in project_root.glob(artifact_dir):
                 if path.is_dir():
                     shutil.rmtree(path)
 
-        # Step 2: Build distributions
+    def _build_distributions(self, project_root):
+        """Build distributions and validate."""
         print("Step 2: Building distributions...")
         build_result = subprocess.run(
             [sys.executable, "scripts/build.py", "build"],
@@ -46,7 +46,6 @@ class TestCompleteBuildWorkflow:
         assert build_result.returncode == 0, f"Build failed: {build_result.stderr}"
         print("✅ Build completed successfully")
 
-        # Step 3: Validate distributions
         print("Step 3: Validating distributions...")
         check_result = subprocess.run(
             [sys.executable, "scripts/build.py", "check"],
@@ -59,7 +58,162 @@ class TestCompleteBuildWorkflow:
         assert check_result.returncode == 0, f"Distribution check failed: {check_result.stderr}"
         print("✅ Distribution validation passed")
 
-        # Step 4: Test wheel installation and functionality
+    def _setup_test_venv(self, temp_dir, wheel_path):
+        """Set up test virtual environment and install wheel."""
+        venv_dir = Path(temp_dir) / "test_venv"
+
+        print("   Creating virtual environment...")
+        venv.create(venv_dir, with_pip=True)
+
+        # Get paths for the virtual environment
+        if sys.platform == "win32":
+            pip_path = venv_dir / "Scripts" / "pip.exe"
+            pacc_path = venv_dir / "Scripts" / "pacc.exe"
+        else:
+            pip_path = venv_dir / "bin" / "pip"
+            pacc_path = venv_dir / "bin" / "pacc"
+
+        print("   Installing wheel...")
+        install_result = subprocess.run(
+            [str(pip_path), "install", str(wheel_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert install_result.returncode == 0, f"Installation failed: {install_result.stderr}"
+        return pacc_path
+
+    def _test_basic_commands(self, pacc_path):
+        """Test basic PACC commands."""
+        print("Step 5: Testing PACC functionality...")
+
+        # Test version command
+        version_result = subprocess.run(
+            [str(pacc_path), "--version"], capture_output=True, text=True, check=False
+        )
+
+        assert version_result.returncode == 0, f"Version command failed: {version_result.stderr}"
+        assert (
+            "1.0.0" in version_result.stdout
+        ), f"Unexpected version output: {version_result.stdout}"
+        print("   ✅ Version command works")
+
+        # Test help command
+        help_result = subprocess.run(
+            [str(pacc_path), "--help"], capture_output=True, text=True, check=False
+        )
+
+        assert help_result.returncode == 0, f"Help command failed: {help_result.stderr}"
+        assert "install" in help_result.stdout, "Install command not found in help"
+        assert "validate" in help_result.stdout, "Validate command not found in help"
+        print("   ✅ Help command works")
+
+    def _test_validation_workflow(self, pacc_path, temp_dir):
+        """Test extension validation workflow."""
+        print("Step 6: Testing extension validation...")
+
+        # Create test extension directory
+        test_dir = Path(temp_dir) / "test_extensions"
+        test_dir.mkdir()
+
+        # Create valid hook
+        valid_hook = {
+            "name": "test-hook",
+            "eventTypes": ["PreToolUse"],
+            "commands": ["echo 'Hook executed'"],
+            "description": "Test hook for validation",
+        }
+
+        hook_file = test_dir / "valid-hook.json"
+        with open(hook_file, "w") as f:
+            json.dump(valid_hook, f, indent=2)
+
+        # Test validation of valid hook
+        validate_result = subprocess.run(
+            [str(pacc_path), "validate", str(hook_file), "--type", "hooks"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert (
+            validate_result.returncode == 0
+        ), f"Valid hook validation failed: {validate_result.stderr}"
+        assert (
+            "Valid" in validate_result.stdout or "✓" in validate_result.stdout
+        ), "Valid hook not recognized as valid"
+        print("   ✅ Valid hook validation works")
+
+        return hook_file
+
+    def _test_invalid_validation(self, pacc_path, temp_dir):
+        """Test validation of invalid extensions."""
+        test_dir = Path(temp_dir) / "test_extensions"
+
+        # Create invalid hook
+        invalid_hook = {
+            "name": "invalid-hook",
+            # Missing required fields
+        }
+
+        invalid_hook_file = test_dir / "invalid-hook.json"
+        with open(invalid_hook_file, "w") as f:
+            json.dump(invalid_hook, f, indent=2)
+
+        # Test validation of invalid hook
+        invalid_validate_result = subprocess.run(
+            [str(pacc_path), "validate", str(invalid_hook_file), "--type", "hooks"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        # Should fail validation but not crash
+        assert invalid_validate_result.returncode != 0, "Invalid hook should fail validation"
+        assert (
+            "INVALID" in invalid_validate_result.stdout or "ERROR" in invalid_validate_result.stdout
+        ), "Invalid hook errors not reported"
+        print("   ✅ Invalid hook validation works")
+
+    def _test_installation_workflow(self, pacc_path, hook_file, temp_dir):
+        """Test installation workflow preparation."""
+        print("Step 7: Testing installation workflow...")
+
+        # Create minimal Claude directory structure for testing
+        claude_dir = Path(temp_dir) / ".claude"
+        claude_dir.mkdir()
+
+        # Test that pacc can handle basic installation concepts
+        dry_run_result = subprocess.run(
+            [str(pacc_path), "install", str(hook_file), "--dry-run"],
+            capture_output=True,
+            text=True,
+            cwd=temp_dir,
+            check=False,
+        )
+
+        # Dry run should work (or at least not crash with a clear error)
+        if dry_run_result.returncode != 0:
+            # Check if it's a reasonable error (like no settings.json)
+            error_output = dry_run_result.stderr.lower()
+            acceptable_errors = ["settings.json", "configuration", "not found", "permission"]
+
+            assert any(
+                err in error_output for err in acceptable_errors
+            ), f"Unexpected error in dry run: {dry_run_result.stderr}"
+            print("   ✅ Installation workflow handles missing config gracefully")
+        else:
+            print("   ✅ Installation dry run works")
+
+    def test_complete_build_to_install_workflow(self):
+        """Test complete workflow from source to working installation."""
+        project_root = self._get_project_root()
+
+        self._clean_build_environment(project_root)
+        self._build_distributions(project_root)
+
+        # Test wheel installation and functionality
         print("Step 4: Testing wheel installation...")
         dist_dir = project_root / "dist"
         wheel_files = list(dist_dir.glob("*.whl"))
@@ -68,149 +222,11 @@ class TestCompleteBuildWorkflow:
         wheel_path = wheel_files[0]
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            venv_dir = Path(temp_dir) / "test_venv"
-
-            # Create virtual environment
-            print("   Creating virtual environment...")
-            venv.create(venv_dir, with_pip=True)
-
-            # Get paths for the virtual environment
-            if sys.platform == "win32":
-                python_path = venv_dir / "Scripts" / "python.exe"
-                pip_path = venv_dir / "Scripts" / "pip.exe"
-                pacc_path = venv_dir / "Scripts" / "pacc.exe"
-            else:
-                python_path = venv_dir / "bin" / "python"
-                pip_path = venv_dir / "bin" / "pip"
-                pacc_path = venv_dir / "bin" / "pacc"
-
-            # Install the wheel
-            print("   Installing wheel...")
-            install_result = subprocess.run(
-                [str(pip_path), "install", str(wheel_path)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            assert install_result.returncode == 0, f"Installation failed: {install_result.stderr}"
-
-            # Step 5: Test basic PACC functionality
-            print("Step 5: Testing PACC functionality...")
-
-            # Test version command
-            version_result = subprocess.run(
-                [str(pacc_path), "--version"], capture_output=True, text=True, check=False
-            )
-
-            assert (
-                version_result.returncode == 0
-            ), f"Version command failed: {version_result.stderr}"
-            assert (
-                "1.0.0" in version_result.stdout
-            ), f"Unexpected version output: {version_result.stdout}"
-            print("   ✅ Version command works")
-
-            # Test help command
-            help_result = subprocess.run(
-                [str(pacc_path), "--help"], capture_output=True, text=True, check=False
-            )
-
-            assert help_result.returncode == 0, f"Help command failed: {help_result.stderr}"
-            assert "install" in help_result.stdout, "Install command not found in help"
-            assert "validate" in help_result.stdout, "Validate command not found in help"
-            print("   ✅ Help command works")
-
-            # Step 6: Test extension validation
-            print("Step 6: Testing extension validation...")
-
-            # Create test extension directory
-            test_dir = Path(temp_dir) / "test_extensions"
-            test_dir.mkdir()
-
-            # Create valid hook
-            valid_hook = {
-                "name": "test-hook",
-                "eventTypes": ["PreToolUse"],
-                "commands": ["echo 'Hook executed'"],
-                "description": "Test hook for validation",
-            }
-
-            hook_file = test_dir / "valid-hook.json"
-            with open(hook_file, "w") as f:
-                json.dump(valid_hook, f, indent=2)
-
-            # Test validation of valid hook
-            validate_result = subprocess.run(
-                [str(pacc_path), "validate", str(hook_file), "--type", "hooks"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            assert (
-                validate_result.returncode == 0
-            ), f"Valid hook validation failed: {validate_result.stderr}"
-            assert (
-                "Valid" in validate_result.stdout or "✓" in validate_result.stdout
-            ), "Valid hook not recognized as valid"
-            print("   ✅ Valid hook validation works")
-
-            # Create invalid hook
-            invalid_hook = {
-                "name": "invalid-hook",
-                # Missing required fields
-            }
-
-            invalid_hook_file = test_dir / "invalid-hook.json"
-            with open(invalid_hook_file, "w") as f:
-                json.dump(invalid_hook, f, indent=2)
-
-            # Test validation of invalid hook
-            invalid_validate_result = subprocess.run(
-                [str(pacc_path), "validate", str(invalid_hook_file), "--type", "hooks"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            # Should fail validation but not crash
-            assert invalid_validate_result.returncode != 0, "Invalid hook should fail validation"
-            assert (
-                "INVALID" in invalid_validate_result.stdout
-                or "ERROR" in invalid_validate_result.stdout
-            ), "Invalid hook errors not reported"
-            print("   ✅ Invalid hook validation works")
-
-            # Step 7: Test installation workflow preparation
-            print("Step 7: Testing installation workflow...")
-
-            # Create minimal Claude directory structure for testing
-            claude_dir = Path(temp_dir) / ".claude"
-            claude_dir.mkdir()
-
-            # Test that pacc can handle basic installation concepts
-            # (We won't actually install to avoid modifying real config)
-            dry_run_result = subprocess.run(
-                [str(pacc_path), "install", str(hook_file), "--dry-run"],
-                capture_output=True,
-                text=True,
-                cwd=temp_dir,
-                check=False,
-            )
-
-            # Dry run should work (or at least not crash with a clear error)
-            if dry_run_result.returncode != 0:
-                # Check if it's a reasonable error (like no settings.json)
-                error_output = dry_run_result.stderr.lower()
-                acceptable_errors = ["settings.json", "configuration", "not found", "permission"]
-
-                assert any(
-                    err in error_output for err in acceptable_errors
-                ), f"Unexpected error in dry run: {dry_run_result.stderr}"
-                print("   ✅ Installation workflow handles missing config gracefully")
-            else:
-                print("   ✅ Installation dry run works")
+            pacc_path = self._setup_test_venv(temp_dir, wheel_path)
+            self._test_basic_commands(pacc_path)
+            hook_file = self._test_validation_workflow(pacc_path, temp_dir)
+            self._test_invalid_validation(pacc_path, temp_dir)
+            self._test_installation_workflow(pacc_path, hook_file, temp_dir)
 
         print("\n🎉 Complete build workflow validation PASSED!")
         print("PACC is ready for production deployment!")

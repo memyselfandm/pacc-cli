@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, List, Optional, Union
 
 from .base import BaseValidator, ValidationResult
 from .utils import parse_claude_frontmatter
@@ -12,7 +12,7 @@ class FragmentValidator(BaseValidator):
     """Validator for Claude Code memory fragment extensions."""
 
     # Optional fields that can be present in fragment YAML frontmatter
-    OPTIONAL_FRONTMATTER_FIELDS = {
+    OPTIONAL_FRONTMATTER_FIELDS: ClassVar[Dict[str, Union[type, tuple]]] = {
         "title": str,
         "description": str,
         "tags": (list, str),  # Can be list or comma-separated string
@@ -23,7 +23,7 @@ class FragmentValidator(BaseValidator):
     }
 
     # Dangerous patterns that could indicate malicious content
-    SECURITY_PATTERNS = [
+    SECURITY_PATTERNS: ClassVar[List[str]] = [
         # Command injection patterns
         r"\$\([^)]*\)",  # $(command)
         r"`[^`]*`",  # `command`
@@ -259,7 +259,6 @@ class FragmentValidator(BaseValidator):
 
     def _validate_frontmatter(self, frontmatter: Dict[str, Any], result: ValidationResult) -> None:
         """Validate fragment YAML frontmatter structure and content."""
-        file_path = result.file_path
 
         # Validate field types for known fields
         for field, expected_type in self.OPTIONAL_FRONTMATTER_FIELDS.items():
@@ -401,7 +400,7 @@ class FragmentValidator(BaseValidator):
             if not isinstance(tag, str):
                 result.add_error(
                     "INVALID_TAG_TYPE",
-                    f"Tag {i+1} must be a string, got {type(tag).__name__}",
+                    f"Tag {i + 1} must be a string, got {type(tag).__name__}",
                     suggestion="Use string values for tags",
                 )
                 continue
@@ -409,7 +408,7 @@ class FragmentValidator(BaseValidator):
             if not tag.strip():
                 result.add_warning(
                     "EMPTY_TAG",
-                    f"Tag {i+1} is empty",
+                    f"Tag {i + 1} is empty",
                     suggestion="Remove empty tags or provide tag values",
                 )
                 continue
@@ -498,7 +497,7 @@ class FragmentValidator(BaseValidator):
 
     def _scan_for_security_issues(self, content: str, result: ValidationResult) -> None:
         """Scan fragment content for potential security issues."""
-        content_lower = content.lower()
+        content.lower()
 
         # Remove code blocks before scanning to avoid false positives
         content_without_code = re.sub(r"```[^`]*```", "", content, flags=re.DOTALL)

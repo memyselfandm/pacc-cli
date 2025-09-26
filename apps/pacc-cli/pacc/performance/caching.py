@@ -238,7 +238,7 @@ class BaseCache(ABC, Generic[T]):
             Number of entries removed
         """
         with self._lock:
-            current_time = time.time()
+            time.time()
             expired_keys = []
 
             for key, entry in self._data.items():
@@ -349,7 +349,7 @@ class TTLCache(BaseCache[T]):
     def _evict(self) -> None:
         """Evict expired entries first, then oldest."""
         # First, remove expired entries
-        expired_count = self.cleanup_expired()
+        self.cleanup_expired()
 
         # If still over capacity, remove oldest entries
         if len(self._data) > self.max_size:

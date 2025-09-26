@@ -369,7 +369,7 @@ description: Test description
             ("Good description", None, None),
         ]
 
-        for description, expected_code, expected_severity in test_cases:
+        for description, expected_code, _expected_severity in test_cases:
             content = f"""---
 title: Test Fragment
 description: {description}

@@ -129,7 +129,7 @@ deploy --environment production --confirm
         assert "deploy_command.md" in file_names
 
         # Step 2: User filters by extension type
-        file_filter = FileFilter()
+        FileFilter()
 
         # User wants to validate JSON hooks first
         json_filter = FileFilter().add_extension_filter({".json"})
@@ -820,7 +820,7 @@ class TestSecurityWorkflows:
                             # Process file safely
                             with open(file_path, encoding="utf-8") as f:
                                 # Read with size limit
-                                content = f.read(1024 * 1024)  # Max 1MB
+                                f.read(1024 * 1024)  # Max 1MB
 
                             results["processed"].append(
                                 {

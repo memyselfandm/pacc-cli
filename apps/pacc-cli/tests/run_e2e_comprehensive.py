@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import psutil
 
@@ -35,8 +35,8 @@ class E2ETestRunner:
 
     def run_test_suite(
         self,
-        test_patterns: List[str] = None,
-        markers: List[str] = None,
+        test_patterns: Optional[List[str]] = None,
+        markers: Optional[List[str]] = None,
         parallel: bool = False,
         verbose: bool = False,
         generate_report: bool = True,
@@ -143,7 +143,7 @@ class E2ETestRunner:
         self,
         suite_name: str,
         suite_config: Dict[str, Any],
-        markers: List[str] = None,
+        markers: Optional[List[str]] = None,
         parallel: bool = False,
         verbose: bool = False,
     ) -> Dict[str, Any]:
@@ -291,7 +291,7 @@ class E2ETestRunner:
 
         # Overall summary
         print("📊 SUMMARY")
-        print(f"   Total Duration: {total_duration:.2f}s ({total_duration/60:.1f}m)")
+        print(f"   Total Duration: {total_duration:.2f}s ({total_duration / 60:.1f}m)")
         print(f"   Test Suites: {total_suites}")
         print(f"   Successful: {successful_suites}")
         print(f"   Failed: {failed_suites}")
@@ -349,7 +349,7 @@ class E2ETestRunner:
             print("      → Review test logs for detailed failure analysis")
 
         if total_duration > 600:  # 10 minutes
-            print(f"   🐌 Test suite took {total_duration/60:.1f} minutes")
+            print(f"   🐌 Test suite took {total_duration / 60:.1f} minutes")
             print("      → Consider parallel execution or test optimization")
 
         if current_memory.percent > 80:

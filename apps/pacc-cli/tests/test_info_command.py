@@ -198,7 +198,7 @@ This is a test agent implementation.
         mock_result.add_warning("DEPRECATED_FIELD", "Field 'oldField' is deprecated")
 
         # Ensure is_valid is False after adding errors
-        assert mock_result.is_valid == False
+        assert not mock_result.is_valid
         assert len(mock_result.errors) > 0
 
         with patch("pacc.cli.validate_extension_file", return_value=mock_result):

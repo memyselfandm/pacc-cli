@@ -498,7 +498,7 @@ class TestSprintSixPerformance:
                 # Perform various searches
                 results_all = search_plugins()
                 results_hooks = search_plugins(plugin_type="hook")
-                results_query = search_plugins(query="plugin")
+                search_plugins(query="plugin")
                 results_installed = search_plugins(installed_only=True)
 
                 end_time = time.time()

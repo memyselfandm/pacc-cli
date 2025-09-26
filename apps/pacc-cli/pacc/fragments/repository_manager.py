@@ -10,8 +10,10 @@ This module adapts the PluginRepositoryManager for fragment use, providing:
 """
 
 import logging
+import shutil
 import subprocess
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -221,11 +223,10 @@ class FragmentRepositoryManager:
                 discovery_result = self.discover_fragments(target_dir)
                 if not discovery_result.is_valid:
                     # Clean up cloned directory on validation failure
-                    import shutil
-
                     shutil.rmtree(target_dir, ignore_errors=True)
                     raise FragmentRepositoryError(
-                        f"Repository {owner}/{repo} does not contain valid fragments: {discovery_result.error_message}"
+                        f"Repository {owner}/{repo} does not contain valid fragments: "
+                        f"{discovery_result.error_message}"
                     )
 
                 # Create FragmentRepo object
@@ -243,21 +244,22 @@ class FragmentRepositoryManager:
                 )
 
                 logger.info(
-                    f"Successfully cloned {owner}/{repo} with {len(discovery_result.fragments_found)} fragments"
+                    f"Successfully cloned {owner}/{repo} with "
+                    f"{len(discovery_result.fragments_found)} fragments"
                 )
                 return fragment_repo
 
-            except subprocess.TimeoutExpired:
+            except subprocess.TimeoutExpired as e:
                 raise FragmentGitError(
                     f"Git clone timed out for {clone_spec.repo_url}", error_code="CLONE_TIMEOUT"
-                )
+                ) from e
             except Exception as e:
                 if isinstance(e, (FragmentGitError, FragmentRepositoryError)):
                     raise
                 raise FragmentGitError(
                     f"Failed to clone repository {clone_spec.repo_url}: {e}",
                     error_code="CLONE_ERROR",
-                )
+                ) from e
 
     def update_fragment_repo(
         self, repo_path: Path, target_ref: Optional[str] = None
@@ -296,7 +298,8 @@ class FragmentRepositoryManager:
                     if not self._is_working_tree_clean(repo_path):
                         return FragmentUpdateResult(
                             success=False,
-                            error_message="Cannot update repository with dirty working tree. Please commit or stash changes.",
+                            error_message="Cannot update repository with dirty working tree. "
+                            "Please commit or stash changes.",
                         )
 
                     # Try git pull if on a branch
@@ -317,7 +320,8 @@ class FragmentRepositoryManager:
                             if "not possible to fast-forward" in error_msg:
                                 return FragmentUpdateResult(
                                     success=False,
-                                    error_message="Update failed due to merge conflict. Repository requires manual merge or rollback.",
+                                    error_message="Update failed due to merge conflict. "
+                                    "Repository requires manual merge or rollback.",
                                     old_sha=old_sha,
                                 )
                             else:
@@ -421,7 +425,8 @@ class FragmentRepositoryManager:
                 return FragmentDiscoveryResult(
                     is_valid=False,
                     fragments_found=[],
-                    error_message="No fragments found in repository. Repository must contain .md files.",
+                    error_message="No fragments found in repository. "
+                    "Repository must contain .md files.",
                 )
 
             warnings = []
@@ -507,7 +512,7 @@ class FragmentRepositoryManager:
 
         except Exception as e:
             logger.error(f"Failed to get repo info for {repo_path}: {e}")
-            raise PACCError(f"Failed to get repository information: {e}")
+            raise PACCError(f"Failed to get repository information: {e}") from e
 
     def cleanup_cache(self, max_age_days: int = 30) -> int:
         """Clean up old cache entries.
@@ -524,8 +529,6 @@ class FragmentRepositoryManager:
             return 0
 
         try:
-            import time
-
             current_time = time.time()
             max_age_seconds = max_age_days * 24 * 60 * 60
 
@@ -744,7 +747,7 @@ class FragmentRepositoryManager:
                 fragments.append(str(relative_path))
 
             # Remove duplicates and sort
-            fragments = sorted(list(set(fragments)))
+            fragments = sorted(set(fragments))
 
             logger.debug(f"Discovered {len(fragments)} fragments in {repo_path}: {fragments}")
             return fragments

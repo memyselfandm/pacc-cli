@@ -417,7 +417,7 @@ class TestPluginDiscoveryPerformance:
         parse_times = []
 
         for i in range(10):
-            with PluginPerformanceProfiler(f"Manifest Parse {i+1}") as profiler:
+            with PluginPerformanceProfiler(f"Manifest Parse {i + 1}") as profiler:
                 profiler.checkpoint("start_read")
                 content = manifest_file.read_text()
                 profiler.checkpoint("file_read")
@@ -433,10 +433,10 @@ class TestPluginDiscoveryPerformance:
             # Individual parse assertions
             assert (
                 profiler.duration < 0.5
-            ), f"Parse {i+1} took {profiler.duration:.3f}s (should be < 0.5s)"
+            ), f"Parse {i + 1} took {profiler.duration:.3f}s (should be < 0.5s)"
             assert (
                 plugins_count == 115
-            ), f"Parse {i+1} found {plugins_count} plugins (should be 115)"
+            ), f"Parse {i + 1} found {plugins_count} plugins (should be 115)"
 
         # Aggregate performance analysis
         avg_parse_time = sum(parse_times) / len(parse_times)
@@ -509,7 +509,7 @@ class TestPluginInstallationPerformance:
                         profiler.checkpoint("install_complete")
 
                         # Verify installation
-                        settings = json.loads((claude_dir / "settings.json").read_text())
+                        json.loads((claude_dir / "settings.json").read_text())
                         profiler.checkpoint("verification_complete")
 
                     size_results[size] = {
@@ -655,7 +655,7 @@ class TestPluginInstallationPerformance:
                 manifest_data["version"] = "1.1.0"
 
                 # Update 10 plugins with new versions
-                for i, plugin in enumerate(manifest_data["plugins"][:10]):
+                for _i, plugin in enumerate(manifest_data["plugins"][:10]):
                     plugin["version"] = "1.1.0"
                     plugin["description"] += " (Updated for performance testing)"
 
@@ -796,22 +796,22 @@ class TestPluginConfigurationPerformance:
 
         for i in range(5):
             # Backup performance
-            with PluginPerformanceProfiler(f"Backup {i+1}") as profiler:
+            with PluginPerformanceProfiler(f"Backup {i + 1}") as profiler:
                 backup = config_manager.create_backup()
 
             backup_times.append(profiler.duration)
             assert (
                 profiler.duration < 1.0
-            ), f"Backup {i+1}: {profiler.duration:.3f}s (should be < 1s)"
+            ), f"Backup {i + 1}: {profiler.duration:.3f}s (should be < 1s)"
 
             # Restore performance
-            with PluginPerformanceProfiler(f"Restore {i+1}") as profiler:
+            with PluginPerformanceProfiler(f"Restore {i + 1}") as profiler:
                 config_manager.restore_backup(backup)
 
             restore_times.append(profiler.duration)
             assert (
                 profiler.duration < 1.0
-            ), f"Restore {i+1}: {profiler.duration:.3f}s (should be < 1s)"
+            ), f"Restore {i + 1}: {profiler.duration:.3f}s (should be < 1s)"
 
         avg_backup_time = sum(backup_times) / len(backup_times)
         avg_restore_time = sum(restore_times) / len(restore_times)
@@ -948,7 +948,7 @@ class TestPluginMemoryEfficiency:
                     worker_plugins = all_plugins[worker_id * 10 : (worker_id + 1) * 10]
 
                     # Perform install/remove cycles
-                    for cycle in range(3):
+                    for _cycle in range(3):
                         config_manager.install_plugins(worker_plugins, repo_dir)
                         config_manager.remove_plugins([p.name for p in worker_plugins])
 

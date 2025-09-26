@@ -297,7 +297,7 @@ class TestPluginManifestValidator(TestCase):
 
         for manifest in invalid_manifests:
             with self.subTest(manifest=manifest):
-                is_valid, issues = self.validator.validate_manifest(manifest)
+                _is_valid, issues = self.validator.validate_manifest(manifest)
 
                 # Check for type issues or that validation failed due to invalid types
                 type_issues = [i for i in issues if "invalid_field_type" in i.issue_type]
@@ -321,7 +321,7 @@ class TestPluginManifestValidator(TestCase):
             }
 
             with self.subTest(plugin_type=plugin_type):
-                is_valid, issues = self.validator.validate_manifest(manifest)
+                _is_valid, issues = self.validator.validate_manifest(manifest)
 
                 if plugin_type not in self.validator.valid_plugin_types:
                     type_issues = [
@@ -371,7 +371,7 @@ class TestPluginManifestValidator(TestCase):
             "permissions": ["system_shell", "file_write"],
         }
 
-        is_valid, issues = self.validator.validate_manifest(dangerous_manifest)
+        _is_valid, issues = self.validator.validate_manifest(dangerous_manifest)
         dangerous_combo_issues = [i for i in issues if "dangerous_permission_combo" in i.issue_type]
         self.assertGreater(
             len(dangerous_combo_issues), 0, "Dangerous permission combination not detected"
@@ -406,7 +406,7 @@ class TestPluginManifestValidator(TestCase):
             }
 
             with self.subTest(version=version):
-                is_valid, issues = self.validator.validate_manifest(manifest)
+                _is_valid, issues = self.validator.validate_manifest(manifest)
                 version_issues = [i for i in issues if "version_format" in i.issue_type]
                 # Note: Version format is currently a warning, not an error
                 # So we just check that invalid versions are flagged
@@ -428,7 +428,7 @@ class TestPluginManifestValidator(TestCase):
             }
 
             with self.subTest(name=name):
-                is_valid, issues = self.validator.validate_manifest(manifest)
+                _is_valid, issues = self.validator.validate_manifest(manifest)
                 reserved_issues = [i for i in issues if "reserved_name" in i.issue_type]
                 self.assertGreater(len(reserved_issues), 0, f"Reserved name not detected: {name}")
 
@@ -854,7 +854,7 @@ class TestPluginSecurityManager(TestCase):
                     plugin_file = self.temp_dir / f"test_{plugin_type}.md"
                     plugin_file.write_text(content)
 
-                is_safe, issues = self.security_manager.validate_plugin_security(
+                is_safe, _issues = self.security_manager.validate_plugin_security(
                     plugin_file, plugin_type
                 )
 

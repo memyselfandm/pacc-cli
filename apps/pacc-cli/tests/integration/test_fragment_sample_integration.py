@@ -93,7 +93,7 @@ Fragments will be installed here:
             results.append(result)
 
             # Verify successful installation
-            assert result.success, f"Installation {i+1} failed: {result.error_message}"
+            assert result.success, f"Installation {i + 1} failed: {result.error_message}"
             assert (
                 result.installed_count == 6
             ), f"Expected 6 fragments, got {result.installed_count}"
@@ -102,22 +102,26 @@ Fragments will be installed here:
         first_result = results[0]
         for i, result in enumerate(results[1:], 1):
             # Check that core metrics are identical
-            assert result.success == first_result.success, f"Run {i+1} success differs"
+            assert result.success == first_result.success, f"Run {i + 1} success differs"
             assert (
                 result.installed_count == first_result.installed_count
-            ), f"Run {i+1} count differs"
-            assert result.source_type == first_result.source_type, f"Run {i+1} source type differs"
-            assert result.target_type == first_result.target_type, f"Run {i+1} target type differs"
+            ), f"Run {i + 1} count differs"
+            assert (
+                result.source_type == first_result.source_type
+            ), f"Run {i + 1} source type differs"
+            assert (
+                result.target_type == first_result.target_type
+            ), f"Run {i + 1} target type differs"
 
             # Check that installed fragments are identical
             assert len(result.installed_fragments) == len(
                 first_result.installed_fragments
-            ), f"Run {i+1} has different fragment count"
+            ), f"Run {i + 1} has different fragment count"
 
             for fragment_name in first_result.installed_fragments:
                 assert (
                     fragment_name in result.installed_fragments
-                ), f"Run {i+1} missing fragment: {fragment_name}"
+                ), f"Run {i + 1} missing fragment: {fragment_name}"
 
                 # Verify fragment metadata is identical
                 first_meta = first_result.installed_fragments[fragment_name]
@@ -233,8 +237,8 @@ Fragments will be installed here:
                 str(collection_path), target_type="project", install_all=True
             )
 
-            assert result.success, f"Edge case installation run {run+1} failed"
-            assert result.installed_count == 4, f"Run {run+1}: Expected 4 edge case fragments"
+            assert result.success, f"Edge case installation run {run + 1} failed"
+            assert result.installed_count == 4, f"Run {run + 1}: Expected 4 edge case fragments"
 
             # Verify specific edge cases were handled properly
             fragments = result.installed_fragments
@@ -425,8 +429,8 @@ Fragments will be installed here:
             install_time = end_time - start_time
             install_times.append(install_time)
 
-            assert result.success, f"Performance run {run+1} failed"
-            assert result.installed_count == 6, f"Performance run {run+1} incomplete"
+            assert result.success, f"Performance run {run + 1} failed"
+            assert result.installed_count == 6, f"Performance run {run + 1} incomplete"
 
         # Verify performance is consistent (within reasonable bounds)
         avg_time = sum(install_times) / len(install_times)

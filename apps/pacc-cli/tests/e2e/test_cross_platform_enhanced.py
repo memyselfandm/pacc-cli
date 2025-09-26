@@ -276,9 +276,8 @@ The commands automatically adapt to the current platform.
 class TestCrossPlatformPluginOperations:
     """Test plugin operations across different platforms."""
 
-    def test_path_normalization_across_platforms(self, cross_platform_repo, tmp_path):
+    def test_path_normalization_across_platforms(self, _cross_platform_repo, tmp_path):
         """Test path normalization works correctly across platforms."""
-        repo_dir = cross_platform_repo
 
         # Create test paths with platform-specific patterns
         test_paths = [
@@ -339,7 +338,7 @@ class TestCrossPlatformPluginOperations:
                 print(f"Path not supported on this platform: {test_path_str} - {e}")
                 continue
 
-    def test_plugin_discovery_cross_platform(self, cross_platform_repo, tmp_path):
+    def test_plugin_discovery_cross_platform(self, cross_platform_repo, _tmp_path):
         """Test plugin discovery works across platforms."""
         repo_dir = cross_platform_repo
 
@@ -427,7 +426,7 @@ class TestCrossPlatformPluginOperations:
 
                 # Check that paths use platform-appropriate separators
                 for plugin_type in ["agents", "hooks", "commands"]:
-                    for plugin_name, plugin_config in updated_settings[plugin_type].items():
+                    for _plugin_name, plugin_config in updated_settings[plugin_type].items():
                         plugin_path = plugin_config["path"]
 
                         # Path should exist and be accessible
@@ -491,9 +490,8 @@ class TestCrossPlatformPluginOperations:
                     assert os.path.exists("/usr/bin") or os.path.exists("/bin")
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
-    def test_unix_specific_features(self, cross_platform_repo, tmp_path):
+    def test_unix_specific_features(self, _cross_platform_repo, tmp_path):
         """Test Unix-specific features (Linux/macOS)."""
-        repo_dir = cross_platform_repo
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()
 
@@ -542,13 +540,12 @@ class TestCrossPlatformPluginOperations:
 
             # Test broken symlink
             symlink_target.unlink()
-            broken_symlink_valid = validator.is_valid_path(symlink_path)
+            validator.is_valid_path(symlink_path)
             # Behavior may vary - some systems consider broken symlinks invalid
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test")
-    def test_windows_specific_features(self, cross_platform_repo, tmp_path):
+    def test_windows_specific_features(self, _cross_platform_repo, tmp_path):
         """Test Windows-specific features."""
-        repo_dir = cross_platform_repo
 
         # Test Windows path patterns
         windows_paths = [
@@ -578,7 +575,7 @@ class TestCrossPlatformPluginOperations:
         test_file_lower.write_text("test content")
 
         # Windows should treat these as the same file
-        test_file_upper = tmp_path / "TESTFILE.TXT"
+        tmp_path / "TESTFILE.TXT"
 
         validator = FilePathValidator()
         assert validator.is_valid_path(test_file_lower)
@@ -589,9 +586,8 @@ class TestCrossPlatformPluginOperations:
         available_vars = [var for var in windows_env_vars if var in os.environ]
         assert len(available_vars) > 0, "Should have some Windows environment variables"
 
-    def test_file_encoding_cross_platform(self, cross_platform_repo, tmp_path):
+    def test_file_encoding_cross_platform(self, _cross_platform_repo, tmp_path):
         """Test file encoding handling across platforms."""
-        repo_dir = cross_platform_repo
 
         # Test various text encodings
         encodings_to_test = ["utf-8", "utf-16", "latin-1"]
@@ -769,10 +765,8 @@ class TestPlatformCompatibilityMatrix:
         # Check if file system is case-sensitive
         try:
             uppercase_file.write_text("uppercase content")
-            files_created = 2  # Case-sensitive file system
             case_sensitive = True
         except FileExistsError:
-            files_created = 1  # Case-insensitive file system
             case_sensitive = False
 
         # Scan directory

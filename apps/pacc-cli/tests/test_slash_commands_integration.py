@@ -310,7 +310,7 @@ Confirm the removal and provide a summary of what was removed.
 
         captured_output = io.StringIO()
         with redirect_stdout(captured_output):
-            result = cli.list_command(Args())
+            cli.list_command(Args())
 
         output = captured_output.getvalue()
 
@@ -384,9 +384,9 @@ Handle the error gracefully and inform the user.
                 content = cmd_file.read_text()
                 # Extract description from frontmatter
                 if "description:" in content:
-                    desc_line = [
+                    desc_line = next(
                         line for line in content.split("\n") if line.startswith("description:")
-                    ][0]
+                    )
                     assert expected_desc in desc_line or len(desc_line) > 0
 
 
@@ -421,7 +421,7 @@ class TestSlashCommandContent:
             ("--filter '*.test'", ["list", "--filter", "*.test", "--format", "json"]),
         ]
 
-        for args, expected_parts in test_cases:
+        for args, _expected_parts in test_cases:
             full_command = f"uv run pacc list {args} --format json"
             # Just verify command is properly formed
             assert "pacc list" in full_command
@@ -436,7 +436,7 @@ class TestSlashCommandContent:
             "& malicious &&",
         ]
 
-        for dangerous_input in dangerous_inputs:
+        for _dangerous_input in dangerous_inputs:
             # The $ARGUMENTS placeholder should be properly handled
             # In real implementation, we'd want to ensure proper escaping
             assert True  # Placeholder for actual safety checks

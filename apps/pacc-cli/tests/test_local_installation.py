@@ -160,7 +160,7 @@ class TestLocalInstallation:
 
         for cmd in help_commands:
             result = subprocess.run(
-                [str(pacc_path)] + cmd, capture_output=True, text=True, check=False
+                [str(pacc_path), *cmd], capture_output=True, text=True, check=False
             )
 
             assert result.returncode == 0, f"Help command failed: {' '.join(cmd)}"

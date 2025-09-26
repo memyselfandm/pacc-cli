@@ -254,7 +254,7 @@ class TemplateEngine:
         rendered_files["plugin.json"] = json.dumps(manifest, indent=2)
 
         # Render other template files
-        for filename, content_template in template.files.items():
+        for filename, _content_template in template.files.items():
             if filename != "plugin.json":  # Already handled above
                 rendered_files[filename] = template.get_file_content(filename, metadata)
 
@@ -584,7 +584,7 @@ This is a **{plugin_type}** plugin for Claude Code.
 
 This plugin includes:
 
-- Example {plugin_type[:-1] if plugin_type.endswith('s') else plugin_type}
+- Example {plugin_type[:-1] if plugin_type.endswith("s") else plugin_type}
 
 ## Usage
 
@@ -655,7 +655,7 @@ class PluginCreator:
         self,
         name: Optional[str] = None,
         plugin_type: Optional[CreationPluginType] = None,
-        output_dir: Path = Path.cwd(),
+        output_dir: Optional[Path] = None,
         mode: CreationMode = CreationMode.GUIDED,
         init_git: Optional[bool] = None,
     ) -> CreationResult:
@@ -678,6 +678,10 @@ class PluginCreator:
 
             # Collect metadata
             metadata = self.metadata_collector.collect_basic_metadata(mode, name=name)
+
+            # Set default output directory if not specified
+            if output_dir is None:
+                output_dir = Path.cwd()
 
             # Check if plugin directory already exists
             plugin_path = output_dir / metadata["name"]

@@ -59,20 +59,20 @@ class TestEnhancedFragmentValidator:
                 # Each run should succeed
                 assert (
                     result.is_valid
-                ), f"Validation failed on run {run+1} for {fragment_path}: {result.errors}"
+                ), f"Validation failed on run {run + 1} for {fragment_path}: {result.errors}"
 
             # All results should be identical
             first_result = results[0]
             for i, result in enumerate(results[1:], 1):
                 assert (
                     result.is_valid == first_result.is_valid
-                ), f"Run {i+1} validity differs for {fragment_path}"
+                ), f"Run {i + 1} validity differs for {fragment_path}"
                 assert len(result.errors) == len(
                     first_result.errors
-                ), f"Run {i+1} error count differs for {fragment_path}"
+                ), f"Run {i + 1} error count differs for {fragment_path}"
                 assert len(result.warnings) == len(
                     first_result.warnings
-                ), f"Run {i+1} warning count differs for {fragment_path}"
+                ), f"Run {i + 1} warning count differs for {fragment_path}"
 
     def test_validate_edge_cases_consistently(self):
         """Test validator handles edge cases consistently."""
@@ -103,7 +103,7 @@ class TestEnhancedFragmentValidator:
                 result = self.validator.validate_single(fragment_path)
                 assert (
                     result.is_valid
-                ), f"Edge case validation failed on run {run+1} for {fragment_file}"
+                ), f"Edge case validation failed on run {run + 1} for {fragment_file}"
                 assert (
                     result.fragment_type == expected_type
                 ), f"Wrong type detected for {fragment_file}: got {result.fragment_type}, expected {expected_type}"
@@ -146,7 +146,7 @@ This agent has malformed frontmatter.
 
         for fragment_path, error_type in invalid_fragments:
             results = []
-            for run in range(3):
+            for _run in range(3):
                 result = self.validator.validate_single(fragment_path)
                 results.append(result)
 
@@ -159,14 +159,14 @@ This agent has malformed frontmatter.
             for i, result in enumerate(results[1:], 1):
                 assert (
                     result.is_valid == first_result.is_valid
-                ), f"Run {i+1} validity differs for {error_type}"
+                ), f"Run {i + 1} validity differs for {error_type}"
                 assert len(result.errors) == len(
                     first_result.errors
-                ), f"Run {i+1} error count differs for {error_type}"
+                ), f"Run {i + 1} error count differs for {error_type}"
                 # Error messages should be identical
                 assert (
                     result.errors == first_result.errors
-                ), f"Run {i+1} error messages differ for {error_type}"
+                ), f"Run {i + 1} error messages differ for {error_type}"
 
 
 class TestEnhancedFragmentStorageManager:
@@ -289,7 +289,7 @@ class TestEnhancedFragmentStorageManager:
             if name.endswith("-hook"):
                 name = name[:-5]  # Remove -hook suffix for hooks
 
-            location = self.storage_manager.store_fragment(
+            self.storage_manager.store_fragment(
                 name=name,
                 content=content,
                 fragment_type=fragment_type,
@@ -318,7 +318,7 @@ class TestEnhancedFragmentStorageManager:
 
         for i, listing in enumerate(listings[1:], 1):
             current_names = {f["name"]: f["type"] for f in listing}
-            assert current_names == first_names, f"Listing {i+1} differs from first"
+            assert current_names == first_names, f"Listing {i + 1} differs from first"
 
     def test_remove_fragment_consistency(self):
         """Test fragment removal is consistent and deterministic."""
@@ -326,7 +326,7 @@ class TestEnhancedFragmentStorageManager:
         fragment_path = self.deterministic_collection / "agents" / "test-simple-agent.md"
         content = fragment_path.read_text()
 
-        location = self.storage_manager.store_fragment(
+        self.storage_manager.store_fragment(
             name="test-simple-agent",
             content=content,
             fragment_type="agent",
@@ -408,13 +408,13 @@ Test project for fragment installation.
             results.append(result)
 
             # Each run should succeed
-            assert result.success, f"Installation run {run+1} failed: {result.error_message}"
+            assert result.success, f"Installation run {run + 1} failed: {result.error_message}"
             assert isinstance(result, InstallationResult)
-            assert result.installed_count > 0, f"No fragments installed on run {run+1}"
+            assert result.installed_count > 0, f"No fragments installed on run {run + 1}"
 
         # Compare results for consistency
         first_result = results[0]
-        for i, result in enumerate(results[1:], 1):
+        for _i, result in enumerate(results[1:], 1):
             # Core metrics should be identical
             assert result.success == first_result.success
             assert result.installed_count == first_result.installed_count
@@ -450,11 +450,11 @@ Test project for fragment installation.
             )
             results.append(result)
 
-            assert result.success, f"Dependency installation run {run+1} failed"
-            assert result.installed_count == 3, f"Wrong fragment count on run {run+1}"
+            assert result.success, f"Dependency installation run {run + 1} failed"
+            assert result.installed_count == 3, f"Wrong fragment count on run {run + 1}"
 
         # Verify dependency order is consistent
-        first_result = results[0]
+        results[0]
         expected_fragments = {"base-agent", "dependent-agent", "integrated-command"}
 
         for result in results:
@@ -479,19 +479,19 @@ Test project for fragment installation.
             dry_results.append(result)
 
             # Verify dry run properties
-            assert result.dry_run is True, f"Run {run+1} not marked as dry run"
-            assert result.success, f"Dry run {run+1} failed"
+            assert result.dry_run is True, f"Run {run + 1} not marked as dry run"
+            assert result.success, f"Dry run {run + 1} failed"
 
             # Verify environment unchanged
             current_claude_md = (self.project_root / "CLAUDE.md").read_text()
             current_pacc_json = (self.project_root / "pacc.json").read_text()
 
-            assert current_claude_md == initial_claude_md, f"CLAUDE.md changed on dry run {run+1}"
-            assert current_pacc_json == initial_pacc_json, f"pacc.json changed on dry run {run+1}"
+            assert current_claude_md == initial_claude_md, f"CLAUDE.md changed on dry run {run + 1}"
+            assert current_pacc_json == initial_pacc_json, f"pacc.json changed on dry run {run + 1}"
 
         # All dry runs should produce identical results
         first_dry_result = dry_results[0]
-        for i, result in enumerate(dry_results[1:], 1):
+        for _i, result in enumerate(dry_results[1:], 1):
             assert result.success == first_dry_result.success
             assert result.installed_count == first_dry_result.installed_count
             assert result.dry_run == first_dry_result.dry_run
@@ -502,7 +502,7 @@ Test project for fragment installation.
         nonexistent_path = self.temp_dir / "does_not_exist"
 
         error_results = []
-        for run in range(3):
+        for _run in range(3):
             with pytest.raises(PACCError) as exc_info:
                 self.installation_manager.install_from_source(
                     str(nonexistent_path), target_type="project"
@@ -512,7 +512,7 @@ Test project for fragment installation.
         # Error messages should be consistent
         first_error = error_results[0]
         for i, error_msg in enumerate(error_results[1:], 1):
-            assert error_msg == first_error, f"Error message differs on run {i+1}"
+            assert error_msg == first_error, f"Error message differs on run {i + 1}"
 
     def test_source_resolution_consistency(self):
         """Test that source resolution produces consistent results."""
@@ -533,14 +533,14 @@ Test project for fragment installation.
                 resolved = self.installation_manager.resolve_source(source_input)
                 resolved_sources.append(resolved)
 
-                assert resolved.source_type == expected_type, f"Wrong source type on run {run+1}"
+                assert resolved.source_type == expected_type, f"Wrong source type on run {run + 1}"
                 assert (
                     resolved.is_collection == is_collection
-                ), f"Wrong collection flag on run {run+1}"
+                ), f"Wrong collection flag on run {run + 1}"
 
             # All resolutions should be identical
             first_resolved = resolved_sources[0]
-            for i, resolved in enumerate(resolved_sources[1:], 1):
+            for _i, resolved in enumerate(resolved_sources[1:], 1):
                 assert resolved.source_type == first_resolved.source_type
                 assert resolved.location == first_resolved.location
                 assert resolved.is_collection == first_resolved.is_collection
@@ -607,7 +607,7 @@ This project tests fragment component integration.
             validated_fragments = []
             for fragment_path in fragment_paths:
                 result = self.validator.validate_single(fragment_path)
-                assert result.is_valid, f"Validation failed on run {run+1} for {fragment_path}"
+                assert result.is_valid, f"Validation failed on run {run + 1} for {fragment_path}"
                 validated_fragments.append((fragment_path, result))
 
             # 2. Install collection
@@ -615,21 +615,21 @@ This project tests fragment component integration.
                 str(collection_path), target_type="project", install_all=True
             )
 
-            assert install_result.success, f"Installation failed on run {run+1}"
+            assert install_result.success, f"Installation failed on run {run + 1}"
             assert install_result.installed_count == len(
                 validated_fragments
-            ), f"Install count mismatch on run {run+1}"
+            ), f"Install count mismatch on run {run + 1}"
 
             # 3. Verify storage
             stored_fragments = self.storage_manager.list_installed_fragments()
             assert (
                 len(stored_fragments) == install_result.installed_count
-            ), f"Storage count mismatch on run {run+1}"
+            ), f"Storage count mismatch on run {run + 1}"
 
             # 4. Retrieve each fragment
             for fragment_name in install_result.installed_fragments:
                 retrieved = self.storage_manager.get_fragment(fragment_name)
-                assert retrieved is not None, f"Could not retrieve {fragment_name} on run {run+1}"
+                assert retrieved is not None, f"Could not retrieve {fragment_name} on run {run + 1}"
                 assert retrieved["name"] == fragment_name
 
     def _reset_project(self):
@@ -661,7 +661,7 @@ This project tests fragment component integration.
         assert install_result.success, "Initial installation failed"
 
         # Perform repeated operations
-        for cycle in range(5):
+        for _cycle in range(5):
             # Validate all fragments again
             fragment_paths = list(collection_path.rglob("*.md"))
             fragment_paths.extend(
@@ -692,7 +692,7 @@ This project tests fragment component integration.
             for i, result in enumerate(results[1:], 1):
                 assert (
                     result == first_result
-                ), f"{operation_type} cycle {i+1} differs from first: {result} != {first_result}"
+                ), f"{operation_type} cycle {i + 1} differs from first: {result} != {first_result}"
 
     def test_cross_component_data_integrity(self):
         """Test data integrity across all fragment components."""
@@ -724,7 +724,7 @@ This project tests fragment component integration.
             assert retrieved["type"] == install_data["type"], f"Type mismatch for {fragment_name}"
 
         # Verify CLAUDE.md integration
-        claude_md_content = (self.project_root / "CLAUDE.md").read_text()
+        (self.project_root / "CLAUDE.md").read_text()
         for fragment_name in installed_names:
             # Fragment should be referenced in CLAUDE.md (depending on implementation)
             # This test may need adjustment based on actual CLAUDE.md integration behavior
@@ -771,7 +771,7 @@ No frontmatter - should fail validation.
         # All runs should handle errors the same way
         first_result = results[0]
         for i, result in enumerate(results[1:], 1):
-            assert result.success == first_result.success, f"Success status differs on run {i+1}"
+            assert result.success == first_result.success, f"Success status differs on run {i + 1}"
             # Error handling behavior should be consistent
             if not result.success:
                 assert bool(result.error_message) == bool(first_result.error_message)

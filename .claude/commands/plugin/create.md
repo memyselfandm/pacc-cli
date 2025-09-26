@@ -21,6 +21,6 @@ This command launches an interactive wizard to create a new Claude Code plugin f
 The wizard will help you:
 1. Choose plugin name and basic metadata (author, description, version)
 2. Select what types of components to include (commands, agents, hooks)
-3. Generate template files and directory structure  
+3. Generate template files and directory structure
 4. Set up Git repository (optional)
 5. Create initial commit and push (optional)

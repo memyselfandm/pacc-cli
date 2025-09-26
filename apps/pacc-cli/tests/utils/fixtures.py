@@ -155,7 +155,7 @@ size: {size}
 
 # {size.title()} Test Plugin {i}
 
-{'This is a comprehensive plugin with extensive documentation. ' * multiplier}
+{"This is a comprehensive plugin with extensive documentation. " * multiplier}
 
 ## Features
 
@@ -212,7 +212,7 @@ size: {size}
         return repo_dir
 
     @staticmethod
-    def create_versioned_repo(tmp_path: Path, versions: List[str] = None) -> Path:
+    def create_versioned_repo(tmp_path: Path, versions: Optional[List[str]] = None) -> Path:
         """Create a repository with multiple plugin versions."""
         if versions is None:
             versions = ["1.0.0", "1.1.0", "2.0.0"]
@@ -365,8 +365,8 @@ class TeamWorkspaceFactory:
             if category in ["agents", "commands"]:
                 content = f"""---
 name: {plugin_name}
-version: {plugin.get('version', '1.0.0')}
-description: {plugin.get('description', f'Team plugin {plugin_name}')}
+version: {plugin.get("version", "1.0.0")}
+description: {plugin.get("description", f"Team plugin {plugin_name}")}
 team_config:
   shared: true
   collaboration: true
@@ -374,7 +374,7 @@ team_config:
 
 # Team Plugin: {plugin_name}
 
-{plugin.get('description', f'Team collaboration plugin {plugin_name}')}
+{plugin.get("description", f"Team collaboration plugin {plugin_name}")}
 
 ## Team Usage
 
@@ -442,7 +442,7 @@ class ClaudeEnvironmentFactory:
 
     @staticmethod
     def create_configured_environment(
-        tmp_path: Path, installed_plugins: Dict[str, List[str]] = None
+        tmp_path: Path, installed_plugins: Optional[Dict[str, List[str]]] = None
     ) -> Path:
         """Create a Claude environment with pre-installed plugins."""
         claude_dir = ClaudeEnvironmentFactory.create_basic_environment(tmp_path)
@@ -454,7 +454,10 @@ class ClaudeEnvironmentFactory:
             for plugin_type, plugin_names in installed_plugins.items():
                 for plugin_name in plugin_names:
                     settings[plugin_type][plugin_name] = {
-                        "path": f"/test/plugins/{plugin_name}.{'md' if plugin_type in ['agents', 'commands'] else 'json' if plugin_type == 'hooks' else 'yaml'}",
+                        "path": (
+                            f"/test/plugins/{plugin_name}."
+                            f"{'md' if plugin_type in ['agents', 'commands'] else 'json' if plugin_type == 'hooks' else 'yaml'}"
+                        ),
                         "enabled": True,
                     }
 

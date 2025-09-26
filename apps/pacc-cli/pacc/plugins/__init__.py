@@ -32,6 +32,9 @@ from .discovery import (
     resolve_template_variables,
     validate_plugin_manifest,
 )
+
+# For backward compatibility, import old classes as stubs
+from .discovery_old import PluginDiscovery, PluginSelector, RepositoryPlugins
 from .environment import (
     EnvironmentManager,
     EnvironmentStatus,
@@ -68,6 +71,18 @@ from .repository import (
 from .repository import PluginInfo as RepoPluginInfo
 from .sandbox import PluginSandbox, SandboxConfig, SandboxLevel, SandboxManager, SandboxResult
 
+# Search functionality
+from .search import (
+    LocalPluginIndex,
+    PluginRegistry,
+    PluginSearchEngine,
+    SearchPluginType,
+    SearchResult,
+    SortBy,
+    get_plugin_recommendations,
+    search_plugins,
+)
+
 # Sprint 7 features - Security & Marketplace
 from .security import (
     AdvancedCommandScanner,
@@ -91,115 +106,101 @@ from .security_integration import (
 RepositoryManager = PluginRepositoryManager
 GitRepository = PluginRepo
 
-# For backward compatibility, import old classes as stubs
-from .discovery_old import PluginDiscovery, PluginSelector, RepositoryPlugins
-
-# Search functionality
-from .search import (
-    LocalPluginIndex,
-    PluginRegistry,
-    PluginSearchEngine,
-    SearchPluginType,
-    SearchResult,
-    SortBy,
-    get_plugin_recommendations,
-    search_plugins,
-)
 
 __all__ = [
-    "PluginConfigManager",
-    "ConfigBackup",
+    "AdvancedCommandScanner",
     "AtomicFileWriter",
-    "PluginRepositoryManager",
-    "RepositoryManager",  # Alias
-    "GitRepository",  # Alias
-    "PluginRepo",
-    "UpdateResult",
-    "RepoPluginInfo",
-    "RepositoryValidationResult",
-    "GitError",
-    "RepositoryStructureError",
-    "DiscoveryPluginInfo",
-    "RepositoryInfo",
-    "PluginScanner",
-    "PluginManifestParser",
-    "PluginMetadataExtractor",
-    "discover_plugins",
-    "validate_plugin_manifest",
-    "extract_plugin_metadata",
-    "resolve_template_variables",
-    "extract_template_variables",
-    # Conversion functionality
-    "PluginConverter",
-    "ExtensionToPluginConverter",
-    "PluginPusher",
+    "ConfigBackup",
     "ConversionResult",
-    "PluginMetadata",
-    "ExtensionInfo",
-    "convert_extensions_to_plugin",
+    "CreationMode",
+    "CreationPluginType",
+    "CreationResult",
+    "DependencyConstraint",
+    "DependencyResolver",
+    "DiscoveryPluginInfo",
     # Environment management
     "EnvironmentManager",
     "EnvironmentStatus",
-    "Platform",
-    "Shell",
-    "ProfileUpdate",
-    "get_environment_manager",
-    # Backward compatibility
-    "PluginDiscovery",
-    "RepositoryPlugins",
-    "PluginSelector",
-    # Search functionality
-    "PluginSearchEngine",
-    "PluginRegistry",
-    "LocalPluginIndex",
-    "SearchResult",
-    "SearchPluginType",
-    "SortBy",
-    "search_plugins",
-    "get_plugin_recommendations",
-    # Plugin creation
-    "PluginCreator",
-    "PluginTemplate",
-    "CreationPluginType",
-    "CreationMode",
-    "CreationResult",
-    "TemplateEngine",
+    "ExtensionInfo",
+    "ExtensionToPluginConverter",
+    "GitError",
     "GitInitializer",
-    "MetadataCollector",
-    # Sprint 7 - Security & Sandbox
-    "PluginSecurityManager",
-    "PluginSecurityLevel",
-    "AdvancedCommandScanner",
-    "PluginManifestValidator",
-    "PermissionAnalyzer",
-    "SecurityAuditLogger",
-    "PluginManifest",
-    "SecurityAuditEntry",
-    "PluginSandbox",
-    "SandboxManager",
-    "SandboxConfig",
-    "SandboxLevel",
-    "SandboxResult",
+    "GitRepository",  # Alias
+    "LocalPluginIndex",
     # Sprint 7 - Marketplace
     "MarketplaceClient",
     "MarketplaceMetadata",
-    "PluginVersion",
+    "MetadataCache",
+    "MetadataCollector",
+    "PermissionAnalyzer",
+    "Platform",
+    "PluginConfigManager",
+    # Conversion functionality
+    "PluginConverter",
+    # Plugin creation
+    "PluginCreator",
     "PluginDependency",
-    "SemanticVersion",
+    # Backward compatibility
+    "PluginDiscovery",
+    "PluginManifest",
+    "PluginManifestParser",
+    "PluginManifestValidator",
+    "PluginMetadata",
+    "PluginMetadataExtractor",
+    "PluginPusher",
+    "PluginRegistry",
+    "PluginRepo",
+    "PluginRepositoryManager",
+    "PluginSandbox",
+    "PluginScanner",
+    # Search functionality
+    "PluginSearchEngine",
+    "PluginSecurityLevel",
+    # Sprint 7 - Security & Sandbox
+    "PluginSecurityManager",
+    "PluginSelector",
+    "PluginStatus",
+    "PluginTemplate",
+    "PluginVersion",
+    "ProfileUpdate",
     "RegistryConfig",
     "RegistryType",
-    "PluginStatus",
-    "DependencyConstraint",
-    "MetadataCache",
-    "DependencyResolver",
-    "create_marketplace_client",
-    "get_plugin_info",
-    "search_marketplace",
-    "resolve_plugin_dependencies",
+    "RepoPluginInfo",
+    "RepositoryInfo",
+    "RepositoryManager",  # Alias
+    "RepositoryPlugins",
+    "RepositoryStructureError",
+    "RepositoryValidationResult",
+    "SandboxConfig",
+    "SandboxLevel",
+    "SandboxManager",
+    "SandboxResult",
+    "SearchPluginType",
+    "SearchResult",
+    "SecurityAuditEntry",
+    "SecurityAuditLogger",
+    "SecurityValidatorMixin",
+    "SemanticVersion",
+    "Shell",
+    "SortBy",
+    "TemplateEngine",
+    "UpdateResult",
+    "convert_extensions_to_plugin",
     # Sprint 7 - Security Integration
     "convert_security_issues_to_validation_errors",
-    "enhance_validation_with_security",
-    "validate_plugin_in_sandbox",
-    "SecurityValidatorMixin",
+    "create_marketplace_client",
     "create_security_enhanced_validator",
+    "discover_plugins",
+    "enhance_validation_with_security",
+    "extract_plugin_metadata",
+    "extract_template_variables",
+    "get_environment_manager",
+    "get_plugin_info",
+    "get_plugin_recommendations",
+    "resolve_plugin_dependencies",
+    "resolve_template_variables",
+    "search_marketplace",
+    "search_plugins",
+    "validate_plugin_in_sandbox",
+    "validate_plugin_manifest",
 ]

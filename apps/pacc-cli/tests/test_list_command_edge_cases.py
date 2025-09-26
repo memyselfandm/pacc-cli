@@ -35,7 +35,7 @@ class TestListCommandEdgeCases:
                     "name": f"hook-{i:03d}",
                     "path": f"hooks/hook-{i:03d}.json",
                     "description": f"Test hook number {i}",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T{i%24:02d}:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T{i % 24:02d}:00:00Z",
                 }
             )
             large_config["mcps"].append(
@@ -43,7 +43,7 @@ class TestListCommandEdgeCases:
                     "name": f"mcp-{i:03d}",
                     "path": f"mcps/mcp-{i:03d}.py",
                     "description": f"Test MCP server {i}",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T{i%24:02d}:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T{i % 24:02d}:00:00Z",
                 }
             )
             large_config["agents"].append(
@@ -51,7 +51,7 @@ class TestListCommandEdgeCases:
                     "name": f"agent-{i:03d}",
                     "path": f"agents/agent-{i:03d}.md",
                     "description": f"Test agent {i}",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T{i%24:02d}:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T{i % 24:02d}:00:00Z",
                 }
             )
             large_config["commands"].append(
@@ -59,7 +59,7 @@ class TestListCommandEdgeCases:
                     "name": f"/cmd-{i:03d}",
                     "path": f"commands/cmd-{i:03d}.md",
                     "description": f"Test command {i}",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T{i%24:02d}:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T{i % 24:02d}:00:00Z",
                 }
             )
 
@@ -450,7 +450,7 @@ class TestListCommandEdgeCases:
                     "name": f"hook-{i}",
                     "path": f"hooks/hook-{i}.json",
                     "description": f"Hook {i} for testing performance",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T10:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T10:00:00Z",
                 }
             )
             moderate_config["mcps"].append(
@@ -458,7 +458,7 @@ class TestListCommandEdgeCases:
                     "name": f"mcp-{i}",
                     "path": f"mcps/mcp-{i}.py",
                     "description": f"MCP server {i}",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T11:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T11:00:00Z",
                 }
             )
             moderate_config["agents"].append(
@@ -466,7 +466,7 @@ class TestListCommandEdgeCases:
                     "name": f"agent-{i}",
                     "path": f"agents/agent-{i}.md",
                     "description": f"Agent {i}",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T12:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T12:00:00Z",
                 }
             )
             moderate_config["commands"].append(
@@ -474,7 +474,7 @@ class TestListCommandEdgeCases:
                     "name": f"/cmd-{i}",
                     "path": f"commands/cmd-{i}.md",
                     "description": f"Command {i}",
-                    "installed_at": f"2024-01-{(i%28)+1:02d}T13:00:00Z",
+                    "installed_at": f"2024-01-{(i % 28) + 1:02d}T13:00:00Z",
                 }
             )
 

@@ -157,7 +157,6 @@ class EnvironmentManager:
 
     def _get_unix_profile_paths(self) -> List[Path]:
         """Get Unix/Linux/macOS shell profile paths."""
-        paths = []
 
         if self.shell == Shell.BASH:
             # Bash profiles in order of preference
@@ -448,7 +447,6 @@ class EnvironmentManager:
             Tuple of (success, message, warnings)
         """
         status = self.get_environment_status()
-        warnings = []
 
         if self.platform == Platform.WINDOWS and self.shell == Shell.CMD:
             return self._reset_windows_environment()

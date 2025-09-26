@@ -85,7 +85,7 @@ class TestEnvironmentToPluginWorkflow:
             zshrc_path = self.home_dir / ".zshrc"
             zshrc_path.write_text("# Existing zsh config\nexport PATH=$HOME/bin:$PATH\n")
 
-            success, message, warnings = self.env_manager.setup_environment()
+            success, message, _warnings = self.env_manager.setup_environment()
             assert success, f"Environment setup failed: {message}"
             assert "configured" in message.lower(), "Success message should mention configuration"
 
@@ -106,7 +106,7 @@ class TestEnvironmentToPluginWorkflow:
             assert "# Existing zsh config" in backup_path.read_text(), "Backup content incorrect"
 
             # Step 3: Verify environment
-            success, verify_message, details = self.env_manager.verify_environment()
+            success, verify_message, _details = self.env_manager.verify_environment()
             # Note: verify will fail because we haven't actually set the env var in the test process
             # This is expected behavior - we're testing the verification logic
             assert not success, "Verification should fail without actual env var set"
@@ -161,7 +161,7 @@ class TestEnvironmentToPluginWorkflow:
                 config_path.write_text("# Existing config\n")
 
                 # Test environment setup
-                success, message, warnings = self.env_manager.setup_environment()
+                success, message, _warnings = self.env_manager.setup_environment()
                 assert (
                     success
                 ), f"Setup failed for {platform_type.value}/{shell_type.value}: {message}"
@@ -174,7 +174,7 @@ class TestEnvironmentToPluginWorkflow:
                 assert "Added by PACC" in content, f"PACC comment not found for {shell_type.value}"
 
                 # Test that subsequent setup is idempotent
-                success2, message2, warnings2 = self.env_manager.setup_environment()
+                success2, message2, _warnings2 = self.env_manager.setup_environment()
                 assert success2, f"Second setup failed: {message2}"
 
                 # Verify export line wasn't duplicated
@@ -228,7 +228,7 @@ class TestEnvironmentToPluginWorkflow:
             # Test 3: Backup failure recovery
             with patch("shutil.copy2", side_effect=OSError("Backup failed")):
                 # This should still succeed as backup failure is non-fatal
-                success, message, warnings = self.env_manager.setup_environment(force=True)
+                success, message, _warnings = self.env_manager.setup_environment(force=True)
                 # Note: Current implementation might fail if backup is required
                 # This tests the error handling behavior
 
@@ -322,7 +322,7 @@ class TestSlashCommandIntegration:
                 parser = cli.create_parser()
 
                 try:
-                    parsed_args = parser.parse_args(["plugin"] + args)
+                    parsed_args = parser.parse_args(["plugin", *args])
                     # This validates that the argument parsing works
                     assert hasattr(parsed_args, "func"), f"No handler found for {cmd_name}"
                 except SystemExit:
@@ -440,7 +440,7 @@ class TestPerformanceValidation:
 
             # Measure environment setup time
             start_time = time.time()
-            success, message, warnings = self.env_manager.setup_environment()
+            success, message, _warnings = self.env_manager.setup_environment()
             setup_time = time.time() - start_time
 
             assert success, f"Environment setup failed: {message}"
@@ -448,7 +448,7 @@ class TestPerformanceValidation:
 
             # Test subsequent setup (should be faster due to idempotency check)
             start_time = time.time()
-            success2, message2, warnings2 = self.env_manager.setup_environment()
+            success2, message2, _warnings2 = self.env_manager.setup_environment()
             second_setup_time = time.time() - start_time
 
             assert success2, f"Second setup failed: {message2}"
@@ -464,10 +464,10 @@ class TestPerformanceValidation:
         """Test environment verification is fast."""
 
         # Test with various environment states
-        for i in range(10):  # Multiple iterations to ensure consistency
+        for _i in range(10):  # Multiple iterations to ensure consistency
             with patch.dict(os.environ, {"ENABLE_PLUGINS": "true"}, clear=False):
                 start_time = time.time()
-                success, message, details = self.env_manager.verify_environment()
+                _success, _message, _details = self.env_manager.verify_environment()
                 verify_time = time.time() - start_time
 
                 assert verify_time < 0.1, f"Verification took {verify_time:.3f}s, expected < 0.1s"
@@ -563,7 +563,7 @@ class TestUserExperienceWorkflows:
             zshrc_path = self.home_dir / ".zshrc"
             zshrc_path.write_text("# User's existing zsh config\n")
 
-            success, message, warnings = self.env_manager.setup_environment()
+            success, message, _warnings = self.env_manager.setup_environment()
             assert success, f"Environment setup should succeed: {message}"
 
             # Step 3: User installs their first plugin
@@ -606,7 +606,7 @@ class TestUserExperienceWorkflows:
             bashrc_path = self.home_dir / ".bashrc"
             bashrc_path.write_text("# Team member's bash config\n")
 
-            success, message, warnings = self.env_manager.setup_environment()
+            success, message, _warnings = self.env_manager.setup_environment()
             assert success, f"Team environment setup should succeed: {message}"
 
             # Step 2: Install standard team plugins
@@ -629,7 +629,7 @@ class TestUserExperienceWorkflows:
                         assert plugin_success, f"Team plugin {plugin} should enable"
 
             # Step 3: Verify team environment is consistent
-            success, verify_message, details = self.env_manager.verify_environment()
+            success, _verify_message, details = self.env_manager.verify_environment()
             # Note: Will fail in test without actual env var, but that's expected
             # The platform detection might differ in test environment
             assert details["platform"] in [
@@ -660,7 +660,7 @@ class TestUserExperienceWorkflows:
         assert hasattr(status, "conflicts"), "Status should include conflicts"
 
         # Step 2: User runs environment verification
-        success, message, details = self.env_manager.verify_environment()
+        success, _message, details = self.env_manager.verify_environment()
 
         # Verify details provide troubleshooting information
         assert "platform" in details, "Details should help with troubleshooting"
@@ -670,7 +670,7 @@ class TestUserExperienceWorkflows:
         # Step 3: User can reset environment if needed
         with patch("pathlib.Path.home", return_value=self.home_dir):
             with patch.object(self.env_manager, "detect_platform", return_value=Platform.LINUX):
-                success, reset_message, warnings = self.env_manager.reset_environment()
+                success, reset_message, _warnings = self.env_manager.reset_environment()
                 # May succeed or fail depending on environment state, both are valid
                 assert isinstance(success, bool), "Reset should return boolean result"
                 assert isinstance(reset_message, str), "Reset should provide clear message"
@@ -682,7 +682,7 @@ class TestUserExperienceWorkflows:
 
         # Test environment verification error messages
         with patch.dict(os.environ, {}, clear=True):  # No ENABLE_PLUGINS set
-            success, message, details = self.env_manager.verify_environment()
+            success, message, _details = self.env_manager.verify_environment()
             assert not success, "Should fail when ENABLE_PLUGINS not set"
             assert "not set" in message.lower(), "Error should clearly state variable not set"
             assert "ENABLE_PLUGINS" in message, "Error should mention the specific variable"
@@ -725,9 +725,9 @@ class TestMemoryAndResourceUsage:
         baseline_memory = process.memory_info().rss / 1024 / 1024  # MB
 
         # Perform multiple environment operations
-        for i in range(10):
-            status = self.env_manager.get_environment_status()
-            success, message, details = self.env_manager.verify_environment()
+        for _i in range(10):
+            self.env_manager.get_environment_status()
+            _success, _message, _details = self.env_manager.verify_environment()
 
             # Force garbage collection
             gc.collect()
@@ -756,7 +756,7 @@ class TestMemoryAndResourceUsage:
 
         # Perform operations that involve file I/O
         for i in range(20):
-            status = self.env_manager.get_environment_status()
+            self.env_manager.get_environment_status()
 
             # Create and delete temporary files
             temp_file = Path(self.temp_dir) / f"test_{i}.txt"

@@ -1,6 +1,7 @@
 """Lazy loading mechanisms for deferred computation and file operations."""
 
 import asyncio
+import json
 import logging
 import threading
 from dataclasses import dataclass
@@ -243,8 +244,6 @@ class LazyLoader:
         Returns:
             Lazy load result for parsed JSON
         """
-        import json
-
         path_obj = Path(file_path)
         cache_key = f"json:{path_obj.resolve()}" if self.config.cache_results else None
 
@@ -501,7 +500,7 @@ class LazyIterator(Generic[T]):
                 if index not in self._cache:
                     try:
                         loop = asyncio.get_event_loop()
-                        item = await loop.run_in_executor(None, self._get_item, index)
+                        await loop.run_in_executor(None, self._get_item, index)
                         logger.debug(f"Prefetched item at index {index}")
                     except Exception as e:
                         logger.warning(f"Failed to prefetch item at index {index}: {e}")

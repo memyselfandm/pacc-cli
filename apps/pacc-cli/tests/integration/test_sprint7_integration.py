@@ -372,7 +372,7 @@ class TestProductionReadiness:
 
         # Test security manager initialization time
         start_time = time.time()
-        security_manager = PluginSecurityManager()
+        PluginSecurityManager()
         init_time = time.time() - start_time
         assert init_time < 1.0  # Should initialize in under 1 second
 

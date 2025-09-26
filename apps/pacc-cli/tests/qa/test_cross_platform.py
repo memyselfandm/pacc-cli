@@ -88,7 +88,7 @@ class CrossPlatformTestSuite:
                     full_path.write_text("test content")
 
                     # Test reading
-                    content = full_path.read_text()
+                    full_path.read_text()
 
                     # Test path operations
                     assert full_path.exists()
@@ -222,9 +222,7 @@ class CrossPlatformTestSuite:
                 else:
                     cmd = f"echo ${var_name}"
 
-                result = subprocess.run(
-                    cmd, shell=True, capture_output=True, text=True, check=False
-                )
+                subprocess.run(cmd, shell=True, capture_output=True, text=True, check=False)
 
                 results[f"env_{var_name}"] = True
 
@@ -313,9 +311,9 @@ except Exception as e:
 
     def run_all_tests(self) -> Dict[str, any]:
         """Run all cross-platform tests."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Cross-Platform Test Suite - {self.platform_info['system']}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         all_results = {
             "platform_info": self.platform_info,
@@ -413,9 +411,9 @@ if __name__ == "__main__":
     results = suite.run_all_tests()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Test Summary")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     total_tests = 0
     passed_tests = 0

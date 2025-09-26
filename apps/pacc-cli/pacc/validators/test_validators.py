@@ -532,7 +532,7 @@ parameters:
         print(f"Total Tests: {summary['total_tests']}")
         print(f"Passed: {summary['passed_tests']}")
         print(f"Failed: {summary['failed_tests']}")
-        print(f"Success Rate: {summary['passed_tests']/summary['total_tests']*100:.1f}%")
+        print(f"Success Rate: {summary['passed_tests'] / summary['total_tests'] * 100:.1f}%")
 
         for validator_type, results in summary["by_validator"].items():
             print(f"\n{validator_type.upper()} Validator:")

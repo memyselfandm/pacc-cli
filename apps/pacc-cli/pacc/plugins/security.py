@@ -996,7 +996,7 @@ class PluginSecurityManager:
             with open(manifest_path) as f:
                 manifest_data = json.load(f)
 
-            is_valid, manifest_issues = self.manifest_validator.validate_manifest(manifest_data)
+            _is_valid, manifest_issues = self.manifest_validator.validate_manifest(manifest_data)
             issues.extend(manifest_issues)
 
         except json.JSONDecodeError as e:
@@ -1058,7 +1058,7 @@ class PluginSecurityManager:
                     )
                     if command_str:
                         command_issues = self.command_scanner.scan_command(
-                            command_str, f"hook command {i+1}"
+                            command_str, f"hook command {i + 1}"
                         )
                         issues.extend(command_issues)
 

@@ -7,7 +7,10 @@ plugin format that can be managed by the plugin system.
 
 import json
 import logging
+import re
 import shutil
+import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -70,7 +73,7 @@ class ConversionResult:
         component_types = set()
         for ext in self.converted_extensions:
             component_types.add(ext.extension_type)
-        return sorted(list(component_types))
+        return sorted(component_types)
 
 
 class PluginConverter:
@@ -131,7 +134,8 @@ class PluginConverter:
             else:
                 # Check if source_path itself contains extension directories
                 logger.debug(
-                    f"No .claude directory found in {source_path}, checking for direct extension directories"
+                    f"No .claude directory found in {source_path}, "
+                    f"checking for direct extension directories"
                 )
                 extensions.extend(self._scan_hooks(source_path))
                 extensions.extend(self._scan_agents(source_path))
@@ -140,6 +144,79 @@ class PluginConverter:
 
         logger.info(f"Found {len(extensions)} extensions in {source_path}")
         return extensions
+
+    def _detect_json_extension_type(self, file_path: Path) -> tuple[Optional[str], Optional[Any]]:
+        """Detect extension type for JSON files."""
+        # Try path-based detection first
+        if "hooks" in file_path.parts or "hook" in file_path.stem.lower():
+            return "hooks", self.hooks_validator
+        elif "mcp" in file_path.parts or "server" in file_path.stem.lower():
+            return "mcp", self.mcp_validator
+
+        # Try validation-based detection
+        for ext_type, validator in [("hooks", self.hooks_validator), ("mcp", self.mcp_validator)]:
+            try:
+                result = validator.validate_single(file_path)
+                if result.is_valid:
+                    return ext_type, validator
+            except Exception:
+                continue
+
+        return None, None
+
+    def _detect_markdown_extension_type(
+        self, file_path: Path
+    ) -> tuple[Optional[str], Optional[Any]]:
+        """Detect extension type for Markdown files."""
+        # Try path-based detection first
+        if "agent" in file_path.parts or "agent" in file_path.stem.lower():
+            return "agents", self.agents_validator
+        elif "command" in file_path.parts or "cmd" in file_path.stem.lower():
+            return "commands", self.commands_validator
+
+        # Try validation-based detection
+        validators = [("agents", self.agents_validator), ("commands", self.commands_validator)]
+        for ext_type, validator in validators:
+            try:
+                result = validator.validate_single(file_path)
+                if result.is_valid:
+                    return ext_type, validator
+            except Exception:
+                continue
+
+        return None, None
+
+    def _validate_file_path(self, file_path: Path) -> bool:
+        """Validate that file path exists and is a file."""
+        if not file_path.exists():
+            logger.warning(f"File does not exist: {file_path}")
+            return False
+
+        if not file_path.is_file():
+            logger.warning(f"Path is not a file: {file_path}")
+            return False
+
+        return True
+
+    def _create_extension_info(
+        self, file_path: Path, extension_type: str, validator: Any
+    ) -> Optional[ExtensionInfo]:
+        """Create ExtensionInfo from validated file."""
+        try:
+            validation_result = validator.validate_single(file_path)
+            ext_info = ExtensionInfo(
+                path=file_path,
+                extension_type=extension_type,
+                name=file_path.stem,
+                metadata=validation_result.metadata,
+                validation_errors=validation_result.errors,
+                is_valid=validation_result.is_valid,
+            )
+            logger.info(f"Detected {extension_type} extension: {file_path.name}")
+            return ext_info
+        except Exception as e:
+            logger.warning(f"Failed to validate file {file_path}: {e}")
+            return None
 
     def scan_single_file(self, file_path: Union[str, Path]) -> List[ExtensionInfo]:
         """Scan a single extension file.
@@ -152,93 +229,23 @@ class PluginConverter:
         """
         file_path = Path(file_path)
 
-        if not file_path.exists():
-            logger.warning(f"File does not exist: {file_path}")
+        if not self._validate_file_path(file_path):
             return []
 
-        if not file_path.is_file():
-            logger.warning(f"Path is not a file: {file_path}")
-            return []
+        # Detect extension type based on file extension
+        extension_type, validator = None, None
 
-        extensions = []
-
-        # Detect extension type based on file path and extension
-        extension_type = None
-        validator = None
-
-        # Check file extension and path components
         if file_path.suffix == ".json":
-            # Could be hooks or MCP
-            if "hooks" in file_path.parts or "hook" in file_path.stem.lower():
-                extension_type = "hooks"
-                validator = self.hooks_validator
-            elif "mcp" in file_path.parts or "server" in file_path.stem.lower():
-                extension_type = "mcp"
-                validator = self.mcp_validator
-            else:
-                # Try both validators to see which one works
-                try:
-                    result = self.hooks_validator.validate_single(file_path)
-                    if result.is_valid:
-                        extension_type = "hooks"
-                        validator = self.hooks_validator
-                except:
-                    pass
-
-                if not extension_type:
-                    try:
-                        result = self.mcp_validator.validate_single(file_path)
-                        if result.is_valid:
-                            extension_type = "mcp"
-                            validator = self.mcp_validator
-                    except:
-                        pass
+            extension_type, validator = self._detect_json_extension_type(file_path)
         elif file_path.suffix == ".md":
-            # Could be agent or command
-            if "agent" in file_path.parts or "agent" in file_path.stem.lower():
-                extension_type = "agents"
-                validator = self.agents_validator
-            elif "command" in file_path.parts or "cmd" in file_path.stem.lower():
-                extension_type = "commands"
-                validator = self.commands_validator
-            else:
-                # Try both validators to see which one works
-                try:
-                    result = self.agents_validator.validate_single(file_path)
-                    if result.is_valid:
-                        extension_type = "agents"
-                        validator = self.agents_validator
-                except:
-                    pass
-
-                if not extension_type:
-                    try:
-                        result = self.commands_validator.validate_single(file_path)
-                        if result.is_valid:
-                            extension_type = "commands"
-                            validator = self.commands_validator
-                    except:
-                        pass
+            extension_type, validator = self._detect_markdown_extension_type(file_path)
 
         if extension_type and validator:
-            try:
-                validation_result = validator.validate_single(file_path)
-                ext_info = ExtensionInfo(
-                    path=file_path,
-                    extension_type=extension_type,
-                    name=file_path.stem,
-                    metadata=validation_result.metadata,
-                    validation_errors=validation_result.errors,
-                    is_valid=validation_result.is_valid,
-                )
-                extensions.append(ext_info)
-                logger.info(f"Detected {extension_type} extension: {file_path.name}")
-            except Exception as e:
-                logger.warning(f"Failed to validate file {file_path}: {e}")
+            ext_info = self._create_extension_info(file_path, extension_type, validator)
+            return [ext_info] if ext_info else []
         else:
             logger.warning(f"Could not detect extension type for file: {file_path}")
-
-        return extensions
+            return []
 
     def convert_to_plugin(
         self,
@@ -406,7 +413,6 @@ class PluginConverter:
             return False
 
         # Check for valid characters (alphanumeric, hyphens, underscores)
-        import re
 
         if not re.match(r"^[a-zA-Z0-9_-]+$", name):
             return False
@@ -707,7 +713,6 @@ class PluginConverter:
 
     def _convert_paths_to_plugin_relative(self, content: str) -> str:
         """Convert absolute .claude paths to plugin-relative paths."""
-        import re
 
         # Replace .claude directory references with plugin root variable
         claude_pattern = r'(["\']?)([^"\']*/)\.claude(/[^"\']*?)(["\']?)'
@@ -796,7 +801,7 @@ class ExtensionToPluginConverter:
         source_path: Path,
         plugin_name: Optional[str] = None,
         metadata: Optional[PluginMetadata] = None,
-        overwrite: bool = False,
+        _overwrite: bool = False,
     ) -> ConversionResult:
         """Convert single extension or directory."""
         extensions = []
@@ -835,7 +840,7 @@ class ExtensionToPluginConverter:
         self,
         source_dir: Path,
         metadata_defaults: Optional[Dict[str, str]] = None,
-        overwrite: bool = False,
+        _overwrite: bool = False,
     ) -> List[ConversionResult]:
         """Convert all extensions in directory."""
         extensions = self.converter.scan_extensions(source_dir)
@@ -862,13 +867,10 @@ class PluginPusher:
     """Handles pushing plugins to Git repositories."""
 
     def push_plugin(
-        self, plugin_path: Path, repo_url: str, private: bool = False, auth_method: str = "https"
+        self, plugin_path: Path, repo_url: str, _private: bool = False, _auth_method: str = "https"
     ) -> bool:
         """Push plugin to Git repository."""
         try:
-            import subprocess
-            import tempfile
-
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_repo = Path(temp_dir) / "plugin_repo"
 

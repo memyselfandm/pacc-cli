@@ -145,7 +145,7 @@ class TestGitCloner(unittest.TestCase):
         mock_run.return_value = Mock(returncode=0)
 
         url = "https://github.com/test/repo.git"
-        result = self.cloner.clone(url, branch="feature-branch")
+        self.cloner.clone(url, branch="feature-branch")
 
         # Check that branch was specified in git command
         args = mock_run.call_args[0][0]
@@ -158,7 +158,7 @@ class TestGitCloner(unittest.TestCase):
         mock_run.return_value = Mock(returncode=0)
 
         url = "https://github.com/test/large-repo.git"
-        result = self.cloner.clone(url, shallow=True)
+        self.cloner.clone(url, shallow=True)
 
         # Check that shallow clone was requested
         args = mock_run.call_args[0][0]

@@ -3,8 +3,8 @@
 from .components import KeyboardHandler, MultiSelectList, PreviewPane, SearchFilter
 
 __all__ = [
-    "MultiSelectList",
     "KeyboardHandler",
-    "SearchFilter",
+    "MultiSelectList",
     "PreviewPane",
+    "SearchFilter",
 ]

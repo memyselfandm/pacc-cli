@@ -34,9 +34,9 @@ class TestListCommandPerformance:
                     "description": f"Performance test hook number {i} for benchmarking the list command with many extensions",
                     "events": ["file:created", "file:modified"] if i % 2 else ["project:build"],
                     "matchers": ["*.py", "*.js"] if i % 3 else ["*"],
-                    "installed_at": f"2024-{(i%12)+1:02d}-{(i%28)+1:02d}T{i%24:02d}:{i%60:02d}:00Z",
+                    "installed_at": f"2024-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}T{i % 24:02d}:{i % 60:02d}:00Z",
                     "source": "local" if i % 3 == 0 else f"github.com/user/repo-{i}",
-                    "version": f"{(i//100)+1}.{(i//10)%10}.{i%10}",
+                    "version": f"{(i // 100) + 1}.{(i // 10) % 10}.{i % 10}",
                 }
             )
 
@@ -47,9 +47,9 @@ class TestListCommandPerformance:
                     "command": f"python mcps/perf-mcp-{i:04d}.py",
                     "args": ["--port", str(5000 + i)],
                     "description": f"Performance test MCP server {i} for load testing the listing functionality",
-                    "installed_at": f"2024-{(i%12)+1:02d}-{(i%28)+1:02d}T{i%24:02d}:{i%60:02d}:30Z",
+                    "installed_at": f"2024-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}T{i % 24:02d}:{i % 60:02d}:30Z",
                     "source": "local" if i % 2 == 0 else "pacc-registry",
-                    "version": f"{(i//50)+1}.{(i//5)%10}.{i%5}",
+                    "version": f"{(i // 50) + 1}.{(i // 5) % 10}.{i % 5}",
                 }
             )
 
@@ -60,7 +60,7 @@ class TestListCommandPerformance:
                     "model": "claude-3-sonnet" if i % 2 else "claude-3-haiku",
                     "description": f"Performance test agent {i} for evaluating list command scalability with large datasets",
                     "tools": ["read", "edit", "grep"] if i % 2 else ["write", "search"],
-                    "installed_at": f"2024-{(i%12)+1:02d}-{(i%28)+1:02d}T{i%24:02d}:{i%60:02d}:45Z",
+                    "installed_at": f"2024-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}T{i % 24:02d}:{i % 60:02d}:45Z",
                     "source": "pacc-registry" if i % 3 == 0 else "local",
                 }
             )
@@ -71,7 +71,7 @@ class TestListCommandPerformance:
                     "path": f"commands/perf-cmd-{i:04d}.md",
                     "description": f"Performance test command {i} for measuring list command efficiency",
                     "aliases": [f"/p{i}", f"/perf{i}"],
-                    "installed_at": f"2024-{(i%12)+1:02d}-{(i%28)+1:02d}T{i%24:02d}:{i%60:02d}:15Z",
+                    "installed_at": f"2024-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}T{i % 24:02d}:{i % 60:02d}:15Z",
                     "source": "local",
                 }
             )

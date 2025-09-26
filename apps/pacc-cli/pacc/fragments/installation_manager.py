@@ -16,11 +16,13 @@ from typing import Any, Dict, List, Optional, Union
 from ..core.config_manager import ClaudeConfigManager
 from ..core.file_utils import FilePathValidator
 from ..errors.exceptions import PACCError
-from ..sources.url import is_url
+from ..sources.git import GitCloner
+from ..sources.url import create_url_source_handler, is_url
 from ..ui.components import MultiSelectList, SelectableItem
 from ..validators.fragment_validator import FragmentValidator
 from .claude_md_manager import CLAUDEmdManager
 from .storage_manager import FragmentStorageManager
+from .version_tracker import FragmentVersionTracker
 
 logger = logging.getLogger(__name__)
 
@@ -265,8 +267,6 @@ class FragmentInstallationManager:
         Returns:
             List of local fragment paths after cloning
         """
-        from ..sources.git import GitCloner
-
         temp_dir = Path(tempfile.mkdtemp(prefix="pacc_git_"))
         try:
             cloner = GitCloner()
@@ -294,8 +294,6 @@ class FragmentInstallationManager:
         Returns:
             List of local fragment paths after downloading
         """
-        from ..sources.url import create_url_source_handler
-
         temp_dir = Path(tempfile.mkdtemp(prefix="pacc_url_"))
         try:
             handler = create_url_source_handler()
@@ -367,7 +365,7 @@ class FragmentInstallationManager:
             # Default: install all if multiple found
             return fragments
 
-    def _validate_fragments(self, fragments: List[Path], force: bool) -> Dict[str, List[str]]:
+    def _validate_fragments(self, fragments: List[Path], _force: bool) -> Dict[str, List[str]]:
         """Validate fragments before installation.
 
         Args:
@@ -446,7 +444,7 @@ class FragmentInstallationManager:
         fragments: List[Path],
         target_type: str,
         force: bool,
-        source_url: str = None,
+        source_url: Optional[str] = None,
     ) -> InstallationResult:
         """Perform actual fragment installation.
 
@@ -504,7 +502,7 @@ class FragmentInstallationManager:
         return result
 
     def _install_single_fragment(
-        self, fragment: Path, target_type: str, force: bool, source_url: str = None
+        self, fragment: Path, target_type: str, force: bool, source_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """Install a single fragment to storage.
 
@@ -528,7 +526,7 @@ class FragmentInstallationManager:
             metadata = validation_result.metadata or {}
         except Exception as e:
             if not force:
-                raise PACCError(f"Fragment validation failed: {e}")
+                raise PACCError(f"Fragment validation failed: {e}") from e
             metadata = {}
 
         # Store fragment in appropriate location
@@ -543,7 +541,7 @@ class FragmentInstallationManager:
             if "already exists" in str(e) and not force:
                 raise PACCError(
                     f"Fragment '{fragment_name}' already exists. Use --force to overwrite."
-                )
+                ) from e
             raise
 
         # Generate reference path relative to project/user root
@@ -557,8 +555,6 @@ class FragmentInstallationManager:
         version_info = None
         if source_url:
             try:
-                from .version_tracker import FragmentVersionTracker
-
                 tracker = FragmentVersionTracker(self.project_root)
                 source_type = (
                     "git" if (source_url.endswith(".git") or "github.com" in source_url) else "url"
@@ -618,7 +614,7 @@ class FragmentInstallationManager:
 
         # Add existing references first
         for line in existing_lines:
-            if line.startswith("@") and line not in [ref for ref in new_references]:
+            if line.startswith("@") and line not in list(new_references):
                 all_references.append(line)
 
         # Add new references
@@ -635,7 +631,7 @@ class FragmentInstallationManager:
             )
 
     def _update_pacc_json_with_fragments(
-        self, fragments: List[Dict[str, Any]], target_type: str
+        self, fragments: List[Dict[str, Any]], _target_type: str
     ) -> None:
         """Update pacc.json to track installed fragments.
 

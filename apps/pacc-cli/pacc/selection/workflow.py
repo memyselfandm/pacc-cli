@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from ..core import DirectoryScanner, FileFilter, FilePathValidator
 from ..errors import SourceError, ValidationError
@@ -41,6 +41,91 @@ class SelectionWorkflow:
         self._progress: Optional[ProgressTracker] = None
         self._confirmation: Optional[ConfirmationDialog] = None
 
+    async def _check_cached_result(
+        self, source_paths: List[Union[str, Path]], context: SelectionContext
+    ) -> Optional[SelectionResult]:
+        """Check for cached selection result."""
+        if context.cache_selections:
+            cached_result = await self._check_cache(source_paths, context)
+            if cached_result:
+                logger.info("Using cached selection result")
+                cached_result.cached_result = True
+                return cached_result
+        return None
+
+    async def _discover_and_validate_files(
+        self, source_paths: List[Union[str, Path]], context: SelectionContext, progress
+    ) -> Optional[List[Path]]:
+        """Discover files and validate basic criteria."""
+        if progress:
+            await progress.start("Discovering files...")
+
+        candidate_files = await self._discover_files(source_paths, context, progress)
+
+        if not candidate_files and not context.allow_empty:
+            return None
+
+        return candidate_files
+
+    async def _validate_file_selections(
+        self, selected_files: List[Path], context: SelectionContext, progress
+    ) -> Tuple[List[ValidationResult], bool]:
+        """Validate selected files and return results and whether to continue."""
+        validation_results = []
+        if context.validate_on_select and context.validators:
+            if progress:
+                await progress.update("Validating selections...")
+
+            validation_results = await self._validate_selections(selected_files, context, progress)
+
+            # Check for validation errors
+            if context.stop_on_validation_error:
+                invalid_results = [r for r in validation_results if not r.is_valid]
+                if invalid_results:
+                    return validation_results, False
+
+        return validation_results, True
+
+    async def _confirm_file_selection(
+        self,
+        selected_files: List[Path],
+        validation_results: List,
+        context: SelectionContext,
+        progress,
+    ) -> bool:
+        """Confirm file selection with user if needed."""
+        if context.confirm_selections and context.interactive_ui:
+            if progress:
+                await progress.update("Waiting for confirmation...")
+
+            return await self._confirm_selection(selected_files, validation_results, context)
+        return True
+
+    async def _finalize_selection_result(
+        self,
+        source_paths: List[Union[str, Path]],
+        context: SelectionContext,
+        selected_files: List[Path],
+        validation_results: List,
+        progress,
+    ) -> SelectionResult:
+        """Finalize and store the selection result."""
+        result = SelectionResult(success=True)
+        result.selected_files = selected_files
+        result.validation_results = validation_results
+
+        if context.cache_selections:
+            await self._store_cache(source_paths, context, result)
+
+        if context.remember_choices:
+            await self._store_history(source_paths, context, result)
+
+        if progress:
+            await progress.complete(f"Selected {len(selected_files)} files")
+
+        logger.info(f"Selection workflow completed: {len(selected_files)} files selected")
+        return result
+
     async def execute_selection(
         self, source_paths: List[Union[str, Path]], context: SelectionContext
     ) -> SelectionResult:
@@ -57,21 +142,17 @@ class SelectionWorkflow:
 
         try:
             # Step 1: Check cache if enabled
-            if context.cache_selections:
-                cached_result = await self._check_cache(source_paths, context)
-                if cached_result:
-                    logger.info("Using cached selection result")
-                    cached_result.cached_result = True
-                    return cached_result
+            cached_result = await self._check_cached_result(source_paths, context)
+            if cached_result:
+                return cached_result
 
             # Step 2: Discover and filter files
             progress = self._get_progress_tracker() if context.show_progress else None
-            if progress:
-                await progress.start("Discovering files...")
+            candidate_files = await self._discover_and_validate_files(
+                source_paths, context, progress
+            )
 
-            candidate_files = await self._discover_files(source_paths, context, progress)
-
-            if not candidate_files and not context.allow_empty:
+            if candidate_files is None:
                 result.errors.append(
                     SourceError("No valid files found matching selection criteria")
                 )
@@ -90,54 +171,33 @@ class SelectionWorkflow:
                 return result
 
             # Step 4: Validate selections if requested
-            validation_results = []
-            if context.validate_on_select and context.validators:
-                if progress:
-                    await progress.update("Validating selections...")
+            validation_results, should_continue = await self._validate_file_selections(
+                selected_files, context, progress
+            )
 
-                validation_results = await self._validate_selections(
-                    selected_files, context, progress
+            if not should_continue:
+                result.validation_results = validation_results
+                result.errors.append(
+                    ValidationError(
+                        f"Validation failed for "
+                        f"{len([r for r in validation_results if not r.is_valid])} files"
+                    )
                 )
-
-                # Handle validation errors
-                if context.stop_on_validation_error:
-                    invalid_results = [r for r in validation_results if not r.is_valid]
-                    if invalid_results:
-                        result.validation_results = validation_results
-                        result.errors.append(
-                            ValidationError(f"Validation failed for {len(invalid_results)} files")
-                        )
-                        return result
+                return result
 
             # Step 5: Confirmation if requested
-            if context.confirm_selections and context.interactive_ui:
-                if progress:
-                    await progress.update("Waiting for confirmation...")
+            confirmed = await self._confirm_file_selection(
+                selected_files, validation_results, context, progress
+            )
 
-                confirmed = await self._confirm_selection(
-                    selected_files, validation_results, context
-                )
-
-                if not confirmed:
-                    result.user_cancelled = True
-                    return result
+            if not confirmed:
+                result.user_cancelled = True
+                return result
 
             # Step 6: Store results and cache if enabled
-            result.success = True
-            result.selected_files = selected_files
-            result.validation_results = validation_results
-
-            if context.cache_selections:
-                await self._store_cache(source_paths, context, result)
-
-            if context.remember_choices:
-                await self._store_history(source_paths, context, result)
-
-            if progress:
-                await progress.complete(f"Selected {len(selected_files)} files")
-
-            logger.info(f"Selection workflow completed: {len(selected_files)} files selected")
-            return result
+            return await self._finalize_selection_result(
+                source_paths, context, selected_files, validation_results, progress
+            )
 
         except Exception as e:
             logger.error(f"Selection workflow failed: {e}")
@@ -177,7 +237,7 @@ class SelectionWorkflow:
         # Discover files from each source path
         for i, source_path in enumerate(source_paths):
             if progress:
-                await progress.update(f"Scanning {source_path} ({i+1}/{len(source_paths)})")
+                await progress.update(f"Scanning {source_path} ({i + 1}/{len(source_paths)})")
 
             path_obj = Path(source_path)
 
@@ -319,7 +379,7 @@ class SelectionWorkflow:
             # Sequential validation
             for i, file_path in enumerate(selected_files):
                 if progress:
-                    await progress.update(f"Validating file {i+1}/{len(selected_files)}")
+                    await progress.update(f"Validating file {i + 1}/{len(selected_files)}")
 
                 for validator in context.validators:
                     try:

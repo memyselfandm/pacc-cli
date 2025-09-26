@@ -88,8 +88,6 @@ class PACCBuilder:
         print("🔍 Checking build requirements...")
 
         # Check Python version
-        if sys.version_info < (3, 8):
-            raise BuildError("Python 3.8 or higher is required")
 
         # Check required files
         required_files = [
@@ -376,8 +374,8 @@ class PACCBuilder:
         return True
 
 
-def main():
-    """Main entry point for build script."""
+def _create_argument_parser() -> argparse.ArgumentParser:
+    """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(description="Build automation for PACC package")
 
     parser.add_argument(
@@ -395,6 +393,74 @@ def main():
         help="Distribution type to build",
     )
 
+    return parser
+
+
+def _handle_build_action(builder: PACCBuilder, args) -> None:
+    """Handle the build action based on distribution type."""
+    if args.dist_type == "both":
+        builder.build_all(skip_tests=args.skip_tests)
+    elif args.dist_type == "sdist":
+        builder.clean()
+        builder.check_requirements()
+        sdist = builder.build_sdist()
+        print(f"✅ Built: {sdist.name}")
+    elif args.dist_type == "wheel":
+        builder.clean()
+        builder.check_requirements()
+        wheel = builder.build_wheel()
+        print(f"✅ Built: {wheel.name}")
+
+
+def _handle_test_action(builder: PACCBuilder) -> None:
+    """Handle the test action for wheel installation."""
+    wheel_files = list(builder.dist_dir.glob("*.whl"))
+    if not wheel_files:
+        print("❌ No wheel file found. Run 'build' first.")
+        sys.exit(1)
+
+    builder.test_wheel_installation(wheel_files[0])
+
+
+def _handle_check_action(builder: PACCBuilder) -> None:
+    """Handle the check action for distribution validation."""
+    if not builder.dist_dir.exists():
+        print("❌ No dist directory found. Run 'build' first.")
+        sys.exit(1)
+
+    dist_files = list(builder.dist_dir.glob("*.tar.gz"))
+    dist_files.extend(list(builder.dist_dir.glob("*.whl")))
+
+    if not dist_files:
+        print("❌ No distribution files found.")
+        sys.exit(1)
+
+    all_passed = True
+    for dist_file in dist_files:
+        if not builder.check_distribution(dist_file):
+            all_passed = False
+
+    if not all_passed:
+        sys.exit(1)
+
+
+def _execute_action(builder: PACCBuilder, args) -> None:
+    """Execute the specified action."""
+    if args.action == "clean":
+        builder.clean()
+    elif args.action == "install-deps":
+        builder.install_build_deps()
+    elif args.action == "build":
+        _handle_build_action(builder, args)
+    elif args.action == "test":
+        _handle_test_action(builder)
+    elif args.action == "check":
+        _handle_check_action(builder)
+
+
+def main():
+    """Main entry point for build script."""
+    parser = _create_argument_parser()
     args = parser.parse_args()
 
     # Find project root
@@ -405,56 +471,7 @@ def main():
     builder = PACCBuilder(project_root)
 
     try:
-        if args.action == "clean":
-            builder.clean()
-
-        elif args.action == "install-deps":
-            builder.install_build_deps()
-
-        elif args.action == "build":
-            if args.dist_type == "both":
-                builder.build_all(skip_tests=args.skip_tests)
-            elif args.dist_type == "sdist":
-                builder.clean()
-                builder.check_requirements()
-                sdist = builder.build_sdist()
-                print(f"✅ Built: {sdist.name}")
-            elif args.dist_type == "wheel":
-                builder.clean()
-                builder.check_requirements()
-                wheel = builder.build_wheel()
-                print(f"✅ Built: {wheel.name}")
-
-        elif args.action == "test":
-            # Test existing wheel
-            wheel_files = list(builder.dist_dir.glob("*.whl"))
-            if not wheel_files:
-                print("❌ No wheel file found. Run 'build' first.")
-                sys.exit(1)
-
-            builder.test_wheel_installation(wheel_files[0])
-
-        elif args.action == "check":
-            # Check distributions with twine
-            if not builder.dist_dir.exists():
-                print("❌ No dist directory found. Run 'build' first.")
-                sys.exit(1)
-
-            dist_files = list(builder.dist_dir.glob("*.tar.gz"))
-            dist_files.extend(list(builder.dist_dir.glob("*.whl")))
-
-            if not dist_files:
-                print("❌ No distribution files found.")
-                sys.exit(1)
-
-            all_passed = True
-            for dist_file in dist_files:
-                if not builder.check_distribution(dist_file):
-                    all_passed = False
-
-            if not all_passed:
-                sys.exit(1)
-
+        _execute_action(builder, args)
     except BuildError as e:
         print(f"❌ Build error: {e}")
         sys.exit(1)

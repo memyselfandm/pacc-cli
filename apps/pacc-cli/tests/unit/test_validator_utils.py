@@ -338,7 +338,7 @@ class TestEdgeCasesAndErrorHandling:
             mock_runner.validate_directory.return_value = {"hooks": [], "mcp": []}
 
             # Explicit None should behave same as not providing the parameter
-            results = validate_extension_directory(test_dir, extension_type=None)
+            validate_extension_directory(test_dir, extension_type=None)
 
             mock_runner.validate_directory.assert_called_once_with(test_dir, None)
 

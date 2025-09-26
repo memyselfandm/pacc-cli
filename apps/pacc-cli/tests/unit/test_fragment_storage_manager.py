@@ -107,9 +107,7 @@ class TestFragmentStorageManager:
             storage_manager.store_fragment(fragment_name, new_content, "project", overwrite=False)
 
         # Store with overwrite (should succeed)
-        stored_path = storage_manager.store_fragment(
-            fragment_name, new_content, "project", overwrite=True
-        )
+        storage_manager.store_fragment(fragment_name, new_content, "project", overwrite=True)
         loaded_content = storage_manager.load_fragment(fragment_name, "project")
         assert loaded_content == new_content
 
@@ -521,11 +519,9 @@ class TestFragmentStorageIntegration:
     def test_complete_fragment_lifecycle(self, storage_manager, temp_project):
         """Test complete fragment lifecycle from creation to removal."""
         # 1. Store fragments in different locations and collections
-        project_frag = storage_manager.store_fragment(
-            "project-main", "Main project fragment", "project"
-        )
-        user_frag = storage_manager.store_fragment("user-main", "Main user fragment", "user")
-        collection_frag = storage_manager.store_fragment(
+        storage_manager.store_fragment("project-main", "Main project fragment", "project")
+        storage_manager.store_fragment("user-main", "Main user fragment", "user")
+        storage_manager.store_fragment(
             "collection-item", "Collection fragment", "project", collection="docs"
         )
 
