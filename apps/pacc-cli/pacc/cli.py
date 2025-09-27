@@ -733,7 +733,7 @@ class PACCCli:
 
         plugin_parser.set_defaults(func=self._plugin_help)
 
-    def _add_fragment_parser(self, subparsers) -> None:  # noqa: PLR0915
+    def _add_fragment_parser(self, subparsers) -> None:
         """Add the fragment command parser."""
         fragment_parser = subparsers.add_parser(
             "fragment",
@@ -1238,7 +1238,7 @@ class PACCCli:
             else:
                 self._print_error(f"Installation failed: {e}")
                 if args.verbose:
-                    import traceback  # noqa: PLC0415
+                    import traceback
 
                     traceback.print_exc()
             return 1
@@ -1254,7 +1254,7 @@ class PACCCli:
     def _is_git_url(self, source: str) -> bool:
         """Check if source is a Git repository URL."""
         try:
-            from .sources.git import GitUrlParser  # noqa: PLC0415
+            from .sources.git import GitUrlParser
 
             parser = GitUrlParser()
             return parser.validate(source)
@@ -1293,7 +1293,7 @@ class PACCCli:
         progress_display = ProgressDisplay()
 
         # Create temporary download directory
-        import tempfile  # noqa: PLC0415
+        import tempfile
 
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
@@ -1325,7 +1325,7 @@ class PACCCli:
             args.source = str(source_path)
             return self._install_from_local_path(args)
 
-    def _install_from_git(self, args) -> int:  # noqa: PLR0911, PLR0912, PLR0915
+    def _install_from_git(self, args) -> int:
         """Install from Git repository source."""
         # Determine installation scope
         if args.user:
@@ -1342,7 +1342,7 @@ class PACCCli:
             self._print_info("DRY RUN MODE - No changes will be made")
 
         try:
-            from .sources.git import GitSourceHandler  # noqa: PLC0415
+            from .sources.git import GitSourceHandler
 
             handler = GitSourceHandler()
 
@@ -1456,12 +1456,12 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Git installation failed: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
 
-    def _install_from_local_path(self, args) -> int:  # noqa: PLR0911, PLR0912, PLR0915
+    def _install_from_local_path(self, args) -> int:
         """Install from local file/directory path."""
         source_path = Path(args.source).resolve()
 
@@ -1691,7 +1691,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Initialization failed: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -1766,7 +1766,7 @@ class PACCCli:
         self._print_success(f"Successfully initialized {scope_name}-level PACC configuration")
         return 0
 
-    def sync_command(self, args) -> int:  # noqa: PLR0912
+    def sync_command(self, args) -> int:
         """Handle the sync command."""
         try:
             # Determine project directory
@@ -1839,19 +1839,19 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Sync failed: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
 
-    def list_command(self, args) -> int:  # noqa: PLR0912, PLR0915
+    def list_command(self, args) -> int:
         """Handle the list command."""
         # Set JSON mode if requested or if format is json
         self._set_json_mode(getattr(args, "json", False) or args.format == "json")
 
         try:
-            from datetime import datetime, timezone  # noqa: PLC0415
-            from fnmatch import fnmatch  # noqa: PLC0415
+            from datetime import datetime, timezone
+            from fnmatch import fnmatch
 
             # Determine which scopes to list
             scopes_to_check = []
@@ -1984,12 +1984,12 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Failed to list extensions: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
 
-    def _print_extensions_table(  # noqa: PLR0912
+    def _print_extensions_table(
         self, extensions, verbose=False, show_status=False, show_scope=False
     ):
         """Print extensions in a formatted table."""
@@ -2067,7 +2067,7 @@ class PACCCli:
         for row in rows:
             print(" | ".join(str(val).ljust(w) for val, w in zip(row, col_widths)))
 
-    def remove_command(self, args) -> int:  # noqa: PLR0911, PLR0912, PLR0915
+    def remove_command(self, args) -> int:
         """Handle the remove command."""
         # Set JSON mode if requested
         self._set_json_mode(getattr(args, "json", False))
@@ -2183,7 +2183,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Removal failed: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -2215,7 +2215,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Failed to get extension info: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -2263,7 +2263,7 @@ class PACCCli:
 
     def _handle_info_for_directory(self, directory_path: Path, args) -> int:
         """Handle info command for directory containing extensions."""
-        from .validators import validate_extension_directory  # noqa: PLC0415
+        from .validators import validate_extension_directory
 
         # Find all extension files in the directory
         validation_dict = validate_extension_directory(directory_path, args.type)
@@ -2334,7 +2334,7 @@ class PACCCli:
         """Get file system information about an extension file."""
         try:
             stat = file_path.stat()
-            from datetime import datetime  # noqa: PLC0415
+            from datetime import datetime
 
             return {
                 "size": stat.st_size,
@@ -2401,12 +2401,12 @@ class PACCCli:
 
     def _display_info_json(self, extension_info: dict) -> int:
         """Display extension information in JSON format."""
-        import json  # noqa: PLC0415
+        import json
 
         print(json.dumps(extension_info, indent=2, ensure_ascii=False))
         return 0
 
-    def _display_info_formatted(self, extension_info: dict, args) -> int:  # noqa: PLR0912, PLR0915
+    def _display_info_formatted(self, extension_info: dict, args) -> int:
         """Display extension information in formatted text."""
         name = extension_info.get("name", "Unknown")
         description = extension_info.get("description", "No description")
@@ -2514,7 +2514,7 @@ class PACCCli:
         else:
             return f"{size_bytes / (1024 * 1024):.1f} MB"
 
-    def _display_type_specific_info(self, ext_type: str, metadata: dict) -> None:  # noqa: PLR0912
+    def _display_type_specific_info(self, ext_type: str, metadata: dict) -> None:
         """Display type-specific information based on extension type."""
         if ext_type == "hooks":
             if "event_types" in metadata:
@@ -2547,7 +2547,7 @@ class PACCCli:
             if "aliases" in metadata:
                 print(f"  Aliases:      {', '.join(metadata['aliases'])}")
 
-    def _show_related_extensions(self, extension_info: dict, args) -> None:  # noqa: ARG002
+    def _show_related_extensions(self, extension_info: dict, args) -> None:
         """Show related extensions and suggestions."""
         ext_type = extension_info.get("type", "")
         name = extension_info.get("name", "")
@@ -2632,8 +2632,8 @@ class PACCCli:
 
     def _install_extension(self, extension, base_dir: Path, force: bool = False) -> None:
         """Install a single extension with configuration management."""
-        import shutil  # noqa: PLC0415
-        from pathlib import Path  # noqa: PLC0415
+        import shutil
+        from pathlib import Path
 
         # Create extension type directory
         ext_dir = base_dir / extension.extension_type
@@ -2658,7 +2658,7 @@ class PACCCli:
             extension_config = self._create_extension_config(extension, dest_path)
 
             # Add to configuration
-            from pathlib import Path  # noqa: PLC0415
+            from pathlib import Path
 
             home_claude_dir = Path.home() / ".claude"
             is_user_level = base_dir.resolve() == home_claude_dir.resolve()
@@ -2873,7 +2873,7 @@ class PACCCli:
                 print("\nOperation cancelled")
                 return False
 
-    def _remove_extension_atomic(  # noqa: PLR0912
+    def _remove_extension_atomic(
         self,
         extension_config: Dict[str, Any],
         extension_type: str,
@@ -3036,7 +3036,7 @@ class PACCCli:
 
     def _output_json_result(self, result: CommandResult) -> None:
         """Output command result in JSON format."""
-        import json  # noqa: PLC0415
+        import json
 
         result_dict = result.to_dict()
 
@@ -3051,7 +3051,7 @@ class PACCCli:
         self._json_output = enabled
         self._messages = []
 
-    def _plugin_help(self, args) -> int:  # noqa: ARG002
+    def _plugin_help(self, args) -> int:
         """Show plugin command help when no subcommand is specified."""
         print("pacc plugin: Manage Claude Code plugins\n")
         print("Available commands:")
@@ -3068,7 +3068,7 @@ class PACCCli:
         print("\nUse 'pacc plugin <command> --help' for more information on a command.")
         return 0
 
-    def handle_plugin_install(self, args) -> int:  # noqa: PLR0912, PLR0915
+    def handle_plugin_install(self, args) -> int:
         """Handle plugin install command."""
         try:
             self._print_info(f"Installing plugins from repository: {args.repo_url}")
@@ -3174,12 +3174,12 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Plugin installation failed: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
 
-    def handle_plugin_list(self, args) -> int:  # noqa: ARG002, PLR0912
+    def handle_plugin_list(self, args) -> int:
         """Handle plugin list command."""
         try:
             # Initialize plugin managers
@@ -3256,7 +3256,7 @@ class PACCCli:
 
             # Display results
             if args.format == "json":
-                import json  # noqa: PLC0415  # noqa: PLC0415
+                import json
 
                 result = {"plugins": all_plugins, "count": len(all_plugins)}
                 print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -3275,12 +3275,12 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Failed to list plugins: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
 
-    def handle_plugin_enable(self, args) -> int:  # noqa: ARG002
+    def handle_plugin_enable(self, args) -> int:
         """Handle plugin enable command."""
         try:
             # Parse plugin identifier
@@ -3334,7 +3334,7 @@ class PACCCli:
             self._print_error(f"Failed to disable plugin: {e}")
             return 1
 
-    def handle_plugin_info(self, args) -> int:  # noqa: ARG002
+    def handle_plugin_info(self, args) -> int:
         """Handle plugin info command."""
         try:
             # Parse plugin identifier
@@ -3452,7 +3452,7 @@ class PACCCli:
 
             # Display results
             if args.format == "json":
-                import json  # noqa: PLC0415  # noqa: PLC0415
+                import json
 
                 print(json.dumps(plugin_info, indent=2, ensure_ascii=False, default=str))
             else:
@@ -3553,7 +3553,7 @@ class PACCCli:
                         # Only remove repository if this is the only plugin or if forced
                         if len(repo_plugins) <= 1:
                             try:
-                                import shutil  # noqa: PLC0415
+                                import shutil
 
                                 shutil.rmtree(repo_path)
                                 self._print_success(f"Removed repository: {repo_path}")
@@ -3767,7 +3767,7 @@ class PACCCli:
             self._print_error(f"Unexpected error updating {repo_key}: {e}")
             return 1
 
-    def _show_update_preview(  # noqa: ARG002
+    def _show_update_preview(
         self,
         repo_key: str,
         repo_path: Path,
@@ -3777,7 +3777,7 @@ class PACCCli:
         """Show preview of what would be updated."""
         try:
             # Fetch remote changes without merging
-            import subprocess  # noqa: PLC0415
+            import subprocess
 
             result = subprocess.run(
                 ["git", "fetch", "--dry-run"],
@@ -3866,7 +3866,7 @@ class PACCCli:
     def _show_commit_diff(self, repo_path: Path, old_sha: str, new_sha: str) -> None:
         """Show diff between two commits."""
         try:
-            import subprocess  # noqa: PLC0415
+            import subprocess
 
             result = subprocess.run(
                 ["git", "diff", "--stat", f"{old_sha}..{new_sha}"],
@@ -3890,7 +3890,7 @@ class PACCCli:
     def handle_plugin_sync(self, args) -> int:
         """Handle plugin sync command for team collaboration."""
         try:
-            from .core.project_config import PluginSyncManager  # noqa: PLC0415
+            from .core.project_config import PluginSyncManager
 
             # Initialize sync manager
             sync_manager = PluginSyncManager()
@@ -3980,7 +3980,7 @@ class PACCCli:
                     },
                     warnings=result.warnings if result.warnings else None,
                 )
-                import json  # noqa: PLC0415
+                import json
                 print(json.dumps(command_result.to_dict(), indent=2))
 
             return 0 if result.success else 1
@@ -3988,7 +3988,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Sync failed: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -4228,7 +4228,7 @@ class PACCCli:
             return 1
         except Exception as e:
             self._print_error(f"Search failed: {e}")
-            import traceback  # noqa: PLC0415
+            import traceback
 
             traceback.print_exc()
             return 1
@@ -4236,7 +4236,7 @@ class PACCCli:
     def handle_plugin_create(self, args) -> int:
         """Handle plugin create command."""
         try:
-            from .plugins.creator import CreationMode, CreationPluginType, PluginCreator  # noqa: PLC0415
+            from .plugins.creator import CreationMode, CreationPluginType, PluginCreator
 
             # Determine output directory
             output_dir = Path(args.output_dir).resolve()
@@ -4322,7 +4322,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Plugin creation failed: {e}")
             if hasattr(args, "verbose") and args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -4673,7 +4673,7 @@ class PACCCli:
         for row in rows:
             print(" | ".join(str(val).ljust(w) for val, w in zip(row, col_widths)))
 
-    def _fragment_help(self, args) -> int:  # noqa: ARG002
+    def _fragment_help(self, args) -> int:
         """Show fragment command help when no subcommand is specified."""
         print("Fragment Management Commands:")
         print("  install <source>           Install fragments from file, directory, or URL")
@@ -4696,7 +4696,7 @@ class PACCCli:
     def handle_fragment_install(self, args) -> int:
         """Handle fragment install command."""
         try:
-            from pacc.fragments.installation_manager import FragmentInstallationManager  # noqa: PLC0415
+            from pacc.fragments.installation_manager import FragmentInstallationManager
 
             if args.verbose:
                 self._print_info(
@@ -4764,7 +4764,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Fragment installation error: {e}")
             if args.verbose:
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -4772,7 +4772,7 @@ class PACCCli:
     def handle_fragment_list(self, args) -> int:
         """Handle fragment list command."""
         try:
-            from pacc.fragments.storage_manager import FragmentStorageManager  # noqa: PLC0415
+            from pacc.fragments.storage_manager import FragmentStorageManager
 
             if args.verbose:
                 self._print_info(
@@ -4798,7 +4798,7 @@ class PACCCli:
                 return 0
 
             if args.format == "json":
-                import json  # noqa: PLC0415  # noqa: PLC0415
+                import json
 
                 fragment_data = []
                 for fragment in fragments:
@@ -4869,7 +4869,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Failed to list fragments: {e}")
             if getattr(args, "verbose", False):
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -4877,7 +4877,7 @@ class PACCCli:
     def handle_fragment_info(self, args) -> int:
         """Handle fragment info command."""
         try:
-            from pacc.fragments.storage_manager import FragmentStorageManager  # noqa: PLC0415
+            from pacc.fragments.storage_manager import FragmentStorageManager
             from pacc.validators.fragment_validator import FragmentValidator
 
             # Initialize managers
@@ -4899,7 +4899,7 @@ class PACCCli:
             validation_result = validator.validate_single(fragment_path)
 
             if args.format == "json":
-                import json  # noqa: PLC0415  # noqa: PLC0415
+                import json
 
                 info_data = {
                     "name": args.fragment,
@@ -4978,7 +4978,7 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Failed to get fragment info: {e}")
             if getattr(args, "verbose", False):
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
@@ -4986,7 +4986,7 @@ class PACCCli:
     def handle_fragment_remove(self, args) -> int:
         """Handle fragment remove command."""
         try:
-            from pacc.fragments.storage_manager import FragmentStorageManager  # noqa: PLC0415
+            from pacc.fragments.storage_manager import FragmentStorageManager
 
             if args.verbose:
                 self._print_info(
@@ -5072,14 +5072,14 @@ class PACCCli:
         except Exception as e:
             self._print_error(f"Failed to remove fragment: {e}")
             if getattr(args, "verbose", False):
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 traceback.print_exc()
             return 1
 
     def _progress_indicator(self, message: str):
         """Simple progress indicator context manager."""
-        from contextlib import contextmanager  # noqa: PLC0415
+        from contextlib import contextmanager
 
         @contextmanager
         def indicator():
@@ -5096,7 +5096,7 @@ class PACCCli:
     def handle_fragment_sync(self, args) -> int:
         """Handle fragment sync command."""
         try:
-            from pacc.fragments.sync_manager import FragmentSyncManager  # noqa: PLC0415
+            from pacc.fragments.sync_manager import FragmentSyncManager
 
             # Initialize sync manager
             sync_manager = FragmentSyncManager()
@@ -5170,7 +5170,7 @@ class PACCCli:
     def handle_fragment_update(self, args) -> int:
         """Handle fragment update command."""
         try:
-            from pacc.fragments.update_manager import FragmentUpdateManager  # noqa: PLC0415
+            from pacc.fragments.update_manager import FragmentUpdateManager
 
             # Initialize update manager
             update_manager = FragmentUpdateManager()
@@ -5255,12 +5255,12 @@ class PACCCli:
     def handle_fragment_discover(self, args) -> int:
         """Handle fragment discover command."""
         try:
-            import json  # noqa: PLC0415
-            from pathlib import Path  # noqa: PLC0415
+            import json
+            from pathlib import Path
 
-            import yaml  # noqa: PLC0415
+            import yaml
 
-            from pacc.fragments.collection_manager import FragmentCollectionManager  # noqa: PLC0415
+            from pacc.fragments.collection_manager import FragmentCollectionManager
             from pacc.plugins.discovery import PluginScanner
 
             # Initialize collection manager and scanner
@@ -5365,9 +5365,9 @@ class PACCCli:
     def handle_fragment_collection_install(self, args) -> int:
         """Handle fragment collection install command."""
         try:
-            from pathlib import Path  # noqa: PLC0415
+            from pathlib import Path
 
-            from pacc.fragments.collection_manager import (  # noqa: PLC0415
+            from pacc.fragments.collection_manager import (
                 CollectionInstallOptions,
                 FragmentCollectionManager,
             )
@@ -5441,9 +5441,9 @@ class PACCCli:
     def handle_fragment_collection_update(self, args) -> int:
         """Handle fragment collection update command."""
         try:
-            from pathlib import Path  # noqa: PLC0415
+            from pathlib import Path
 
-            from pacc.fragments.collection_manager import (  # noqa: PLC0415
+            from pacc.fragments.collection_manager import (
                 CollectionInstallOptions,
                 FragmentCollectionManager,
             )
@@ -5514,11 +5514,11 @@ class PACCCli:
     def handle_fragment_collection_status(self, args) -> int:
         """Handle fragment collection status command."""
         try:
-            import json  # noqa: PLC0415
+            import json
 
-            import yaml  # noqa: PLC0415
+            import yaml
 
-            from pacc.fragments.collection_manager import FragmentCollectionManager  # noqa: PLC0415
+            from pacc.fragments.collection_manager import FragmentCollectionManager
 
             # Initialize collection manager
             collection_manager = FragmentCollectionManager()
@@ -5610,7 +5610,7 @@ class PACCCli:
     def handle_fragment_collection_remove(self, args) -> int:
         """Handle fragment collection remove command."""
         try:
-            from pacc.fragments.collection_manager import FragmentCollectionManager  # noqa: PLC0415
+            from pacc.fragments.collection_manager import FragmentCollectionManager
 
             # Initialize collection manager
             collection_manager = FragmentCollectionManager()
@@ -5769,7 +5769,7 @@ class PACCCli:
         Returns:
             Context manager for progress indication
         """
-        from contextlib import contextmanager  # noqa: PLC0415
+        from contextlib import contextmanager
 
         @contextmanager
         def progress():
