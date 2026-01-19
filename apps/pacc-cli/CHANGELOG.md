@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-01-19
+
+### Fixed
+- **Missing CLI Handler**: Added `handle_plugin_env` method to dispatch plugin env subcommands
+  - Fixes `AttributeError: 'PACCCli' object has no attribute 'handle_plugin_env'` error on startup
+  - `pacc plugin env` commands (setup, status, verify, reset) now work correctly
+
 ## [1.1.1] - 2026-01-19
 
 ### Fixed

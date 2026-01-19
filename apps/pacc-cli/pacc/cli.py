@@ -4437,6 +4437,26 @@ class PACCCli:
             row_str = " | ".join(str(cell).ljust(col_widths[i]) for i, cell in enumerate(row))
             print(row_str)
 
+    def handle_plugin_env(self, args) -> int:
+        """Handle plugin environment commands - dispatch to subcommands."""
+        env_command = getattr(args, "env_command", None)
+        if not env_command:
+            return self._plugin_env_help(args)
+
+        handlers = {
+            "setup": self.handle_plugin_env_setup,
+            "status": self.handle_plugin_env_status,
+            "verify": self.handle_plugin_env_verify,
+            "reset": self.handle_plugin_env_reset,
+        }
+
+        handler = handlers.get(env_command)
+        if handler:
+            return handler(args)
+        else:
+            self._print_error(f"Unknown env command: {env_command}")
+            return self._plugin_env_help(args)
+
     def _plugin_env_help(self, args) -> int:
         """Show plugin environment help."""
         self._print_info("Available environment commands:")
