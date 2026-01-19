@@ -36,7 +36,7 @@ pacc validate ./my-hook.json --type hooks
 # Example output:
 # ✓ VALID: ./my-hook.json
 # Type: hooks
-#
+# 
 # Validation Summary:
 #   Valid: 1/1
 #   Errors: 0
@@ -55,17 +55,17 @@ pacc validate ./extensions/ --type commands
 # Example output:
 # ✓ VALID: ./extensions/deploy.md
 # Type: commands
-#
-# ✓ VALID: ./extensions/build.md
+# 
+# ✓ VALID: ./extensions/build.md  
 # Type: commands
 #
 # ✗ INVALID: ./extensions/broken.md
 # Type: commands
-#
+# 
 # Errors (2):
 #   • MISSING_TITLE: Command file must have a title starting with '#'
 #   • INVALID_SYNTAX: Invalid markdown syntax at line 15
-#
+# 
 # Validation Summary:
 #   Valid: 2/3
 #   Errors: 2
@@ -95,7 +95,7 @@ pacc validate ./pre-commit-hook.json --type hooks
   "description": "Runs checks before tool execution",
   "hooks": [
     {
-      "event": "PreToolUse",
+      "event": "PreToolUse", 
       "command": "npm run lint"
     }
   ]
@@ -150,7 +150,7 @@ pacc validate ./my-agent.md --type agents
 ---
 name: file-organizer
 description: Organizes files based on content and patterns
-tools: ["file-reader", "file-writer"]
+tools: ["file-reader", "file-writer"] 
 permissions: ["read-files", "write-files"]
 ---
 
@@ -362,7 +362,7 @@ validate:
 
 test: validate
 	pytest tests/
-
+	
 ci: validate test
 	echo "All checks passed"
 ```
