@@ -23,7 +23,7 @@ pip install -e .
 
 ## Project Status
 
-**🎯 Production Ready - Version 1.0.0** ✅
+**🎯 Production Ready - Version 1.1.0** ✅
 
 ### ✅ Completed Features
 - **Wave 1-4 - MVP Foundation**: Complete core package management with >80% test coverage
@@ -150,7 +150,7 @@ files = scanner.scan('/path/to/directory', file_filter)
 
 1. **Install from wheel** (recommended):
    ```bash
-   pip install dist/pacc-1.0.0-py3-none-any.whl
+   pip install dist/pacc-1.1.0-py3-none-any.whl
    ```
 
 2. **Verify installation**:
@@ -167,7 +167,7 @@ files = scanner.scan('/path/to/directory', file_filter)
 python scripts/build.py build --dist-type wheel
 
 # Install the wheel
-pip install dist/pacc-1.0.0-py3-none-any.whl
+pip install dist/pacc-1.1.0-py3-none-any.whl
 ```
 
 #### Option 2: Editable Installation (Development)
