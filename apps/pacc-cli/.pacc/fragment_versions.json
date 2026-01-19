@@ -1,0 +1,18 @@
+{
+  "test_fragment": {
+    "version_id": "04d8f1fd",
+    "source_type": "url",
+    "timestamp": "2025-08-31T22:36:45.592177",
+    "source_url": "/private/var/folders/_h/hhftwny95zlbt3ggmcpg2hrw0000gp/T/tmpfncfjkd5/test_fragment.md",
+    "commit_message": null,
+    "author": null
+  },
+  "test_verbose": {
+    "version_id": "a5b08e31",
+    "source_type": "url",
+    "timestamp": "2025-08-31T22:36:45.746202",
+    "source_url": "/private/var/folders/_h/hhftwny95zlbt3ggmcpg2hrw0000gp/T/tmpbr3je38v/test_verbose.md",
+    "commit_message": null,
+    "author": null
+  }
+}

@@ -6,9 +6,24 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 - **Hooks & MCP Servers**: Configuration-based, stored in `settings.json`
 - **Agents & Commands**: File-based, placed in directories and auto-discovered by Claude Code
 
+## Installation
+
+```bash
+# Install from PyPI (recommended)
+pip install pacc-cli
+
+# Or install with pipx for isolated environment
+pipx install pacc-cli
+
+# For development (from source)
+git clone https://github.com/memyselfandm/pacc-cli.git
+cd pacc-cli
+pip install -e .
+```
+
 ## Project Status
 
-**🎯 Production Ready - Version 1.0.0** ✅
+**🎯 Production Ready - Version 1.1.0** ✅
 
 ### ✅ Completed Features
 - **Wave 1-4 - MVP Foundation**: Complete core package management with >80% test coverage
@@ -24,10 +39,26 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 - **`pacc info`**: Display detailed extension information and metadata
 - **`pacc validate`**: Validate extensions without installing
 
+### 🧠 Memory Fragments (NEW in 1.1.0)
+- **`pacc fragment install`**: Install context fragments from files, directories, or Git repos
+- **`pacc fragment list`**: List installed fragments with filtering
+- **`pacc fragment info`**: Display fragment details and metadata
+- **`pacc fragment remove`**: Remove fragments with automatic CLAUDE.md cleanup
+- **`pacc fragment update`**: Update fragments from their sources
+- **`pacc fragment sync`**: Sync team fragments from pacc.json configuration
+
+See the [Fragment User Guide](docs/fragment_user_guide.md) for complete documentation.
+
 ### 🤝 Team Collaboration Features
 - **`pacc init --project-config`**: Initialize project with shared extension configuration
 - **`pacc sync`**: Synchronize extensions from project pacc.json configuration
 - **Project Configuration**: pacc.json files for defining team extension standards
+
+### 🔒 Security Features
+- **Path Traversal Protection**: Prevents arbitrary file access/deletion via malicious fragment names
+- **Input Validation**: All user input is sanitized before file operations
+- **Boundary Validation**: Operations restricted to designated storage directories
+- **Defense in Depth**: Multiple validation layers for critical operations
 
 ## Architecture
 
@@ -65,7 +96,14 @@ A Python CLI tool for managing Claude Code extensions including hooks, MCP serve
 - **Error Recovery**: Intelligent rollback with retry mechanisms
 - **Performance Optimization**: Caching, lazy loading, background workers
 
-#### 6. Error Handling (`pacc/errors/`)
+#### 6. Memory Fragments (`pacc/fragments/`)
+- **StorageManager**: Fragment storage with project/user level support
+- **CLAUDEmdManager**: CLAUDE.md section management with atomic operations
+- **InstallationManager**: Full installation workflow with rollback
+- **VersionTracker**: Version tracking for updates from Git sources
+- **SyncManager**: Team synchronization via pacc.json
+
+#### 7. Error Handling (`pacc/errors/`)
 - **Custom Exceptions**: Structured error types with context
 - **ErrorReporter**: Centralized logging and user-friendly display
 - **Security Features**: Path traversal protection, input sanitization
@@ -112,7 +150,7 @@ files = scanner.scan('/path/to/directory', file_filter)
 
 1. **Install from wheel** (recommended):
    ```bash
-   pip install dist/pacc-1.0.0-py3-none-any.whl
+   pip install dist/pacc-1.1.0-py3-none-any.whl
    ```
 
 2. **Verify installation**:
@@ -129,7 +167,7 @@ files = scanner.scan('/path/to/directory', file_filter)
 python scripts/build.py build --dist-type wheel
 
 # Install the wheel
-pip install dist/pacc-1.0.0-py3-none-any.whl
+pip install dist/pacc-1.1.0-py3-none-any.whl
 ```
 
 #### Option 2: Editable Installation (Development)
@@ -280,6 +318,13 @@ The project includes comprehensive testing:
 - Naming convention enforcement
 - Parameter documentation checking
 - Alias validation and duplicate detection
+
+### 5. Memory Fragments
+- Markdown with optional YAML frontmatter
+- Automatic CLAUDE.md integration
+- Version tracking for Git sources
+- Collection organization support
+- Team synchronization via pacc.json
 
 ## Next Steps
 1. **CLI Integration**: Connect existing components to command-line interface

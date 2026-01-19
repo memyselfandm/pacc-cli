@@ -6,7 +6,7 @@ Post-publication verification ensures your package is properly published and fun
 
 - [ ] Package visible on PyPI
 - [ ] Installation test
-- [ ] Import test  
+- [ ] Import test
 - [ ] Command-line test
 - [ ] Documentation links
 - [ ] Metadata verification

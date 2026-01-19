@@ -7,7 +7,7 @@ This module provides comprehensive validation for Claude Code extension files in
 The PACC validators module implements Wave 2 of the Source Management feature, providing extension-specific validation for all four Claude Code extension types:
 
 - **Hooks**: JSON configuration files for event-driven automation
-- **MCP**: Model Context Protocol server configurations  
+- **MCP**: Model Context Protocol server configurations
 - **Agents**: YAML frontmatter + markdown files for AI agents
 - **Commands**: Markdown files defining slash commands
 
@@ -32,7 +32,7 @@ results = runner.validate_directory("./extensions")
 #### `BaseValidator`
 Abstract base class for all extension validators providing:
 - File accessibility validation
-- JSON syntax validation  
+- JSON syntax validation
 - Common field validation utilities
 - Batch and directory validation support
 
@@ -311,16 +311,16 @@ from pacc.validators import ValidationRunner
 def pre_commit_validation():
     runner = ValidationRunner()
     results = runner.validate_directory(".")
-    
+
     has_errors = any(
         any(not r.is_valid for r in file_results)
         for file_results in results.values()
     )
-    
+
     if has_errors:
         print("Validation failed - fix errors before committing")
         return False
-    
+
     return True
 ```
 
@@ -330,7 +330,7 @@ from pacc.validators import validate_extension_file
 
 def get_diagnostics(file_path):
     result = validate_extension_file(file_path)
-    
+
     diagnostics = []
     for error in result.all_issues:
         diagnostics.append({
@@ -339,7 +339,7 @@ def get_diagnostics(file_path):
             "severity": error.severity,
             "code": error.code
         })
-    
+
     return diagnostics
 ```
 

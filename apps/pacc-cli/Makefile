@@ -106,7 +106,7 @@ type-check:
 security-check:
 	bandit -r pacc
 	safety check
-	
+
 security-report:
 	bandit -r pacc -f json -o security-report.json
 	safety check --json --output safety-report.json || true

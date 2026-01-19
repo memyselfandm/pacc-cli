@@ -23,16 +23,16 @@ pip install --upgrade pip
 echo "🔍 Testing installation from TestPyPI..."
 if pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ pacc; then
     echo "✅ TestPyPI installation successful"
-    
+
     # Test basic functionality
     echo "🏃 Testing basic functionality..."
     pacc --version
     pacc --help
-    
+
     # Run basic import test
     echo "🐍 Testing Python import..."
     python -c "import pacc; print('✅ Import successful')"
-    
+
 else
     echo "❌ TestPyPI installation failed"
 fi

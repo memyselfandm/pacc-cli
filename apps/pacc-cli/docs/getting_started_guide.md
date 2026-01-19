@@ -352,7 +352,7 @@ EOF
 
 cat > my-agents/doc-generator.md << 'EOF'
 ---
-name: doc-generator  
+name: doc-generator
 description: Creates documentation from code
 tools:
   - name: Read
@@ -371,7 +371,7 @@ pacc install my-agents/ --interactive
 
 # Select specific agents:
 # [1] code-reviewer - Reviews code for best practices
-# [2] test-writer - Generates comprehensive unit tests  
+# [2] test-writer - Generates comprehensive unit tests
 # [3] doc-generator - Creates documentation from code
 # Select (e.g., 1,3 or all): 1,2,3
 ```
@@ -410,7 +410,7 @@ cat > my-commands/test.md << 'EOF'
 
 Run project test suite
 
-## Usage  
+## Usage
 /test [pattern] [--coverage]
 
 ## Arguments
@@ -574,7 +574,7 @@ pacc validate extension.json --strict && pacc install extension.json
 # Personal tools → User level
 pacc install personal-formatter.json --user
 
-# Project-specific → Project level  
+# Project-specific → Project level
 pacc install project-deployer.json --project
 
 # Team shared → Version control + project level
@@ -592,7 +592,7 @@ cat > extensions/README.md << 'EOF'
 - format-hook: Runs prettier on JS/TS files
 - test-hook: Runs unit tests before commits
 
-## Agents  
+## Agents
 - code-reviewer: Reviews PRs for style and bugs
 
 ## Installation

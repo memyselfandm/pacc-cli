@@ -3,62 +3,54 @@
 import json
 import tempfile
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict
 
-from .hooks import HooksValidator
-from .mcp import MCPValidator
 from .agents import AgentsValidator
 from .commands import CommandsValidator
+from .hooks import HooksValidator
+from .mcp import MCPValidator
 
 
 def create_sample_files() -> Dict[str, str]:
     """Create sample files for each extension type."""
-    
+
     # Sample hook file
     sample_hook = {
         "name": "format-checker",
         "description": "Validates code formatting before tool use",
-        "version": "1.0.0", 
+        "version": "1.0.0",
         "eventTypes": ["PreToolUse"],
         "commands": [
             {
                 "command": "ruff check {file_path}",
                 "description": "Check code formatting",
-                "timeout": 30
+                "timeout": 30,
             }
         ],
-        "matchers": [
-            {
-                "type": "regex",
-                "pattern": ".*\\.(py|js|ts)$",
-                "target": "file_path"
-            }
-        ],
-        "enabled": True
+        "matchers": [{"type": "regex", "pattern": ".*\\.(py|js|ts)$", "target": "file_path"}],
+        "enabled": True,
     }
-    
+
     # Sample MCP configuration
     sample_mcp = {
         "mcpServers": {
             "file-manager": {
                 "command": "python",
                 "args": ["-m", "file_manager_mcp"],
-                "env": {
-                    "LOG_LEVEL": "INFO"
-                },
-                "timeout": 60
+                "env": {"LOG_LEVEL": "INFO"},
+                "timeout": 60,
             },
             "database-query": {
                 "command": "/usr/local/bin/db-mcp-server",
                 "args": ["--config", "/etc/db-config.json"],
                 "cwd": "/var/lib/mcp",
-                "restart": true
-            }
+                "restart": true,
+            },
         },
         "timeout": 120,
-        "maxRetries": 3
+        "maxRetries": 3,
     }
-    
+
     # Sample agent file
     sample_agent = """---
 name: code-reviewer
@@ -95,7 +87,7 @@ This agent specializes in reviewing code for:
 ## Review Areas
 
 - **Code Quality**: Identifies potential bugs and anti-patterns
-- **Performance**: Suggests optimizations and efficiency improvements  
+- **Performance**: Suggests optimizations and efficiency improvements
 - **Security**: Flags potential security vulnerabilities
 - **Style**: Ensures adherence to coding standards
 - **Documentation**: Recommends documentation improvements
@@ -128,7 +120,7 @@ The agent would identify this as inefficient and suggest using a set for O(1) lo
 - Performance profiling suggestions
 - Documentation quality assessment
 """
-    
+
     # Sample command file
     sample_command = """---
 name: deploy
@@ -172,7 +164,7 @@ The deploy command handles the complete deployment pipeline including:
 
 - Pre-deployment validation
 - Environment-specific configuration
-- Database migrations  
+- Database migrations
 - Service deployment
 - Health checks
 - Rollback on failure
@@ -229,150 +221,150 @@ If deployment fails:
 3. Ensure all required services are running
 4. Contact DevOps team for production issues
 """
-    
+
     # Create temporary files
     files = {}
-    
+
     # Hook file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(sample_hook, f, indent=2)
-        files['hook'] = f.name
-    
-    # MCP file  
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.mcp.json', delete=False) as f:
+        files["hook"] = f.name
+
+    # MCP file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".mcp.json", delete=False) as f:
         json.dump(sample_mcp, f, indent=2)
-        files['mcp'] = f.name
-    
+        files["mcp"] = f.name
+
     # Agent file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write(sample_agent)
-        files['agent'] = f.name
-    
+        files["agent"] = f.name
+
     # Command file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write(sample_command)
-        files['command'] = f.name
-    
+        files["command"] = f.name
+
     return files
 
 
 def demonstrate_validators():
     """Demonstrate all validators with sample files."""
     print("=== PACC Validators Demonstration ===\n")
-    
+
     # Create sample files
     print("Creating sample extension files...")
     sample_files = create_sample_files()
-    
+
     try:
         # Initialize validators
         hooks_validator = HooksValidator()
         mcp_validator = MCPValidator()
         agents_validator = AgentsValidator()
         commands_validator = CommandsValidator()
-        
+
         validators = [
-            ("Hooks", hooks_validator, sample_files['hook']),
-            ("MCP", mcp_validator, sample_files['mcp']),
-            ("Agents", agents_validator, sample_files['agent']),
-            ("Commands", commands_validator, sample_files['command'])
+            ("Hooks", hooks_validator, sample_files["hook"]),
+            ("MCP", mcp_validator, sample_files["mcp"]),
+            ("Agents", agents_validator, sample_files["agent"]),
+            ("Commands", commands_validator, sample_files["command"]),
         ]
-        
+
         # Validate each file type
         for name, validator, file_path in validators:
             print(f"\n--- {name} Validator ---")
             print(f"Validating: {Path(file_path).name}")
-            
+
             result = validator.validate_single(file_path)
-            
+
             print(f"✓ Valid: {result.is_valid}")
             print(f"✓ Extension Type: {result.extension_type}")
-            
+
             if result.errors:
                 print(f"✗ Errors ({len(result.errors)}):")
                 for error in result.errors:
                     print(f"  - {error.code}: {error.message}")
-            
+
             if result.warnings:
                 print(f"⚠ Warnings ({len(result.warnings)}):")
                 for warning in result.warnings:
                     print(f"  - {warning.code}: {warning.message}")
-            
+
             if result.metadata:
-                print(f"📊 Metadata:")
+                print("📊 Metadata:")
                 for key, value in result.metadata.items():
                     print(f"  - {key}: {value}")
-        
+
         # Demonstrate batch validation
-        print(f"\n--- Batch Validation ---")
+        print("\n--- Batch Validation ---")
         all_files = list(sample_files.values())
-        
+
         print("Testing Hooks validator on all files:")
         results = hooks_validator.validate_batch(all_files)
         valid_hooks = [r for r in results if r.is_valid]
         print(f"Found {len(valid_hooks)} valid hooks out of {len(results)} files")
-        
+
         # Demonstrate directory validation
-        print(f"\n--- Directory Validation ---")
-        temp_dir = Path(sample_files['hook']).parent
+        print("\n--- Directory Validation ---")
+        temp_dir = Path(sample_files["hook"]).parent
         print(f"Scanning directory: {temp_dir}")
-        
+
         for name, validator, _ in validators:
             results = validator.validate_directory(temp_dir)
             valid_count = sum(1 for r in results if r.is_valid)
             print(f"{name}: {valid_count} valid extensions found")
-    
+
     finally:
         # Clean up temporary files
-        print(f"\nCleaning up temporary files...")
+        print("\nCleaning up temporary files...")
         for file_path in sample_files.values():
             Path(file_path).unlink(missing_ok=True)
-    
-    print(f"\n=== Demonstration Complete ===")
+
+    print("\n=== Demonstration Complete ===")
 
 
 def demonstrate_error_handling():
     """Demonstrate error handling with invalid files."""
     print("\n=== Error Handling Demonstration ===\n")
-    
+
     # Create files with various errors
     error_cases = {
         "invalid_json": '{"invalid": json syntax}',
         "missing_file": "nonexistent.json",
         "empty_file": "",
         "large_file": "x" * (11 * 1024 * 1024),  # 11MB file
-        "binary_file": b"\x00\x01\x02\x03\xff\xfe\xfd"
+        "binary_file": b"\x00\x01\x02\x03\xff\xfe\xfd",
     }
-    
+
     hooks_validator = HooksValidator()
-    
+
     for case_name, content in error_cases.items():
         print(f"--- {case_name} ---")
-        
+
         if case_name == "missing_file":
             # Test with non-existent file
             result = hooks_validator.validate_single("nonexistent.json")
         elif case_name == "binary_file":
             # Test with binary content
-            with tempfile.NamedTemporaryFile(mode='wb', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="wb", delete=False) as f:
                 f.write(content)
                 temp_file = f.name
-            
+
             try:
                 result = hooks_validator.validate_single(temp_file)
             finally:
                 Path(temp_file).unlink(missing_ok=True)
         else:
             # Test with text content
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
                 f.write(content)
                 temp_file = f.name
-            
+
             try:
                 result = hooks_validator.validate_single(temp_file)
             finally:
                 Path(temp_file).unlink(missing_ok=True)
-        
+
         print(f"Valid: {result.is_valid}")
         if result.errors:
             print("Errors:")

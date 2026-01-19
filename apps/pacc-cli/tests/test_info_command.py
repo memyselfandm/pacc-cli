@@ -1,14 +1,14 @@
 """Tests for the PACC info command functionality."""
 
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch
+
+import pytest
 
 from pacc.cli import PACCCli
-from pacc.validators import ValidationResult, ValidationError, ValidatorFactory
 from pacc.core.config_manager import ClaudeConfigManager
+from pacc.validators import ValidationResult
 
 
 class TestInfoCommand:
@@ -29,11 +29,11 @@ class TestInfoCommand:
         args.show_related = False
         args.show_usage = False
         args.show_troubleshooting = False
-        
+
         # Apply any overrides
         for key, value in overrides.items():
             setattr(args, key, value)
-        
+
         return args
 
     @pytest.fixture
@@ -45,12 +45,7 @@ class TestInfoCommand:
             "version": "1.0.0",
             "eventTypes": ["PreToolUse", "PostToolUse"],
             "commands": ["echo 'Hook executed'"],
-            "matchers": [
-                {
-                    "type": "exact",
-                    "pattern": "test-command"
-                }
-            ]
+            "matchers": [{"type": "exact", "pattern": "test-command"}],
         }
         hook_file = tmp_path / "test-hook.json"
         hook_file.write_text(json.dumps(hook_data, indent=2))
@@ -88,7 +83,7 @@ This is a test agent implementation.
                     "version": "1.2.0",
                     "installed_at": "2024-08-13T10:30:00Z",
                     "source": "local-file",
-                    "validation_status": "valid"
+                    "validation_status": "valid",
                 }
             ],
             "agents": [
@@ -100,11 +95,11 @@ This is a test agent implementation.
                     "model": "claude-3-opus",
                     "installed_at": "2024-08-13T11:15:00Z",
                     "source": "github",
-                    "validation_status": "warning"
+                    "validation_status": "warning",
                 }
             ],
             "mcps": [],
-            "commands": []
+            "commands": [],
         }
 
     def test_info_command_file_path(self, cli, sample_hook_file, capsys):
@@ -120,11 +115,11 @@ This is a test agent implementation.
                 "version": "1.0.0",
                 "event_types": ["PreToolUse", "PostToolUse"],
                 "has_matchers": True,
-                "command_count": 1
-            }
+                "command_count": 1,
+            },
         )
 
-        with patch('pacc.cli.validate_extension_file', return_value=mock_result):
+        with patch("pacc.cli.validate_extension_file", return_value=mock_result):
             # Create mock args
             args = self._create_mock_args(str(sample_hook_file), verbose=True)
 
@@ -133,7 +128,7 @@ This is a test agent implementation.
 
         assert result == 0
         captured = capsys.readouterr()
-        
+
         # Check that key information is displayed
         assert "test-hook" in captured.out
         assert "A test hook for demonstration" in captured.out
@@ -144,16 +139,18 @@ This is a test agent implementation.
 
     def test_info_command_installed_extension(self, cli, mock_installed_config, capsys):
         """Test info command with installed extension name."""
-        with patch.object(ClaudeConfigManager, 'load_config', return_value=mock_installed_config), \
-             patch.object(ClaudeConfigManager, 'get_config_path', return_value=Path('/fake/.claude/settings.json')):
-            
+        with patch.object(
+            ClaudeConfigManager, "load_config", return_value=mock_installed_config
+        ), patch.object(
+            ClaudeConfigManager, "get_config_path", return_value=Path("/fake/.claude/settings.json")
+        ):
             args = self._create_mock_args("installed-hook", verbose=True)
 
             result = cli.info_command(args)
 
         assert result == 0
         captured = capsys.readouterr()
-        
+
         # Check that installed extension information is displayed
         assert "installed-hook" in captured.out
         assert "An installed hook" in captured.out
@@ -174,13 +171,13 @@ This is a test agent implementation.
                 "version": "1.0.0",
                 "event_types": ["PreToolUse", "PostToolUse"],
                 "has_matchers": True,
-                "command_count": 1
-            }
+                "command_count": 1,
+            },
         )
 
-        with patch('pacc.validators.validate_extension_file', return_value=mock_result), \
-             patch('sys.stdout') as mock_stdout:
-            
+        with patch("pacc.validators.validate_extension_file", return_value=mock_result), patch(
+            "sys.stdout"
+        ) as mock_stdout:
             args = self._create_mock_args(str(sample_hook_file), json=True)
 
             result = cli.info_command(args)
@@ -195,23 +192,23 @@ This is a test agent implementation.
             is_valid=False,
             file_path=str(sample_hook_file),
             extension_type="hooks",
-            metadata={}  # Empty metadata for invalid file
+            metadata={},  # Empty metadata for invalid file
         )
         mock_result.add_error("INVALID_JSON", "Invalid JSON syntax at line 5")
         mock_result.add_warning("DEPRECATED_FIELD", "Field 'oldField' is deprecated")
-        
+
         # Ensure is_valid is False after adding errors
-        assert mock_result.is_valid == False
+        assert not mock_result.is_valid
         assert len(mock_result.errors) > 0
 
-        with patch('pacc.cli.validate_extension_file', return_value=mock_result):
+        with patch("pacc.cli.validate_extension_file", return_value=mock_result):
             args = self._create_mock_args(str(sample_hook_file), verbose=True)
 
             result = cli.info_command(args)
 
         assert result == 0  # Info should still work even with validation errors
         captured = capsys.readouterr()
-        
+
         # Check that validation errors are displayed
         assert "✗ No" in captured.out  # Should show "Valid: ✗ No"
         assert "INVALID_JSON" in captured.out
@@ -230,9 +227,11 @@ This is a test agent implementation.
 
     def test_info_command_nonexistent_installed_extension(self, cli, mock_installed_config, capsys):
         """Test info command with non-existent installed extension."""
-        with patch.object(ClaudeConfigManager, 'load_config', return_value=mock_installed_config), \
-             patch.object(ClaudeConfigManager, 'get_config_path', return_value=Path('/fake/.claude/settings.json')):
-            
+        with patch.object(
+            ClaudeConfigManager, "load_config", return_value=mock_installed_config
+        ), patch.object(
+            ClaudeConfigManager, "get_config_path", return_value=Path("/fake/.claude/settings.json")
+        ):
             args = self._create_mock_args("nonexistent-extension")
 
             result = cli.info_command(args)
@@ -252,11 +251,11 @@ This is a test agent implementation.
                 "description": "A test agent for demonstration",
                 "version": "1.0.0",
                 "model": "claude-3-sonnet",
-                "tools": ["search", "calculator"]
-            }
+                "tools": ["search", "calculator"],
+            },
         )
 
-        with patch('pacc.cli.validate_extension_file', return_value=mock_result):
+        with patch("pacc.cli.validate_extension_file", return_value=mock_result):
             args = self._create_mock_args(str(sample_agent_file), type="agents")
 
             result = cli.info_command(args)
@@ -277,18 +276,18 @@ This is a test agent implementation.
                 "has_matchers": True,
                 "command_count": 1,
                 "file_size": 1024,
-                "last_modified": "2024-08-13T10:00:00Z"
-            }
+                "last_modified": "2024-08-13T10:00:00Z",
+            },
         )
 
-        with patch('pacc.cli.validate_extension_file', return_value=mock_result):
+        with patch("pacc.cli.validate_extension_file", return_value=mock_result):
             args = self._create_mock_args(str(sample_hook_file), verbose=True)
 
             result = cli.info_command(args)
 
         assert result == 0
         captured = capsys.readouterr()
-        
+
         # In verbose mode, should show additional technical details
         assert "Size:" in captured.out or "file_size" in captured.out.lower()
 
@@ -301,25 +300,27 @@ This is a test agent implementation.
                 {
                     "name": "related-hook-1",
                     "description": "Related hook for testing",
-                    "path": "hooks/related-hook-1.json"
+                    "path": "hooks/related-hook-1.json",
                 },
                 {
-                    "name": "related-hook-2", 
+                    "name": "related-hook-2",
                     "description": "Another related hook for testing",
-                    "path": "hooks/related-hook-2.json"
-                }
-            ]
+                    "path": "hooks/related-hook-2.json",
+                },
+            ],
         }
 
-        with patch.object(ClaudeConfigManager, 'load_config', return_value=config_with_related), \
-             patch.object(ClaudeConfigManager, 'get_config_path', return_value=Path('/fake/.claude/settings.json')):
-            
+        with patch.object(
+            ClaudeConfigManager, "load_config", return_value=config_with_related
+        ), patch.object(
+            ClaudeConfigManager, "get_config_path", return_value=Path("/fake/.claude/settings.json")
+        ):
             args = self._create_mock_args("related-hook-1", show_related=True)
 
             result = cli.info_command(args)
 
         assert result == 0
         captured = capsys.readouterr()
-        
+
         # Should suggest other similar extensions
         assert "Related Extensions" in captured.out or "related" in captured.out.lower()

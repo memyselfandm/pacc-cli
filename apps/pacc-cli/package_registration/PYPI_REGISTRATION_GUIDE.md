@@ -44,10 +44,10 @@ pip install --index-url https://test.pypi.org/simple/ --no-deps pacc
    ```bash
    # Install in development mode
    pip install -e .
-   
+
    # Run tests
    pytest
-   
+
    # Test command-line interface
    pacc --help
    ```
@@ -72,10 +72,10 @@ python -m twine upload dist/*
    # Create fresh virtual environment
    python -m venv test_env
    source test_env/bin/activate  # On Windows: test_env\Scripts\activate
-   
+
    # Install from PyPI
    pip install pacc
-   
+
    # Test functionality
    pacc --version
    ```

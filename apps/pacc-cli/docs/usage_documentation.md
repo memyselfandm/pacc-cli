@@ -137,7 +137,7 @@ pacc install ./calculator-mcp/ --user
 
 # Install multiple agents interactively
 pacc install ./team-agents/ --interactive
-# Shows: 
+# Shows:
 # [1] code-reviewer - Reviews code for best practices
 # [2] test-writer - Generates unit tests
 # [3] doc-generator - Creates documentation
@@ -247,15 +247,15 @@ Project Extensions (.claude/):
   Hooks:
     ✓ format-hook - Auto-formats code before tool use
     ✓ test-hook - Runs tests before deployment
-  
+
   Agents:
     ✓ code-reviewer - Reviews code for best practices
-  
+
 User Extensions (~/.claude/):
   MCP Servers:
     ✓ calculator - Basic math operations
     ✓ weather - Weather information service
-  
+
   Commands:
     ✓ deploy - Deploy application
     ✓ test - Run test suite

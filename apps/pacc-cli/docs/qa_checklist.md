@@ -256,10 +256,10 @@ Perform these tests with the final release candidate:
    ```bash
    # Clean previous builds
    rm -rf dist/ build/ *.egg-info
-   
+
    # Build new distribution
    python -m build
-   
+
    # Check distribution
    twine check dist/*
    ```
@@ -269,10 +269,10 @@ Perform these tests with the final release candidate:
    # Create test environment
    python -m venv test_release
    source test_release/bin/activate  # On Windows: test_release\Scripts\activate
-   
+
    # Install from wheel
    pip install dist/pacc-*.whl
-   
+
    # Run smoke tests
    pacc --version
    pacc --help
@@ -289,7 +289,7 @@ Perform these tests with the final release candidate:
 2. **Upload to Test PyPI** (optional)
    ```bash
    twine upload --repository testpypi dist/*
-   
+
    # Test installation from Test PyPI
    pip install --index-url https://test.pypi.org/simple/ pacc
    ```
@@ -302,7 +302,7 @@ Perform these tests with the final release candidate:
 4. **Post-Release Verification**
    ```bash
    # Wait a few minutes for PyPI to update
-   
+
    # Test installation from PyPI
    pip install pacc-cli
    pacc --version
@@ -346,9 +346,9 @@ Before release, the following roles should sign off:
 - [ ] **Documentation**: Docs are accurate and complete
 - [ ] **Release Manager**: Package ready for distribution
 
-**Release Version**: ________________  
-**Release Date**: ________________  
-**Approved By**: ________________  
+**Release Version**: ________________
+**Release Date**: ________________
+**Approved By**: ________________
 
 ---
 

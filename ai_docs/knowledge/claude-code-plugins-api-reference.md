@@ -199,7 +199,7 @@ To install a plugin, you must manually:
      }
    }
    #+end_src
-   
+
    Note: The empty object ={}= is sufficient. Claude Code will populate =lastUpdated= and =commitSha= automatically on first startup.
 
 3. Enable specific plugins in =~/.claude/settings.json=:
@@ -210,7 +210,7 @@ To install a plugin, you must manually:
      }
    }
    #+end_src
-   
+
    Note: You need to know the plugin names from within the repository. Check the subdirectories or =plugin.json= files.
 
 4. Start Claude Code with plugins enabled:

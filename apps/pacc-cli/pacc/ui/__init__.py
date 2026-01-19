@@ -1,10 +1,10 @@
 """UI components for PACC CLI."""
 
-from .components import MultiSelectList, KeyboardHandler, SearchFilter, PreviewPane
+from .components import KeyboardHandler, MultiSelectList, PreviewPane, SearchFilter
 
 __all__ = [
+    "KeyboardHandler",
     "MultiSelectList",
-    "KeyboardHandler", 
-    "SearchFilter",
     "PreviewPane",
+    "SearchFilter",
 ]

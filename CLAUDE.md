@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PACC (Package manager for Claude Code) is a Python CLI tool for managing Claude Code extensions including hooks, MCP servers, agents, and slash commands. 
+PACC (Package manager for Claude Code) is a Python CLI tool for managing Claude Code extensions including hooks, MCP servers, agents, and slash commands.
 
 **🎯 Implementation Status: 100% Complete - ALL SPRINTS DONE**
 - ✅ **Wave 1-4 Complete**: Foundation, validation, integration, and testing infrastructure fully implemented
@@ -151,7 +151,13 @@ pacc-main/
    - No arbitrary code execution during installation
    - Clear user consent for changes
 
-3. **User Experience**
+3. **Security Features (PACC-60, PACC-61 Fixes)**
+   - Path traversal protection in fragment operations
+   - Input validation and sanitization for all file paths
+   - Boundary validation restricts operations to storage directories
+   - Fragment install properly updates CLAUDE.md references
+
+4. **User Experience**
    - Familiar package manager patterns (npm/pip style)
    - Colored output with progress indicators
    - Helpful error messages
@@ -161,7 +167,7 @@ pacc-main/
 
 **Waves 1-4 Implementation Complete:**
 1. ✅ **Wave 1 - Foundation**: Core utilities, UI components, validation framework, error handling
-2. ✅ **Wave 2 - Validators**: All extension type validators with security scanning  
+2. ✅ **Wave 2 - Validators**: All extension type validators with security scanning
 3. ✅ **Wave 3 - Integration**: Selection workflows, packaging, error recovery, performance optimization
 4. ✅ **Wave 4 - Testing**: Comprehensive test suite, security hardening, documentation
 
@@ -180,3 +186,7 @@ The complete Product Requirements Document is located at `ai_docs/prds/00_pacc_m
 - Success metrics and KPIs
 
 When implementing features, always refer to the PRD for the authoritative specification.
+
+<!-- PACC:fragments:START -->
+@.claude/pacc/fragments/test_fragment.md - Test Memory Fragment
+<!-- PACC:fragments:END -->

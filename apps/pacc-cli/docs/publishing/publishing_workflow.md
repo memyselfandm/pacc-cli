@@ -59,7 +59,7 @@ PACC follows semantic versioning (SemVer): MAJOR.MINOR.PATCH
    ```bash
    # Run the version bump script
    python scripts/publish.py bump-version --type patch
-   
+
    # Or manually update:
    # - pyproject.toml: version = "X.Y.Z"
    # - pacc/__init__.py: __version__ = "X.Y.Z"
@@ -367,7 +367,7 @@ echo "Version X.Y.Z yanked due to: [reason]" >> CHANGELOG.md
    ```bash
    # For critical issues, bump patch version
    python scripts/publish.py bump-version --type patch
-   
+
    # Fix the issue
    # Run full test suite
    make test
@@ -378,10 +378,10 @@ echo "Version X.Y.Z yanked due to: [reason]" >> CHANGELOG.md
    # Fast-track through test PyPI
    make build
    make publish-test
-   
+
    # Quick verification
    pip install --index-url https://test.pypi.org/simple/ pacc
-   
+
    # Publish fix
    make publish-prod
    ```
