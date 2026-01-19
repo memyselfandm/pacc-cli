@@ -39,6 +39,16 @@ pip install -e .
 - **`pacc info`**: Display detailed extension information and metadata
 - **`pacc validate`**: Validate extensions without installing
 
+### 🧠 Memory Fragments (NEW in 1.1.0)
+- **`pacc fragment install`**: Install context fragments from files, directories, or Git repos
+- **`pacc fragment list`**: List installed fragments with filtering
+- **`pacc fragment info`**: Display fragment details and metadata
+- **`pacc fragment remove`**: Remove fragments with automatic CLAUDE.md cleanup
+- **`pacc fragment update`**: Update fragments from their sources
+- **`pacc fragment sync`**: Sync team fragments from pacc.json configuration
+
+See the [Fragment User Guide](docs/fragment_user_guide.md) for complete documentation.
+
 ### 🤝 Team Collaboration Features
 - **`pacc init --project-config`**: Initialize project with shared extension configuration
 - **`pacc sync`**: Synchronize extensions from project pacc.json configuration
@@ -86,7 +96,14 @@ pip install -e .
 - **Error Recovery**: Intelligent rollback with retry mechanisms
 - **Performance Optimization**: Caching, lazy loading, background workers
 
-#### 6. Error Handling (`pacc/errors/`)
+#### 6. Memory Fragments (`pacc/fragments/`)
+- **StorageManager**: Fragment storage with project/user level support
+- **CLAUDEmdManager**: CLAUDE.md section management with atomic operations
+- **InstallationManager**: Full installation workflow with rollback
+- **VersionTracker**: Version tracking for updates from Git sources
+- **SyncManager**: Team synchronization via pacc.json
+
+#### 7. Error Handling (`pacc/errors/`)
 - **Custom Exceptions**: Structured error types with context
 - **ErrorReporter**: Centralized logging and user-friendly display
 - **Security Features**: Path traversal protection, input sanitization
@@ -301,6 +318,13 @@ The project includes comprehensive testing:
 - Naming convention enforcement
 - Parameter documentation checking
 - Alias validation and duplicate detection
+
+### 5. Memory Fragments
+- Markdown with optional YAML frontmatter
+- Automatic CLAUDE.md integration
+- Version tracking for Git sources
+- Collection organization support
+- Team synchronization via pacc.json
 
 ## Next Steps
 1. **CLI Integration**: Connect existing components to command-line interface
