@@ -40,3 +40,14 @@ repos:
         args: [-c, pyproject.toml]
         additional_dependencies: ["bandit[toml]"]
         files: ^pacc/
+
+  # Local hooks
+  - repo: local
+    hooks:
+      - id: check-imports
+        name: Check imports match dependencies
+        entry: python scripts/check_imports.py
+        language: python
+        pass_filenames: false
+        files: ^(pacc/.*\.py|pyproject\.toml)$
+        additional_dependencies: ["tomli"]

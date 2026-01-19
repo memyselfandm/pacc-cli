@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-01-19
+
+### Fixed
+- **Missing Dependencies**: Added `chardet` and `psutil` to core dependencies
+  - `chardet>=5.2.0` - Required for encoding detection in recovery suggestions
+  - `psutil>=5.9.0` - Required for system resource monitoring in performance optimization
+  - These were previously only in `[dependency-groups]` which is not installed by pip
+
+### Changed
+- Removed `coverage` and `pytest` from core dependencies (moved to `[project.optional-dependencies].test`)
+
 ## [1.1.0] - 2025-09-01
 
 **Major release introducing Claude Code Memory Fragments**
