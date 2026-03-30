@@ -1,212 +1,285 @@
-# `pacc`: Package Manager for Claude Code
+<p align="center">
+  <img src="https://img.shields.io/pypi/v/pacc-cli?style=flat-square&color=6366f1" alt="PyPI version">
+  <img src="https://img.shields.io/pypi/pyversions/pacc-cli?style=flat-square" alt="Python versions">
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/claude%20code-ready-6366f1?style=flat-square" alt="Claude Code Ready">
+</p>
 
-## Overview
-`pacc` is a comprehensive Python CLI tool for managing Claude Code extensions and plugins.
+<h1 align="center">pacc</h1>
+<h3 align="center">Ansible for Claude Code</h3>
 
-`pacc` can manage:
-- **Plugins** (NEW): Full plugin ecosystem with Git integration
-- Hooks
-- Slash Commands
-- (Sub-)Agents
-- MCP Servers
+<p align="center">
+One CLI to install, configure, and sync your entire Claude Code environment.<br>
+Stacks, plugins, fragments, extensions, and more — managed, versioned, and reproducible.
+</p>
 
-at the global level (~/.claude) or project level (`<project-root>/.claude`).
+---
 
-### Key Features
-1. **Plugin Management**: Install, update, and manage Claude Code plugins from Git repositories
-2. **Extension Installation**: Install extensions from source files or folders
-3. **Safe Configuration**: Atomic config file modifications with rollback support
-4. **Team Collaboration**: Share plugin configurations via `pacc.json`
-5. **Plugin Development**: Create, convert, and publish plugins
-6. **Security**: Comprehensive validation and threat detection
+## The Problem
 
-## Installation
-### Prerequisites
-- Python 3.8 or higher
-- Git (for plugin management)
-- Claude Code with ENABLE_PLUGINS=1 environment variable
+Setting up Claude Code from scratch is painful. MCP servers, hooks, commands, agents, settings, memory fragments — scattered across config files, shared via Slack snippets, and broken by the next teammate who "just changed one thing."
 
-### Installation
+**PACC fixes this.** Package your entire Claude Code environment into shareable **stacks**, sync across machines in seconds, and onboard new developers in under a minute.
+
+## Quick Start
+
 ```bash
-# Install from PyPI (recommended)
+# Install
 pip install pacc-cli
 
-# Or install with pipx for isolated environment
-pipx install pacc-cli
+# Install a stack (bundles MCP servers + hooks + commands + settings)
+pacc stack install https://github.com/your-org/claude-fullstack
 
-# For development (from source)
-git clone https://github.com/memyselfandm/pacc-cli.git
-cd pacc-cli/apps/pacc-cli
-pip install -e .
+# Sync your project's Claude Code environment
+pacc sync
+
+# Check everything is healthy
+pacc doctor
 ```
 
-## Plugin Management (NEW)
+That's it. Zero to fully-configured in 30 seconds.
 
-### Core Plugin Commands
-```bash
-# Install a plugin from Git repository
-pacc plugin install https://github.com/owner/plugin-repo
-pacc plugin install git@github.com:owner/plugin-repo.git
+## Core Concepts
 
-# List installed plugins
-pacc plugin list
-pacc plugin list --enabled  # Show only enabled plugins
+### Stacks — Your Entire Environment in One Command
 
-# Get plugin information
-pacc plugin info plugin-name
+A **stack** is a Git repo with a `stack.yaml` manifest that bundles everything Claude Code needs:
 
-# Enable/disable plugins
-pacc plugin enable plugin-name
-pacc plugin disable plugin-name
+```yaml
+# stack.yaml
+name: fullstack-dev
+version: "1.0.0"
+description: "Full-stack development environment"
 
-# Update plugins
-pacc plugin update  # Update all plugins
-pacc plugin update plugin-name  # Update specific plugin
+mcp_servers:
+  github:
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
 
-# Remove plugins
-pacc plugin remove plugin-name
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: "command"
+          command: "echo 'Logging bash usage'"
+
+commands:
+  - source: "./commands/review.md"
+    name: "code-review"
+
+agents:
+  - source: "./agents/reviewer.md"
+    name: "reviewer"
+
+settings:
+  model: "sonnet"
+
+fragments:
+  - source: "./fragments/style-guide.md"
+    name: "style-guide"
 ```
 
-### Team Collaboration
 ```bash
-# Sync plugins from pacc.json
-pacc plugin sync
+pacc stack install https://github.com/your-org/fullstack-stack
+pacc stack list
+pacc stack sync          # Idempotent — run it 100 times, same result
+pacc stack export mystack ./output   # Export your current config as a stack
+```
 
-# Example pacc.json:
+### Plugins — Full Ecosystem with Git Integration
+
+```bash
+pacc plugin install https://github.com/owner/claude-plugin
+pacc plugin list --enabled
+pacc plugin update
+pacc plugin create          # Interactive wizard
+pacc plugin search "code review"
+```
+
+### Memory Fragments — Persistent Context That Survives Sessions
+
+```bash
+pacc fragment install ./style-guide.md
+pacc fragment list
+pacc fragment sync          # Team-wide knowledge bases
+```
+
+### Doctor — Built-in Diagnostics
+
+```bash
+pacc doctor                 # Run all checks
+pacc doctor --fix           # Auto-fix what can be fixed
+pacc doctor --verbose       # Detailed output
+```
+
+Checks include: Claude Code installation, config file validity, MCP server health, plugin integrity, fragment references, environment variables, permissions, and more.
+
+### Team Sync — Reproducible Environments
+
+Share your environment via `pacc.json`:
+
+```json
 {
+  "stacks": {
+    "github.com/your-org/fullstack-stack": {
+      "version": "v2.1.0",
+      "scope": "project"
+    }
+  },
   "plugins": {
-    "github.com/owner/repo": {
+    "github.com/owner/code-review-plugin": {
       "version": "v1.0.0",
-      "enabled": ["plugin1", "plugin2"]
+      "enabled": ["reviewer"]
+    }
+  },
+  "fragments": {
+    "style-guide": {
+      "source": "./fragments/style-guide.md",
+      "storage_type": "project"
     }
   }
 }
 ```
 
-### Plugin Development
 ```bash
-# Create a new plugin interactively
-pacc plugin create
-
-# Convert existing extensions to plugins
-pacc plugin convert my-hook.json
-pacc plugin convert ./extensions-folder
-
-# Push local plugin to Git
-pacc plugin push my-plugin https://github.com/myuser/my-plugin
+# New developer joins the team:
+git clone your-project && cd your-project
+pacc sync                   # Everything installed. Done.
 ```
 
-### Plugin Discovery
+Version-locked via `pacc.lock.yaml` for reproducible builds:
+
+```yaml
+# pacc.lock.yaml (auto-generated)
+stacks:
+  fullstack-stack:
+    source: "https://github.com/your-org/fullstack-stack"
+    commit: "a1b2c3d4e5f6..."
+    sha256: "abc123..."
+    locked_at: "2026-03-30T12:00:00Z"
+```
+
+## All Commands
+
+### Core
+| Command | Description |
+|---------|-------------|
+| `pacc install <source>` | Install extensions from files, directories, or URLs |
+| `pacc list` | List installed extensions |
+| `pacc remove <name>` | Remove extensions |
+| `pacc info <name>` | Show extension details |
+| `pacc validate <source>` | Validate without installing |
+| `pacc init` | Initialize PACC configuration |
+| `pacc sync` | Sync from pacc.json (idempotent) |
+| `pacc doctor` | Run diagnostics with optional `--fix` |
+
+### Stacks
+| Command | Description |
+|---------|-------------|
+| `pacc stack install <repo>` | Install a stack from a Git repository |
+| `pacc stack list` | List installed stacks |
+| `pacc stack info <name>` | Show stack details |
+| `pacc stack remove <name>` | Remove a stack and all its components |
+| `pacc stack sync` | Sync all stacks to desired state |
+| `pacc stack export <name> <dir>` | Export current config as a reusable stack |
+
+### Plugins
+| Command | Description |
+|---------|-------------|
+| `pacc plugin install <repo>` | Install from Git repository |
+| `pacc plugin list` | List installed plugins |
+| `pacc plugin enable/disable <name>` | Toggle plugins |
+| `pacc plugin update [name]` | Update plugins |
+| `pacc plugin remove <name>` | Uninstall |
+| `pacc plugin create` | Interactive creation wizard |
+| `pacc plugin search <query>` | Search community plugins |
+| `pacc plugin sync` | Sync from pacc.json |
+| `pacc plugin convert <source>` | Convert extensions to plugins |
+| `pacc plugin push <name> <repo>` | Publish to Git |
+| `pacc plugin env setup` | Configure ENABLE_PLUGINS |
+
+### Fragments
+| Command | Description |
+|---------|-------------|
+| `pacc fragment install <source>` | Install memory fragments |
+| `pacc fragment list` | List fragments |
+| `pacc fragment remove <name>` | Remove with CLAUDE.md cleanup |
+| `pacc fragment update` | Update from sources |
+| `pacc fragment sync` | Team synchronization |
+| `pacc fragment discover <repo>` | Find fragments in repos |
+| `pacc fragment collection install` | Install fragment collections |
+
+## Security
+
+PACC takes security seriously:
+
+- **170+ threat patterns** detected during installation
+- **4-level sandbox isolation** for plugin execution
+- **SHA-256 verification** of stack and plugin contents
+- **Path traversal protection** with symlink and null-byte detection
+- **Command injection prevention** on all inputs
+- **Lockfile pinning** for reproducible, tamper-evident environments
+- **Timestamped backups** before every config modification
+- **Dry-run mode** on all mutating operations
+
+## Safety Guarantees
+
+Every operation in PACC is:
+- **Idempotent** — run `pacc sync` any number of times, it always converges
+- **Reversible** — timestamped backups before every modification
+- **Previewable** — `--dry-run` on every mutating command
+- **Clean** — removed stacks/plugins leave zero orphaned artifacts
+
+## Installation
+
 ```bash
-# Search for plugins
-pacc plugin search "code review"
-pacc plugin search --type command
-pacc plugin search --sort popularity
+# PyPI (recommended)
+pip install pacc-cli
+
+# pipx (isolated)
+pipx install pacc-cli
+
+# From source
+git clone https://github.com/memyselfandm/pacc-cli.git
+cd pacc-cli/apps/pacc-cli
+pip install -e .
 ```
 
-### Environment Setup
-```bash
-# Set up ENABLE_PLUGINS environment variable
-pacc plugin env setup
+**Requirements:** Python 3.8+, Git
 
-# Check environment status
-pacc plugin env status
+## Claude Code Slash Commands
 
-# Reset environment
-pacc plugin env reset
+PACC registers as a Claude Code slash command provider:
+
 ```
-
-## Extension Management (Original Features)
-
-### Basic Usage
-```bash
-# Install extensions from a source file or folder
-pacc install ./my-hook.json --project
-pacc install ./my-mcp-server --user
-pacc install ./team-agents.md --project
-pacc install ./custom-commands.md --project
-
-# Validate extensions before installing
-pacc validate ./extension-folder --type hooks
-
-# Interactive selection from multi-item sources
-pacc install ./multiple-extensions/ --interactive
+/plugin install <repo>    /pl (list)    /pi (info)
+/plugin enable <name>     /pe           /pd (disable)
+/plugin update            /pu           /plugin create
 ```
-
-### Source Folder Setup
-Organize your extensions in a folder structure:
-```
-extensions/
-├── hooks/
-│   ├── pre-commit.json
-│   └── post-tool.json
-├── agents/
-│   ├── code-reviewer.md
-│   └── test-writer.md
-├── commands/
-│   └── git-utils.md
-└── mcp/
-    └── server-config.json
-```
-
-## Slash Commands Integration
-
-PACC provides Claude Code slash commands for quick access:
-- `/plugin install <repo>` - Quick plugin installation
-- `/plugin list` or `/pl` - List installed plugins
-- `/plugin info <name>` or `/pi` - Plugin information
-- `/plugin enable <name>` - Enable a plugin
-- `/plugin disable <name>` - Disable a plugin
-- `/plugin update` - Update plugins
-- `/plugin create` - Create new plugin
-- `/plugin search <query>` - Search for plugins
-
-## Security Features
-
-PACC includes comprehensive security measures:
-- **Validation**: All plugins and extensions are validated before installation
-- **Threat Detection**: 170+ dangerous patterns detected
-- **Sandboxing**: 4 levels of plugin isolation
-- **Path Protection**: Prevention of path traversal attacks
-- **Command Scanning**: Detection of malicious commands
 
 ## Development
 
-### Running Tests
 ```bash
-# Run all tests
-make test
-
-# Run with coverage
-make coverage
-
-# Run performance benchmarks
-make benchmark
-
-# Run security tests
-make security
-```
-
-### Project Structure
-```
-pacc/
-├── apps/pacc-cli/          # Main CLI application
-│   ├── pacc/               # Core package modules
-│   │   ├── core/           # File utilities, path handling
-│   │   ├── plugins/        # Plugin management system
-│   │   ├── validators/     # Extension validators
-│   │   └── ...
-│   └── tests/              # Comprehensive test suite
-└── ai_docs/                # Documentation and PRDs
+make test          # Run test suite (>80% coverage)
+make benchmark     # Performance benchmarks
+make security      # Security test suite
 ```
 
 ## Contributing
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to PACC.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
-MIT License - see [LICENSE](LICENSE) for details.
 
-## Support
-- Report issues: [GitHub Issues](https://github.com/yourusername/pacc/issues)
-- Documentation: [Full Documentation](https://docs.pacc.dev)
-- Discord: [Join our community](https://discord.gg/pacc)
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+<b>pacc</b> — stop copy-pasting configs. Start shipping.<br>
+<a href="https://github.com/memyselfandm/pacc-cli">GitHub</a> ·
+<a href="https://pypi.org/project/pacc-cli/">PyPI</a> ·
+<a href="https://memyselfandm.github.io/pacc-cli/">Documentation</a>
+</p>

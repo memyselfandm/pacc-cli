@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PACC - Ansible for Claude Code</title>
+    <meta name="description" content="One CLI to install, configure, and sync your entire Claude Code environment. Stacks, plugins, fragments, and more.">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="PACC - Ansible for Claude Code">
+    <meta property="og:description" content="One CLI to install, configure, and sync your entire Claude Code environment.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://memyselfandm.github.io/pacc-cli/">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="PACC - Ansible for Claude Code">
+    <meta name="twitter:description" content="One CLI to install, configure, and sync your entire Claude Code environment.">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0a0b10;
+            --bg-card: #13141c;
+            --bg-code: #1a1b26;
+            --text: #e2e4ed;
+            --text-dim: #8b8fa3;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --accent2: #a78bfa;
+            --green: #34d399;
+            --yellow: #fbbf24;
+            --border: #1e2030;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        a { color: var(--accent2); text-decoration: none; transition: color 0.2s; }
+        a:hover { color: var(--accent); }
+
+        /* Nav */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(10, 11, 16, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 2rem;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        nav .logo { font-weight: 700; font-size: 1.25rem; color: var(--text); }
+        nav .logo span { color: var(--accent); }
+        nav ul { list-style: none; display: flex; gap: 1.5rem; }
+        nav ul a { color: var(--text-dim); font-size: 0.9rem; font-weight: 500; }
+        nav ul a:hover { color: var(--text); }
+        .nav-cta {
+            background: var(--accent); color: #fff !important; padding: 0.4rem 1rem;
+            border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+        }
+        .nav-cta:hover { background: #5254e0; }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 6rem 2rem 4rem;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 800px; height: 800px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-badge {
+            display: inline-block; padding: 0.35rem 1rem; border-radius: 99px;
+            border: 1px solid var(--border); background: var(--bg-card);
+            font-size: 0.8rem; color: var(--text-dim); margin-bottom: 1.5rem;
+            letter-spacing: 0.03em;
+        }
+        .hero-badge span { color: var(--green); }
+        .hero h1 {
+            font-size: clamp(3rem, 7vw, 5.5rem); font-weight: 800;
+            line-height: 1.05; margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent2) 50%, var(--accent) 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero p {
+            font-size: 1.25rem; max-width: 640px; color: var(--text-dim);
+            margin-bottom: 2.5rem;
+        }
+        .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+        .btn {
+            padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600;
+            font-size: 1rem; display: inline-flex; align-items: center; gap: 0.5rem;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #5254e0; transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+        .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--accent); }
+
+        /* Install bar */
+        .install-bar {
+            margin-top: 2.5rem; background: var(--bg-code); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem;
+            font-family: var(--mono); font-size: 0.95rem; position: relative;
+            max-width: 500px;
+        }
+        .install-bar .prompt { color: var(--green); user-select: none; }
+        .install-bar code { color: var(--text); }
+        .install-bar .copy-btn {
+            background: none; border: 1px solid var(--border); color: var(--text-dim);
+            padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+            margin-left: auto; transition: all 0.2s;
+        }
+        .install-bar .copy-btn:hover { border-color: var(--accent); color: var(--text); }
+
+        /* Sections */
+        section { padding: 5rem 2rem; max-width: 1200px; margin: 0 auto; }
+        .section-header { text-align: center; margin-bottom: 3rem; }
+        .section-header h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .section-header p { color: var(--text-dim); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+
+        /* Feature grid */
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+        .feature-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 2rem; transition: all 0.3s;
+        }
+        .feature-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+        .feature-icon {
+            width: 48px; height: 48px; border-radius: 10px;
+            background: var(--accent-glow); display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; margin-bottom: 1rem;
+        }
+        .feature-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .feature-card p { color: var(--text-dim); font-size: 0.95rem; }
+
+        /* Terminal */
+        .terminal {
+            background: var(--bg-code); border: 1px solid var(--border); border-radius: 12px;
+            overflow: hidden; max-width: 700px; margin: 0 auto;
+        }
+        .terminal-header {
+            padding: 0.75rem 1rem; background: var(--bg-card);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .terminal-dot.r { background: #ff5f57; }
+        .terminal-dot.y { background: #febc2e; }
+        .terminal-dot.g { background: #28c840; }
+        .terminal-title { color: var(--text-dim); font-size: 0.8rem; margin-left: 0.5rem; font-family: var(--mono); }
+        .terminal-body { padding: 1.25rem 1.5rem; font-family: var(--mono); font-size: 0.85rem; line-height: 1.8; }
+        .terminal-body .cmd { color: var(--green); }
+        .terminal-body .comment { color: var(--text-dim); }
+        .terminal-body .output { color: var(--text); opacity: 0.8; }
+        .terminal-body .accent { color: var(--accent2); }
+
+        /* Steps */
+        .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 3rem; }
+        .step { text-align: center; }
+        .step-num {
+            width: 48px; height: 48px; border-radius: 50%; background: var(--accent-glow);
+            border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1.2rem; color: var(--accent); margin: 0 auto 1rem;
+        }
+        .step h3 { margin-bottom: 0.5rem; }
+        .step p { color: var(--text-dim); font-size: 0.9rem; }
+        .step code {
+            display: inline-block; background: var(--bg-code); padding: 0.25rem 0.5rem;
+            border-radius: 4px; font-family: var(--mono); font-size: 0.85rem; margin-top: 0.5rem;
+        }
+
+        /* Comparison */
+        .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem; }
+        .comparison-col {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 2rem;
+        }
+        .comparison-col.highlight { border-color: var(--accent); }
+        .comparison-col h3 { margin-bottom: 1rem; font-size: 1.2rem; }
+        .comparison-col.highlight h3 { color: var(--accent); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li { padding: 0.4rem 0; color: var(--text-dim); font-size: 0.95rem; }
+        .comparison-col li::before { margin-right: 0.5rem; }
+        .comparison-col.highlight li::before { content: '\2713'; color: var(--green); }
+        .comparison-col:not(.highlight) li::before { content: '\2717'; color: #ef4444; }
+
+        /* Commands table */
+        .cmd-table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+        .cmd-table th { text-align: left; padding: 0.75rem 1rem; border-bottom: 2px solid var(--border); color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .cmd-table td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); }
+        .cmd-table td:first-child { font-family: var(--mono); font-size: 0.85rem; color: var(--accent2); white-space: nowrap; }
+        .cmd-table tr:hover { background: var(--bg-card); }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border); padding: 3rem 2rem; text-align: center;
+            color: var(--text-dim); font-size: 0.9rem;
+        }
+        footer .links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem; }
+        footer .links a { color: var(--text-dim); }
+        footer .links a:hover { color: var(--text); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav ul { display: none; }
+            .comparison { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 2.5rem; }
+            section { padding: 3rem 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+    <div class="logo"><span>pacc</span></div>
+    <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#quickstart">Quick Start</a></li>
+        <li><a href="#commands">Commands</a></li>
+        <li><a href="#why">Why PACC</a></li>
+    </ul>
+    <a href="https://github.com/memyselfandm/pacc-cli" class="nav-cta">GitHub</a>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+    <div class="hero-badge"><span>v1.2.0</span> &mdash; Stacks, Doctor, Export now available</div>
+    <h1>Ansible for<br>Claude Code</h1>
+    <p>One CLI to install, configure, and sync your entire Claude Code environment. Stacks, plugins, fragments, and more &mdash; managed, versioned, and reproducible.</p>
+    <div class="hero-actions">
+        <a href="https://github.com/memyselfandm/pacc-cli" class="btn btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+            View on GitHub
+        </a>
+        <a href="https://pypi.org/project/pacc-cli/" class="btn btn-secondary">PyPI Package</a>
+    </div>
+    <div class="install-bar">
+        <span class="prompt">$</span>
+        <code>pip install pacc-cli</code>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('pip install pacc-cli');this.textContent='Copied!'">Copy</button>
+    </div>
+</div>
+
+<!-- Features -->
+<section id="features">
+    <div class="section-header">
+        <h2>Everything you need</h2>
+        <p>Manage your entire Claude Code environment from a single tool.</p>
+    </div>
+    <div class="features">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <h3>Stacks</h3>
+            <p>Bundle MCP servers, hooks, commands, agents, settings &amp; fragments into one shareable config. Install entire environments in seconds.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <h3>Plugins</h3>
+            <p>Full plugin ecosystem with Git integration. Install, update, enable/disable from any repository. Create your own with the interactive wizard.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <h3>Memory Fragments</h3>
+            <p>Persistent context that survives sessions. Install team knowledge bases that integrate directly with CLAUDE.md.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <h3>Doctor</h3>
+            <p>Built-in diagnostics. Run <code>pacc doctor</code> to detect and auto-fix configuration issues across your entire environment.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <h3>Team Sync</h3>
+            <p>Share configurations via pacc.json. Lock versions with pacc.lock.yaml. Sync environments and onboard new devs in seconds.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3>Security</h3>
+            <p>170+ threat patterns detected. 4-level sandbox isolation. SHA-256 verification. Lockfile pinning. Enterprise-grade protection.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Quick Start -->
+<section id="quickstart">
+    <div class="section-header">
+        <h2>Up and running in 30 seconds</h2>
+        <p>From zero to fully configured Claude Code environment.</p>
+    </div>
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">1</div>
+            <h3>Install</h3>
+            <p>Get PACC from PyPI.</p>
+            <code>pip install pacc-cli</code>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <h3>Stack Up</h3>
+            <p>Install a stack or sync from pacc.json.</p>
+            <code>pacc stack install &lt;repo&gt;</code>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <h3>Verify</h3>
+            <p>Check everything is healthy.</p>
+            <code>pacc doctor</code>
+        </div>
+    </div>
+
+    <div style="margin-top: 3rem;">
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-dot r"></div>
+                <div class="terminal-dot y"></div>
+                <div class="terminal-dot g"></div>
+                <span class="terminal-title">terminal</span>
+            </div>
+            <div class="terminal-body">
+                <div><span class="comment"># Install a full-stack dev environment</span></div>
+                <div><span class="cmd">$ pacc stack install https://github.com/org/fullstack-env</span></div>
+                <div class="output">  Added MCP server: github</div>
+                <div class="output">  Added MCP server: postgres</div>
+                <div class="output">  Added hooks for: PreToolUse</div>
+                <div class="output">  Installed command: code-review</div>
+                <div class="output">  Installed agent: reviewer</div>
+                <div class="output"><span class="accent">  Stack 'fullstack-env' installed (6 changes)</span></div>
+                <br>
+                <div><span class="comment"># Check everything is healthy</span></div>
+                <div><span class="cmd">$ pacc doctor</span></div>
+                <div class="output">  &#10003; Claude Code installed</div>
+                <div class="output">  &#10003; Config files valid</div>
+                <div class="output">  &#10003; 2 MCP servers healthy</div>
+                <div class="output">  &#10003; Hooks configured</div>
+                <div class="output">  &#10003; Plugins enabled</div>
+                <div class="output"><span class="accent">  All good! (12 passed, 0 warnings, 0 failed)</span></div>
+                <br>
+                <div><span class="comment"># Export your config for the team</span></div>
+                <div><span class="cmd">$ pacc export my-setup ./my-stack</span></div>
+                <div class="output"><span class="accent">  Stack 'my-setup' exported to ./my-stack</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Why PACC -->
+<section id="why">
+    <div class="section-header">
+        <h2>Why PACC?</h2>
+        <p>Stop copy-pasting configs. Start shipping.</p>
+    </div>
+    <div class="comparison">
+        <div class="comparison-col">
+            <h3>Without PACC</h3>
+            <ul>
+                <li>Manually edit settings.json for each project</li>
+                <li>Copy MCP configs from Slack threads</li>
+                <li>Onboarding takes hours of "just copy my config"</li>
+                <li>Config drift between team members</li>
+                <li>No validation &mdash; broken configs discovered at runtime</li>
+                <li>No rollback when things break</li>
+            </ul>
+        </div>
+        <div class="comparison-col highlight">
+            <h3>With PACC</h3>
+            <ul>
+                <li>One command installs your entire environment</li>
+                <li>Stacks bundle everything into versioned packages</li>
+                <li>New devs run <code>pacc sync</code> and they're done</li>
+                <li>Lockfile ensures identical environments everywhere</li>
+                <li><code>pacc doctor</code> catches issues before they bite</li>
+                <li>Timestamped backups + rollback on every operation</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Commands -->
+<section id="commands">
+    <div class="section-header">
+        <h2>Command Reference</h2>
+        <p>Familiar patterns. Powerful results.</p>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="cmd-table">
+            <thead>
+                <tr><th>Command</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>pacc stack install &lt;repo&gt;</td><td>Install a stack from Git</td></tr>
+                <tr><td>pacc stack sync</td><td>Idempotent sync to desired state</td></tr>
+                <tr><td>pacc stack export &lt;name&gt; &lt;dir&gt;</td><td>Export config as a shareable stack</td></tr>
+                <tr><td>pacc doctor</td><td>Run diagnostics with optional --fix</td></tr>
+                <tr><td>pacc plugin install &lt;repo&gt;</td><td>Install plugin from Git</td></tr>
+                <tr><td>pacc plugin search &lt;query&gt;</td><td>Search community plugins</td></tr>
+                <tr><td>pacc fragment install &lt;src&gt;</td><td>Install memory fragments</td></tr>
+                <tr><td>pacc sync</td><td>Sync everything from pacc.json</td></tr>
+                <tr><td>pacc install &lt;source&gt;</td><td>Install extensions from files/URLs</td></tr>
+                <tr><td>pacc validate &lt;source&gt;</td><td>Validate without installing</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="links">
+        <a href="https://github.com/memyselfandm/pacc-cli">GitHub</a>
+        <a href="https://pypi.org/project/pacc-cli/">PyPI</a>
+        <a href="https://github.com/memyselfandm/pacc-cli/issues">Issues</a>
+    </div>
+    <p><strong>pacc</strong> &mdash; Ansible for Claude Code. MIT Licensed.</p>
+</footer>
+
+</body>
+</html>
