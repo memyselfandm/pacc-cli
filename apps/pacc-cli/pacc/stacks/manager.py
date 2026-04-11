@@ -27,25 +27,15 @@ logger = logging.getLogger(__name__)
 # YAML helpers (optional dependency)
 # ---------------------------------------------------------------------------
 
-try:
-    import yaml  # type: ignore
-
-    HAS_YAML = True
-except ImportError:
-    HAS_YAML = False
-    yaml = None  # type: ignore
+import yaml  # PyYAML is a required dependency (see pyproject.toml)
 
 
 def _yaml_safe_load(text: str) -> Any:
-    if HAS_YAML:
-        return yaml.safe_load(text)
-    raise RuntimeError("PyYAML is required for stack management (pip install pyyaml)")
+    return yaml.safe_load(text)
 
 
 def _yaml_safe_dump(data: Any) -> str:
-    if HAS_YAML:
-        return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
-    raise RuntimeError("PyYAML is required for stack management (pip install pyyaml)")
+    return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
 
 
 # ---------------------------------------------------------------------------
@@ -669,12 +659,50 @@ class StackManager:
 
     # ----- internal helpers ------------------------------------------------
 
+    @staticmethod
+    def _validate_source(source: str) -> None:
+        """Validate a git URL or local path to prevent command injection.
+
+        Raises:
+            StackError: If the source looks malicious or invalid.
+        """
+        import re
+
+        # Reject obviously dangerous input
+        dangerous_chars = set(";|&$`\n\r")
+        if dangerous_chars.intersection(source):
+            raise StackError(
+                f"Invalid source: contains shell metacharacters"
+            )
+
+        # Allow local paths
+        if Path(source).is_dir():
+            return
+
+        # Validate as a git URL (HTTPS, SSH, or GitHub shorthand)
+        git_url_patterns = [
+            # HTTPS URLs
+            r"^https?://[\w.\-]+/[\w.\-]+/[\w.\-]+(?:\.git)?/?$",
+            # SSH URLs
+            r"^git@[\w.\-]+:[\w.\-]+/[\w.\-]+(?:\.git)?$",
+            # GitHub shorthand (owner/repo)
+            r"^[\w.\-]+/[\w.\-]+$",
+        ]
+        if not any(re.match(p, source) for p in git_url_patterns):
+            raise StackError(
+                f"Invalid source URL: '{source}'. "
+                "Expected HTTPS URL, SSH URL, or owner/repo shorthand."
+            )
+
     def _resolve_source(self, source: str) -> Tuple[Path, str, bool]:
         """Resolve source to a local directory, commit SHA, and temp flag."""
         source_path = Path(source)
         if source_path.is_dir():
             commit = self._get_git_commit(source_path)
             return source_path, commit, False
+
+        # Validate URL before passing to git
+        self._validate_source(source)
 
         # Treat as Git URL
         import tempfile
