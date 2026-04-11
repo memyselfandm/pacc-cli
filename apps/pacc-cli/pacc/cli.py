@@ -139,6 +139,15 @@ class PACCCli:
         # Fragment command
         self._add_fragment_parser(subparsers)
 
+        # Stack command
+        self._add_stack_parser(subparsers)
+
+        # Doctor command
+        self._add_doctor_parser(subparsers)
+
+        # Export command
+        self._add_export_parser(subparsers)
+
         return parser
 
     def _add_install_parser(self, subparsers) -> None:
@@ -5800,6 +5809,381 @@ class PACCCli:
                 pass  # Could add completion message here
 
         return progress()
+
+    # ==================================================================
+    # Stack command parsers
+    # ==================================================================
+
+    def _add_stack_parser(self, subparsers) -> None:
+        """Add the stack command parser."""
+        stack_parser = subparsers.add_parser(
+            "stack",
+            help="Manage Claude Code stacks (bundled environments)",
+            description=(
+                "Install, sync, and manage stacks — bundled configurations "
+                "that include MCP servers, hooks, commands, agents, settings, "
+                "and fragments in one shareable unit."
+            ),
+        )
+
+        stack_subparsers = stack_parser.add_subparsers(
+            dest="stack_command", help="Stack commands", metavar="<stack_command>"
+        )
+
+        # stack install
+        si = stack_subparsers.add_parser(
+            "install", help="Install a stack from a Git repository or local path"
+        )
+        si.add_argument("source", help="Git URL or local path containing stack.yaml")
+        scope_group = si.add_mutually_exclusive_group()
+        scope_group.add_argument("--user", action="store_true", help="Install to user scope (~/.claude/)")
+        scope_group.add_argument("--project", action="store_true", help="Install to project scope [default]")
+        si.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without applying")
+        si.set_defaults(func=self.handle_stack_install)
+
+        # stack list
+        sl = stack_subparsers.add_parser("list", aliases=["ls"], help="List installed stacks")
+        sl.add_argument("--scope", choices=["project", "user"], help="Filter by scope")
+        sl.add_argument("--format", choices=["table", "json"], default="table", help="Output format")
+        sl.set_defaults(func=self.handle_stack_list)
+
+        # stack info
+        sin = stack_subparsers.add_parser("info", help="Show stack details")
+        sin.add_argument("name", help="Stack name")
+        sin.add_argument("--format", choices=["table", "json"], default="table", help="Output format")
+        sin.set_defaults(func=self.handle_stack_info)
+
+        # stack remove
+        sr = stack_subparsers.add_parser("remove", aliases=["rm"], help="Remove a stack")
+        sr.add_argument("name", help="Stack name to remove")
+        sr.add_argument("--scope", choices=["project", "user"], default="project", help="Scope")
+        sr.add_argument("--dry-run", "-n", action="store_true", help="Preview changes")
+        sr.add_argument("--confirm", action="store_true", help="Skip confirmation")
+        sr.set_defaults(func=self.handle_stack_remove)
+
+        # stack sync
+        ss = stack_subparsers.add_parser(
+            "sync", help="Sync stacks to desired state (idempotent)"
+        )
+        ss.add_argument("--dry-run", "-n", action="store_true", help="Preview changes")
+        ss.set_defaults(func=self.handle_stack_sync)
+
+        # stack export
+        se = stack_subparsers.add_parser(
+            "export", help="Export current config as a reusable stack"
+        )
+        se.add_argument("name", help="Name for the exported stack")
+        se.add_argument("output_dir", help="Destination directory")
+        se.add_argument("--no-settings", action="store_true", help="Exclude non-MCP/hook settings")
+        se.set_defaults(func=self.handle_stack_export)
+
+        stack_parser.set_defaults(func=lambda args: (stack_parser.print_help() or 0))
+
+    def _add_doctor_parser(self, subparsers) -> None:
+        """Add the doctor command parser."""
+        doctor_parser = subparsers.add_parser(
+            "doctor",
+            help="Run diagnostics on your Claude Code environment",
+            description=(
+                "Check configuration files, MCP servers, hooks, plugins, fragments, "
+                "permissions, and system dependencies. Optionally auto-fix issues."
+            ),
+        )
+        doctor_parser.add_argument(
+            "--fix", action="store_true", help="Attempt to auto-fix fixable issues"
+        )
+        doctor_parser.add_argument(
+            "--verbose", "-v", action="store_true", help="Show detailed output"
+        )
+        doctor_parser.add_argument(
+            "--format", choices=["table", "json"], default="table", help="Output format"
+        )
+        doctor_parser.set_defaults(func=self.handle_doctor)
+
+    def _add_export_parser(self, subparsers) -> None:
+        """Add the export command parser (top-level shortcut for stack export)."""
+        export_parser = subparsers.add_parser(
+            "export",
+            help="Export current Claude Code config as a shareable stack",
+            description=(
+                "Generate a stack.yaml manifest and supporting files from your "
+                "current Claude Code configuration. Shortcut for 'pacc stack export'."
+            ),
+        )
+        export_parser.add_argument("name", help="Name for the exported stack")
+        export_parser.add_argument("output_dir", help="Destination directory")
+        export_parser.add_argument(
+            "--no-settings", action="store_true", help="Exclude non-MCP/hook settings"
+        )
+        export_parser.set_defaults(func=self.handle_stack_export)
+
+    # ==================================================================
+    # Stack command handlers
+    # ==================================================================
+
+    def handle_stack_install(self, args) -> int:
+        """Handle stack install command."""
+        from .stacks.manager import StackManager
+
+        scope = "user" if getattr(args, "user", False) else "project"
+        dry_run = getattr(args, "dry_run", False)
+
+        manager = StackManager()
+        print(f"{'[DRY RUN] ' if dry_run else ''}Installing stack from {args.source}...")
+
+        try:
+            result = manager.install_stack(args.source, scope=scope, dry_run=dry_run)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+
+        if result.success:
+            print(f"✓ {result.message}")
+            for change in result.changes:
+                print(f"  {change}")
+            if result.warnings:
+                for w in result.warnings:
+                    print(f"  ⚠ {w}")
+            return 0
+        else:
+            print(f"✗ {result.message}", file=sys.stderr)
+            return 1
+
+    def handle_stack_list(self, args) -> int:
+        """Handle stack list command."""
+        from .stacks.manager import StackManager
+        import json as json_mod
+
+        manager = StackManager()
+        scope = getattr(args, "scope", None)
+        stacks = manager.list_stacks(scope=scope)
+
+        fmt = getattr(args, "format", "table")
+
+        if fmt == "json" or self._json_output:
+            data = []
+            for s in stacks:
+                data.append({
+                    "name": s.name,
+                    "version": s.version,
+                    "scope": s.scope,
+                    "description": s.description,
+                    "source": s.source,
+                    "components": s.components,
+                })
+            print(json_mod.dumps(data, indent=2))
+            return 0
+
+        if not stacks:
+            print("No stacks installed.")
+            print("\nInstall a stack: pacc stack install <git-url>")
+            return 0
+
+        print(f"\nInstalled Stacks ({len(stacks)}):")
+        print("-" * 60)
+        for s in stacks:
+            scope_tag = f"[{s.scope}]"
+            print(f"  {s.name} v{s.version} {scope_tag}")
+            if s.description:
+                print(f"    {s.description}")
+            if s.components:
+                parts = []
+                for k, v in s.components.items():
+                    if v > 0:
+                        parts.append(f"{v} {k}")
+                if parts:
+                    print(f"    Components: {', '.join(parts)}")
+            print()
+        return 0
+
+    def handle_stack_info(self, args) -> int:
+        """Handle stack info command."""
+        from .stacks.manager import StackManager
+        import json as json_mod
+
+        manager = StackManager()
+        info = manager.info_stack(args.name)
+
+        if not info:
+            print(f"Stack '{args.name}' not found.", file=sys.stderr)
+            return 1
+
+        fmt = getattr(args, "format", "table")
+        if fmt == "json" or self._json_output:
+            data = {
+                "name": info.name,
+                "version": info.version,
+                "description": info.description,
+                "author": info.author,
+                "source": info.source,
+                "scope": info.scope,
+                "commit": info.commit,
+                "sha256": info.sha256,
+                "installed_at": info.installed_at,
+                "components": info.components,
+            }
+            print(json_mod.dumps(data, indent=2))
+            return 0
+
+        print(f"\nStack: {info.name}")
+        print("=" * (len(info.name) + 7))
+        print(f"Version: {info.version}")
+        print(f"Scope: {info.scope}")
+        if info.description:
+            print(f"Description: {info.description}")
+        if info.author:
+            print(f"Author: {info.author}")
+        if info.source:
+            print(f"Source: {info.source}")
+        if info.commit:
+            print(f"Commit: {info.commit[:12]}...")
+        if info.sha256:
+            print(f"SHA-256: {info.sha256[:16]}...")
+        if info.installed_at:
+            print(f"Installed: {info.installed_at}")
+        if info.components:
+            print("\nComponents:")
+            for k, v in info.components.items():
+                if v > 0:
+                    print(f"  {k}: {v}")
+        return 0
+
+    def handle_stack_remove(self, args) -> int:
+        """Handle stack remove command."""
+        from .stacks.manager import StackManager
+
+        dry_run = getattr(args, "dry_run", False)
+        confirm = getattr(args, "confirm", False)
+        scope = getattr(args, "scope", "project")
+
+        if not dry_run and not confirm:
+            if not self._confirm_action(f"Remove stack '{args.name}' and all its components?"):
+                print("Cancelled.")
+                return 0
+
+        manager = StackManager()
+        result = manager.remove_stack(args.name, scope=scope, dry_run=dry_run)
+
+        if result.success:
+            print(f"✓ {result.message}")
+            for change in result.changes:
+                print(f"  {change}")
+            return 0
+        else:
+            print(f"✗ {result.message}", file=sys.stderr)
+            return 1
+
+    def handle_stack_sync(self, args) -> int:
+        """Handle stack sync command."""
+        from .stacks.manager import StackManager
+
+        dry_run = getattr(args, "dry_run", False)
+        manager = StackManager()
+
+        print(f"{'[DRY RUN] ' if dry_run else ''}Syncing stacks...")
+        result = manager.sync_stacks(dry_run=dry_run)
+
+        if result.success:
+            print(f"✓ {result.message}")
+        else:
+            print(f"✗ {result.message}", file=sys.stderr)
+            for err in result.errors:
+                print(f"  Error: {err}", file=sys.stderr)
+
+        return 0 if result.success else 1
+
+    def handle_stack_export(self, args) -> int:
+        """Handle stack export / export command."""
+        from .stacks.manager import StackManager
+
+        manager = StackManager()
+        include_settings = not getattr(args, "no_settings", False)
+
+        print(f"Exporting stack '{args.name}' to {args.output_dir}...")
+        result = manager.export_stack(
+            args.name, args.output_dir, include_settings=include_settings
+        )
+
+        if result.success:
+            print(f"✓ {result.message}")
+            for change in result.changes:
+                print(f"  {change}")
+            return 0
+        else:
+            print(f"✗ {result.message}", file=sys.stderr)
+            return 1
+
+    # ==================================================================
+    # Doctor command handler
+    # ==================================================================
+
+    def handle_doctor(self, args) -> int:
+        """Handle doctor command."""
+        from .doctor import Doctor
+        import json as json_mod
+
+        fix = getattr(args, "fix", False)
+        verbose = getattr(args, "verbose", False)
+        fmt = getattr(args, "format", "table")
+
+        doctor = Doctor()
+        report = doctor.run_diagnostics(fix=fix, verbose=verbose)
+
+        if fmt == "json" or self._json_output:
+            data = {
+                "passed": report.passed,
+                "warned": report.warned,
+                "failed": report.failed,
+                "auto_fixed": report.auto_fixed,
+                "timestamp": report.timestamp,
+                "checks": [
+                    {
+                        "name": c.name,
+                        "description": c.description,
+                        "status": c.status,
+                        "message": c.message,
+                        "fixable": c.fixable,
+                    }
+                    for c in report.checks
+                ],
+            }
+            print(json_mod.dumps(data, indent=2))
+            return 0 if report.failed == 0 else 1
+
+        # Table output
+        status_icons = {"pass": "✓", "warn": "⚠", "fail": "✗"}
+        status_colors = {"pass": "", "warn": "", "fail": ""}
+
+        print("\nPACC Doctor")
+        print("=" * 50)
+
+        for check in report.checks:
+            icon = status_icons.get(check.status, "?")
+            print(f"  {icon} {check.description}")
+            if verbose or check.status != "pass":
+                print(f"    {check.message}")
+            if check.status == "fail" and check.fixable and not fix:
+                print(f"    (fixable with --fix)")
+        print()
+
+        # Summary
+        parts = [f"{report.passed} passed"]
+        if report.warned > 0:
+            parts.append(f"{report.warned} warnings")
+        if report.failed > 0:
+            parts.append(f"{report.failed} failed")
+        if report.auto_fixed > 0:
+            parts.append(f"{report.auto_fixed} auto-fixed")
+
+        summary = ", ".join(parts)
+        if report.failed == 0:
+            print(f"✓ All good! ({summary})")
+        else:
+            print(f"✗ Issues found ({summary})")
+            if any(c.fixable for c in report.checks if c.status == "fail"):
+                print("  Run 'pacc doctor --fix' to auto-fix fixable issues")
+
+        return 0 if report.failed == 0 else 1
 
 
 def main() -> int:
